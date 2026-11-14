@@ -1,5 +1,6 @@
 /** Deterministic synthetic youth employment examples. Decisions remain in browser memory. */
 import type {
+  ApplicationReasons,
   DecisionKey,
   DocStatus,
   OfficerDocument,
@@ -9,6 +10,7 @@ import type {
   OfficerRow,
   ReviewDetailData,
 } from '../../api.ts'
+import { blockedBulkApprove, bulkApproveRefusal, queueOf } from './bulk-actions.ts'
 
 /** 목업 신청 건의 id 시작점. 실제 DB id(1부터)와 절대 겹치지 않게 띄워 둔다. */
 export const MOCK_ID_BASE = 900_000
@@ -1202,11 +1204,17 @@ export function mockOfficerList(query: OfficerListQuery): OfficerList {
     town = query.town || towns[0] || ''
     rows = rows.filter((e) => e.row.town === town)
   }
+  const needle = (query.q ?? '').trim().toLowerCase()
+  if (needle) rows = rows.filter((e) => `${e.row.application_no}\n${e.row.name}`.toLowerCase().includes(needle))
+  if (query.submitted_from) rows = rows.filter((e) => (e.row.submitted_at ?? '') >= query.submitted_from!)
+  if (query.submitted_to) rows = rows.filter((e) => (e.row.submitted_at ?? '').slice(0, 10) <= query.submitted_to!)
+  // 구분별 건수는 여기까지 건 조건(관할·검색어·기간)으로 센다.
+  const queues: OfficerList['queues'] = { needs_check: 0, pass: 0, done: 0 }
+  for (const e of rows) queues[queueOf(e.row)] += 1
+  if (query.queue) rows = rows.filter((e) => queueOf(e.row) === query.queue)
   if (query.ai_status) rows = rows.filter((e) => e.row.ai_status === query.ai_status)
   if (query.status === PENDING) rows = rows.filter((e) => !e.row.decision)
   else if (query.status) rows = rows.filter((e) => e.row.decision === query.status)
-  if (query.submitted_from) rows = rows.filter((e) => (e.row.submitted_at ?? '') >= query.submitted_from!)
-  if (query.submitted_to) rows = rows.filter((e) => (e.row.submitted_at ?? '').slice(0, 10) <= query.submitted_to!)
   rows = [...rows].sort((a, b) => (a.row.submitted_at ?? '').localeCompare(b.row.submitted_at ?? ''))
   const total = rows.length
   const page = Math.max(1, query.page ?? 1)
@@ -1219,10 +1227,11 @@ export function mockOfficerList(query: OfficerListQuery): OfficerList {
       ai_statuses: (Object.keys(AI_STATUS_LABELS) as DocStatus[]).map((value) => ({ value, label: AI_STATUS_LABELS[value] })),
       statuses: [{ value: PENDING, label: '미처리' }, ...role.actions.map((a) => ({ value: a.key, label: a.result_label }))],
       sorts: [{ value: 'submitted', label: '접수순 (선착순)' }],
-      applied: { program: JOB_PACKAGE, status: query.status ?? null, ai_status: query.ai_status ?? null, submitted_from: query.submitted_from ?? null, submitted_to: query.submitted_to ?? null, sort: 'submitted' },
+      applied: { program: JOB_PACKAGE, status: query.status ?? null, ai_status: query.ai_status ?? null, submitted_from: query.submitted_from ?? null, submitted_to: query.submitted_to ?? null, sort: 'submitted', queue: query.queue ?? null, q: needle ? (query.q ?? '').trim() : null },
     },
     columns: FIRST_COME_COLUMNS,
     first_come: firstComeSummary(JOB_PACKAGE),
+    queues,
     total, page, page_size: pageSize, page_count: Math.max(1, Math.ceil(total / pageSize)),
     rows: rows.slice((page - 1) * pageSize, page * pageSize).map((e) => e.row),
   }
@@ -1488,6 +1497,29 @@ export function mockReviewDetail(applicationId: number, roleKey: string): Review
   }
 }
 
+// ---------------------------------------------------------------- 확인 필요 사유
+
+/** 행을 펼쳤을 때의 사유. 백엔드와 같이 적합이 아닌 서류와 그 확인 사항만 낸다. */
+export function mockApplicationReasons(applicationId: number): ApplicationReasons {
+  const entry = byId.get(applicationId)
+  if (!entry) throw new Error('목업에 없는 취업지원패키지 신청입니다.')
+  return {
+    application_id: applicationId,
+    ai_status: entry.row.ai_status,
+    ai_status_label: entry.row.ai_status_label,
+    source: 'rules',
+    documents: entry.docs.filter((d) => d.status !== 'PASS').map((d) => ({
+      slot_key: d.slotKey,
+      label: d.label,
+      status: d.status,
+      status_label: AI_STATUS_LABELS[d.status],
+      findings: d.findings.map(({ code, message, severity }) => ({ code, message, severity })),
+    })),
+    // 목업 신청 건은 필요한 서류를 모두 올린 것으로 만든다.
+    missing: [],
+  }
+}
+
 // ---------------------------------------------------------------- 담당자 처리
 
 /**
@@ -1496,6 +1528,19 @@ export function mockReviewDetail(applicationId: number, roleKey: string): Review
  * 새로고침하면 초기 상태로 돌아간다 — 목업은 브라우저 메모리에만 있다. 시연을
  * 다시 처음부터 돌리기에는 오히려 이 편이 편하다.
  */
+/**
+ * 목업 일괄 처리 전 검사. 백엔드와 같이 확인 필요 건은 일괄 승인할 수 없다.
+ * 걸리면 거절 문장을, 아니면 null을 낸다.
+ */
+export function mockBulkRefusal(applicationIds: number[], roleKey: string, decision: DecisionKey): string | null {
+  const rows = applicationIds.flatMap((id) => {
+    const row = byId.get(id)?.row
+    return row ? [row] : []
+  })
+  const blocked = blockedBulkApprove(decision, rows)
+  return blocked.length > 0 ? bulkApproveRefusal(decisionLabel(roleKey, decision), blocked) : null
+}
+
 export function mockDecide(
   applicationIds: number[],
   roleKey: string,

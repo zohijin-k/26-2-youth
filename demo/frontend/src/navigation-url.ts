@@ -5,6 +5,7 @@ const NAVIGATION_PARAMS = [
   'o_open', 'o_slot', 'o_criteria', 'o_criteria_program',
   'role', 'region', 'town', 'program', 'status', 'ai', 'submitted_from',
   'submitted_to', 'sort', 'page', 'page_size', 'slot',
+  'queue', 'q',
 ] as const
 
 export function currentParams(): URLSearchParams {

@@ -1,0 +1,5 @@
+{"file": ".trellis/tasks/11-14-program-service-renewal/prd.md", "reason": "Parent requirements and fixed constraints"}
+{"file": ".trellis/tasks/11-14-renewal-step2-application-list/design.md", "reason": "API additions and the list screen design"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Frontend review checklist"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Backend review checklist"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "Routing and state rules"}

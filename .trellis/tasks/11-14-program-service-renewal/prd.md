@@ -27,7 +27,8 @@ Applicant: find a program → program information → identity check → fill th
 ## Steps (child tasks, one pull request each)
 
 1. Program store and program list screens — `11-14-renewal-step1-program-store`
-2. Officer application list redesign (tabs, four columns, row expansion for the reason)
+2. Officer application list redesign (tabs, four columns, row expansion for the reason) — `11-14-renewal-step2-application-list`
+   - Applicant design system (owner's design prompt and the 전북청년허브센터 logo, added 2026-11-14) — `11-14-renewal-applicant-design`. Runs after step 2; steps 3 and 4 build new applicant screens on it.
 3. New-program flow: template detection, template editor, guidance message, preview and publish
 4. Applicant flow driven by the program and its template; "my applications"
 5. Documents, specs and test baselines

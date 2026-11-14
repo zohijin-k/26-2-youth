@@ -97,17 +97,6 @@
 .subsidy__check { width: 14px; height: 14px; min-height: 14px; border-radius: 2px; flex: none; }
 .subsidy__input { width: 110px; height: 26px; min-height: 26px; border: 1px solid #999; border-radius: 0; }
 .sitem__docs .skeleton__line { display: inline-block; vertical-align: middle; }
-.officer__table-skeleton { display: block; overflow: hidden; border: 0; }
-.officer__filters-skeleton { display: flex; gap: 8px 16px; padding: 10px 12px; border: 1px solid var(--border); margin-bottom: 0; flex-wrap: wrap; }
-.officer__filters-skeleton label { display: inline-flex; align-items: center; gap: 6px; }
-.officer__filter-control { width: 112px; min-height: 26px; height: 26px; border: 1px solid #aaa; border-radius: 0; }
-.officer__bulk-skeleton { min-height: 42px; }
-.officer__table-skeleton-grid { min-width: 1280px; border: 1px solid var(--border); }
-.officer__table-skeleton-head, .officer__table-skeleton-row { display: grid; grid-template-columns: repeat(12, minmax(80px, 1fr)); align-items: center; gap: 0; padding: 6px 8px; border-bottom: 1px solid var(--border); }
-.officer__table-skeleton-head { background: #f2f2f2; font-size: 13px; font-weight: 700; }
-.officer__table-skeleton-row { min-height: 27px; }
-.officer__table-skeleton-row .skeleton__line { height: 12px; margin: 0 6px; }
-.officer__table-skeleton-head > *, .officer__table-skeleton-row > * { min-width: 0; padding: 0 8px; border-left: 1px solid var(--border); }
 .review__skeleton { display: grid; gap: 12px; align-items: start; }
 .review__skeleton-header { margin-bottom: 10px; min-height: 0; }
 .review__skeleton-split { display: grid; grid-template-columns: 55fr 45fr; gap: 12px; align-items: start; }

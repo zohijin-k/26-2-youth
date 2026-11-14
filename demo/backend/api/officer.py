@@ -218,6 +218,48 @@ def _load_entries() -> list[Entry]:
     return [Entry(a, reviews.get(a.id or 0)) for a in apps]
 
 
+# ---------------------------------------------------------------- 목록 구분
+
+
+#: 목록의 세 구분. 담당자가 지금 봐야 할 건(확인 필요)이 기본이다.
+QUEUE_NEEDS_CHECK = "needs_check"
+QUEUE_PASS = "pass"
+QUEUE_DONE = "done"
+QUEUES = (QUEUE_NEEDS_CHECK, QUEUE_PASS, QUEUE_DONE)
+
+#: 검색어 길이 상한.
+SEARCH_MAX = 50
+
+
+def queue_of(entry: Entry) -> str:
+    """신청 건이 속한 구분.
+
+    담당자 판단이 있으면(보류 포함) 처리 완료다. 판단이 없으면 AI 판정이 적합인
+    건만 적합이고, 확인필요·부적합·미심사는 모두 확인 필요다. 사업 카드의 확인 필요
+    건수(`api/postings.py`)도 이 함수로 센다 — 두 곳에 따로 쓰면 카드의 숫자와
+    목록의 탭 숫자가 어긋난다.
+    """
+    if entry.decision:
+        return QUEUE_DONE
+    return QUEUE_PASS if entry.ai_status == "PASS" else QUEUE_NEEDS_CHECK
+
+
+def _search_text(q: str | None) -> str:
+    """검색어를 다듬는다. 앞뒤 공백을 떼고, 비어 있으면 검색하지 않는다."""
+    text = (q or "").strip()
+    if len(text) > SEARCH_MAX:
+        raise HTTPException(400, f"검색어는 {SEARCH_MAX}자 이하로 입력해 주세요.")
+    return text
+
+
+def _matches(entry: Entry, needle: str) -> bool:
+    """신청번호나 성명에 검색어가 들어 있는가. 대소문자는 가리지 않는다."""
+    return (
+        needle in (entry.app.application_no or "").casefold()
+        or needle in entry.name.casefold()
+    )
+
+
 def _doc_cells(
     app: Application, documents: list[Document]
 ) -> tuple[list[dict[str, Any]], int]:
@@ -503,11 +545,22 @@ def list_applications(
     sort: str | None = Query(None, description="score | submitted"),
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
+    # 아래 둘은 기본값을 `Query(...)`가 아니라 `None`으로 둔다. 이 함수를 파이썬에서
+    # 직접 부르는 코드가 새 인자를 안 넘겨도 예전과 똑같이 동작해야 한다.
+    queue: str | None = None,
+    q: str | None = None,
 ) -> dict[str, Any]:
     """접수 목록 (R4.4).
 
     정렬 기본값은 사업에 따라 갈린다 — 두배적금은 **점수순**, 취업패키지는
     **접수순**이다. 선발 방식이 점수제와 선착순으로 다르기 때문이다.
+
+    `queue`는 needs_check | pass | done 중 하나이고, `q`는 신청번호나 성명에서 찾을
+    글자(50자 이하)다.
+
+    `queues`는 구분별 건수다. 관할·사업·검색어·기간까지만 건 뒤에 센다 — 구분과
+    처리상태·AI판정 필터는 세는 데 넣지 않는다. 그래야 탭을 옮겨도 세 숫자가
+    그대로이고, 셋을 더하면 그 조건에 맞는 전체 건수가 된다.
     """
     try:
         role_config = get_role(role)
@@ -522,20 +575,21 @@ def list_applications(
     quota_regions = [picked_region] if role_config.requires_region else list(QUOTA)
     quota = _quota_rows(role_config, entries, quota_regions)
 
+    if status and status != PENDING and status not in DECISIONS:
+        raise HTTPException(400, f"알 수 없는 처리상태: {status}")
+    if queue and queue not in QUEUES:
+        raise HTTPException(400, f"알 수 없는 목록 구분: {queue}")
+    needle = _search_text(q)
+    day_from = _parse_day(submitted_from, "신청일 시작")
+    day_to = _parse_day(submitted_to, "신청일 종료")
+
+    # 구분별 건수를 세는 바탕: 관할 · 사업 · 검색어 · 기간.
     rows = scoped
     if program:
         rows = [e for e in rows if e.app.program_code == program]
-    if ai_status:
-        rows = [e for e in rows if e.ai_status == ai_status]
-    if status == PENDING:
-        rows = [e for e in rows if not e.decision]
-    elif status in DECISIONS:
-        rows = [e for e in rows if e.decision == status]
-    elif status:
-        raise HTTPException(400, f"알 수 없는 처리상태: {status}")
-
-    day_from = _parse_day(submitted_from, "신청일 시작")
-    day_to = _parse_day(submitted_to, "신청일 종료")
+    if needle:
+        folded = needle.casefold()
+        rows = [e for e in rows if _matches(e, folded)]
     if day_from:
         rows = [
             e for e in rows if e.app.submitted_at and e.app.submitted_at.date() >= day_from
@@ -544,6 +598,18 @@ def list_applications(
         rows = [
             e for e in rows if e.app.submitted_at and e.app.submitted_at.date() <= day_to
         ]
+    queue_counts = dict.fromkeys(QUEUES, 0)
+    for e in rows:
+        queue_counts[queue_of(e)] += 1
+
+    if queue:
+        rows = [e for e in rows if queue_of(e) == queue]
+    if ai_status:
+        rows = [e for e in rows if e.ai_status == ai_status]
+    if status == PENDING:
+        rows = [e for e in rows if not e.decision]
+    elif status:
+        rows = [e for e in rows if e.decision == status]
 
     default_sort = (
         "submitted"
@@ -603,11 +669,14 @@ def list_applications(
                 "submitted_from": submitted_from,
                 "submitted_to": submitted_to,
                 "sort": sort_key,
+                "queue": queue or None,
+                "q": needle or None,
             },
         },
         "columns": _columns(program),
         "quota": quota,
         "first_come": _first_come_summary(entries, program),
+        "queues": queue_counts,
         "total": total,
         "page": page,
         "page_size": page_size,
@@ -916,6 +985,87 @@ def review_detail(application_id: int, role: str = Query(ROLE_PROVINCE)) -> dict
     }
 
 
+# ---------------------------------------------------------------- 확인 필요 사유
+
+
+#: SQLite 정수 범위. 이보다 큰 번호는 조회 자체가 오류가 되므로 없는 건으로 답한다.
+_ID_LIMIT = 2**63
+
+
+def _reason_findings(d: Document) -> list[dict[str, Any]]:
+    """서류에 저장된 확인 사항. 심사 상세와 같은 방식으로 가린 뒤 세 값만 낸다."""
+    rows: list[dict[str, Any]] = []
+    for finding in mask_data(d.findings_json or []):
+        if not isinstance(finding, dict):
+            continue
+        rows.append(
+            {
+                "code": str(finding.get("code") or ""),
+                "message": str(finding.get("message") or ""),
+                "severity": finding.get("severity") or d.stage1_status or "NEEDS_REVIEW",
+            }
+        )
+    return rows
+
+
+@router.get("/applications/{application_id}/reasons")
+def review_reasons(application_id: int, role: str = Query(ROLE_PROVINCE)) -> dict[str, Any]:
+    """이 건을 왜 확인해야 하는가 — 목록에서 행을 펼쳤을 때 읽는다.
+
+    심사가 이미 저장해 둔 값만 쓴다: 적합이 아닌 서류와 그 확인 사항, 그리고 아직
+    올리지 않은 필수 서류. 여기서 다시 판독하거나 판정하지 않는다. 역할과 404는
+    심사 상세(`review_detail`)와 같게 다룬다.
+    """
+    try:
+        get_role(role)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from None
+    if not 0 < application_id < _ID_LIMIT:
+        raise HTTPException(404, "신청 건을 찾을 수 없습니다.")
+
+    app = load_application(application_id)
+    if app.status == STATUS_DRAFT:
+        raise HTTPException(404, "아직 제출되지 않은 신청 건입니다.")
+
+    with get_session() as s:
+        review = s.exec(
+            select(Review).where(Review.application_id == application_id)
+        ).first()
+    entry = Entry(app, review)
+
+    checklist = checklist_for(app)
+    labels = {r.slot_key: r.label for r in checklist}
+    order = {r.slot_key: i for i, r in enumerate(checklist)}
+    uploaded = list_documents(application_id)
+    # 체크리스트 순서대로. 체크리스트에 없는 서류(미배정 페이지)는 맨 뒤다.
+    uploaded.sort(key=lambda d: (order.get(d.slot_key, len(order)), d.id or 0))
+    filled = {d.slot_key for d in uploaded}
+
+    return {
+        "application_id": app.id,
+        "ai_status": entry.ai_status,
+        "ai_status_label": AI_STATUS_LABELS.get(entry.ai_status or "", "미심사"),
+        # 사유의 출처. 지금은 규칙 판정 결과뿐이다.
+        "source": "rules",
+        "documents": [
+            {
+                "slot_key": d.slot_key,
+                "label": labels.get(d.slot_key, "미배정 페이지"),
+                "status": d.stage1_status,
+                "status_label": AI_STATUS_LABELS.get(d.stage1_status or "", "미심사"),
+                "findings": _reason_findings(d),
+            }
+            for d in uploaded
+            if d.stage1_status != "PASS"
+        ],
+        "missing": [
+            {"slot_key": r.slot_key, "label": r.label}
+            for r in upload_slots(checklist)
+            if r.required and r.slot_key not in filled
+        ],
+    }
+
+
 # ---------------------------------------------------------------- 담당자 판단
 
 
@@ -987,12 +1137,35 @@ def decide(application_id: int, body: DecisionRequest) -> dict[str, Any]:
     return _apply_decision(application_id, role, body.decision, body.memo)
 
 
+def _unchecked_numbers(application_ids: list[int]) -> list[str]:
+    """고른 건 가운데 확인 필요 구분(`queue_of`)에 있는 건의 신청번호."""
+    ids = sorted({i for i in application_ids if 0 < i < _ID_LIMIT})
+    if not ids:
+        return []
+    with get_session() as s:
+        apps = s.exec(select(Application).where(Application.id.in_(ids))).all()
+        reviews = {
+            r.application_id: r
+            for r in s.exec(select(Review).where(Review.application_id.in_(ids))).all()
+        }
+    return [
+        app.application_no or str(app.id)
+        for app in apps
+        if app.status != STATUS_DRAFT
+        and queue_of(Entry(app, reviews.get(app.id or 0))) == QUEUE_NEEDS_CHECK
+    ]
+
+
 @router.post("/applications/decisions")
 def decide_bulk(body: BulkDecisionRequest) -> dict[str, Any]:
     """목록에서 체크한 건을 한 번에 처리.
 
     읍·면·동은 구비서류를 건별로 확인하는 단계라 일괄 처리를 제공하지 않는다.
     권한 차이를 화면에서 바로 보이게 하려는 의도다 (R4.5).
+
+    확인 필요 건(판단 없음 + 자동 판정이 적합이 아님)은 일괄 승인할 수 없다. 서류를
+    보지 않은 통과를 막기 위해서다. 보류·반려는 일괄로 할 수 있다. 고른 건 중 하나라도
+    걸리면 아무것도 처리하지 않고 409로 답한다.
     """
     try:
         role = get_role(body.role)
@@ -1003,6 +1176,16 @@ def decide_bulk(body: BulkDecisionRequest) -> dict[str, Any]:
             403, f"'{role.name}' 역할은 건별 확인이 원칙이라 일괄 처리를 할 수 없습니다."
         )
     _check_action(role, body.decision)
+    if body.decision == DECISION_APPROVE:
+        unchecked = _unchecked_numbers(body.application_ids)
+        if unchecked:
+            action = action_of(role, DECISION_APPROVE)
+            label = action.result_label if action else body.decision
+            raise HTTPException(
+                409,
+                f"확인 필요 건은 일괄로 {label}할 수 없습니다. 심사 화면에서 서류를 확인한 뒤 "
+                f"건별로 처리해 주세요: {', '.join(unchecked)}",
+            )
     results = [
         _apply_decision(app_id, role, body.decision, body.memo)
         for app_id in body.application_ids
