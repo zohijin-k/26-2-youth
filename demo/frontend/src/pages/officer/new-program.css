@@ -1,0 +1,119 @@
+/* 새 사업 올리기 (담당자). 이름표는 칸 위, 안내와 오류는 칸 바로 아래 한 줄. */
+
+.pnew {
+  padding: 12px 20px 40px;
+}
+
+.pnew__back {
+  padding: 3px 10px;
+  border: 1px solid #aaa;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.pnew__back::before {
+  margin-right: 4px;
+  content: '‹';
+}
+
+.pnew__back:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pnew__title {
+  margin: 12px 0 6px;
+  font-size: 20px;
+}
+
+.pnew__lead {
+  max-width: 680px;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border: 1px solid #c6d9f5;
+  background: #f1f6ff;
+  font-size: 13px;
+}
+
+.pnew__form {
+  display: grid;
+  gap: 14px;
+  max-width: 680px;
+  padding: 16px;
+  border: 1px solid #ccc;
+  background: #fff;
+}
+
+.pnew__field {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.pnew__dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.pnew__label {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pnew__input {
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 1px solid #aaa;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+}
+
+.pnew__input:focus-visible {
+  outline: 2px solid #0b57d0;
+  outline-offset: 1px;
+}
+
+.pnew__input--invalid {
+  border-color: #c00;
+  background: #fff8f8;
+}
+
+/* 오류가 도움말과 같은 줄을 쓰므로 오류가 떠도 아래 칸이 밀리지 않는다. */
+.pnew__note {
+  min-height: 20px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+
+.pnew__note--error {
+  color: #c00;
+  font-weight: 700;
+}
+
+.pnew__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #ddd;
+}
+
+.pnew__server-error {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 5px 10px;
+  border: 1px solid #c00;
+  background: #fff4f4;
+  color: #900;
+  font-size: 13px;
+}

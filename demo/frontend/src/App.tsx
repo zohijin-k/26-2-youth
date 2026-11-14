@@ -1,25 +1,25 @@
 /**
- * 청년 취업지원패키지 진입점. 주소로 신청자 화면과 담당자 화면 중 하나를 고른다.
+ * 진입점. 주소로 신청자 쪽과 담당자 쪽 중 하나를 고른다.
  *
- *   /officer...        담당자 화면
- *   /apply...          신청자 화면
- *   그 밖(/ 포함)      ?mode=officer면 담당자, 아니면 신청자
+ *   /officer...        담당자 쪽 (사업 목록 · 새 사업 · 사업 작업 공간)
+ *   /apply...          신청자 쪽 (신청)
+ *   그 밖(/ 포함)      ?mode=officer면 담당자, 아니면 신청자 (사업 찾기 · 사업 안내)
  *
- * 두 화면은 마운트되자마자 주소를 자기 경로(/officer, /apply/identity)로 고쳐 쓰고,
- * 신청자 화면은 신청 건을 만들거나 복원한다. 그래서 한 번에 하나만 마운트한다.
+ * 각 쪽의 입구(ApplicantApp, OfficerApp)가 자기 주소를 맡아 화면 하나를 올리고,
+ * 주소도 자기 경로로 고쳐 쓴다. 그래서 한 번에 한 쪽만 마운트한다.
  */
 import { lazy, Suspense, useEffect, useState } from 'react'
 
 import { currentMode, goToHome, routeUrl, type Mode } from './navigation-url.ts'
 import './app-shell.css'
 
-/** 화면별로 나눠 싣는다. 한쪽의 전역 CSS(.btn 등)가 다른 쪽 화면에 섞이지 않는다. */
-const ApplyFlow = lazy(() => import('./pages/applicant/ApplyFlow.tsx'))
-const OfficerConsole = lazy(() => import('./pages/officer/OfficerConsole.tsx'))
+/** 쪽별로 나눠 싣는다. 한쪽의 전역 CSS(.btn 등)가 다른 쪽 화면에 섞이지 않는다. */
+const ApplicantApp = lazy(() => import('./pages/applicant/ApplicantApp.tsx'))
+const OfficerApp = lazy(() => import('./pages/officer/OfficerApp.tsx'))
 
 const TITLES: Record<Mode, string> = {
-  applicant: '청년 취업지원패키지 신청',
-  officer: '청년 취업지원패키지 담당자',
+  applicant: '전북 청년정책 신청',
+  officer: '전북 청년정책 담당자',
 }
 
 export default function App() {
@@ -58,17 +58,17 @@ export default function App() {
       <div className="app-shell app-shell--officer">
         <nav className="shell" aria-label="담당자 화면">
           <span className="shell__title">
-            <button className="shell__mark" type="button" onClick={goHome} aria-label="신청 목록으로 이동">
+            <button className="shell__mark" type="button" onClick={goHome} aria-label="사업 목록으로 이동">
               전북
             </button>
             <span>
-              <strong>청년 취업지원패키지</strong>
-              <small>담당자 신청서류 검토</small>
+              <strong>전북 청년정책</strong>
+              <small>담당자 사업 관리·신청서류 검토</small>
             </span>
           </span>
         </nav>
         <Suspense fallback={null}>
-          <OfficerConsole key={screenKey} />
+          <OfficerApp key={screenKey} />
         </Suspense>
       </div>
     )
@@ -79,14 +79,14 @@ export default function App() {
       <nav className="shell" aria-label="신청 서비스">
         <div className="shell__inner">
           <span className="shell__title">
-            <button className="shell__mark" type="button" onClick={goHome} aria-label="신청 첫 단계로 이동">전북</button>
-            <span><strong>청년 취업지원패키지 신청</strong></span>
+            <button className="shell__mark" type="button" onClick={goHome} aria-label="사업 찾기로 이동">전북</button>
+            <span><strong>전북 청년정책 신청</strong></span>
           </span>
           <div ref={setHeaderHost} className="shell__application" />
         </div>
       </nav>
       <Suspense fallback={null}>
-        <ApplyFlow key={screenKey} headerHost={headerHost} />
+        <ApplicantApp key={screenKey} headerHost={headerHost} />
       </Suspense>
     </div>
   )
