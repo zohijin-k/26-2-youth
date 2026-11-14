@@ -1,0 +1,4 @@
+{"file": ".trellis/tasks/11-14-renewal-applicant-design/research/design-prompt.md", "reason": "The owner design prompt: the checklist to verify against"}
+{"file": ".trellis/tasks/11-14-renewal-applicant-design/design.md", "reason": "Repository-specific decisions and constraints"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Frontend review checklist"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "Routing and side isolation"}

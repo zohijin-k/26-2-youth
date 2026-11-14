@@ -19,7 +19,9 @@
   "pr_url": null,
   "subtasks": [],
   "children": [
-    "11-14-renewal-step1-program-store"
+    "11-14-renewal-step1-program-store",
+    "11-14-renewal-step2-application-list",
+    "11-14-renewal-applicant-design"
   ],
   "parent": null,
   "relatedFiles": [],
