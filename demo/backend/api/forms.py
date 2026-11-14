@@ -23,6 +23,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import Response
 
+from .. import generic_programs as generic
 from ..forms import coords as form_coords
 from ..forms.signature_scan import (
     delete_signature_scan,
@@ -99,6 +100,8 @@ def _hwp_path(program_code: str, form_no: str):
 
 
 def _application_hwp_entries(app: Any) -> list[tuple[str, str, Path]]:
+    if generic.is_generic(app.program_code):
+        return []
     forms = list(available_forms(app))
     if app.program_code != "double_savings":
         forms.append("job_interview_confirmation")
@@ -129,6 +132,8 @@ def _has_written_content(app: Any, form_no: str) -> bool:
 
 
 def _filled_pdf(app: Any, form_no: str) -> tuple[bytes, Any]:
+    if generic.is_generic(app.program_code):
+        return generic.filled_pdf(app, form_no)
     spec = form_coords.load(form_no)
     if spec is None or not spec.available or form_no not in BUILDERS:
         raise HTTPException(503, "서식 템플릿을 사용할 수 없습니다.")
@@ -200,6 +205,8 @@ def form_links(application_id: int, *, include_paper_form: bool = False) -> list
     안 된 환경에서도 심사 화면 자체는 그대로 떠야 한다.
     """
     app = load_application(application_id)
+    if generic.is_generic(app.program_code):
+        return generic.form_links(app)
     paper_admin_consent = bool(((app.doc_context_json or {}).get("paper_forms") or {}).get("서식5"))
     links: list[dict[str, Any]] = []
     for form_no in available_forms(app):
@@ -231,6 +238,8 @@ def list_forms(application_id: int) -> list[dict[str, Any]]:
 @router.get("/{application_id}/forms/layouts/{form_no}")
 def form_layout(application_id: int, form_no: str) -> dict[str, Any]:
     app = load_application(application_id)
+    if generic.is_generic(app.program_code):
+        return generic.public_layout(app, form_no)
     if form_no not in available_forms(app) and not (
         app.program_code != "double_savings" and form_no == "job_interview_confirmation"
     ):
@@ -274,6 +283,8 @@ def form_layout(application_id: int, form_no: str) -> dict[str, Any]:
 @router.get("/{application_id}/forms/templates/{form_no}.pdf")
 def form_template(application_id: int, form_no: str) -> Response:
     app = load_application(application_id)
+    if generic.is_generic(app.program_code):
+        return generic.form_response(app, form_no, template=True)
     if form_no not in available_forms(app) and not (
         app.program_code != "double_savings" and form_no == "job_interview_confirmation"
     ):
@@ -299,6 +310,8 @@ def form_page_png(
 ) -> Response:
     """원본 또는 완성 서식의 한 쪽을 PyMuPDF로 렌더링한다."""
     app = load_application(application_id)
+    if generic.is_generic(app.program_code):
+        return generic.page_response(app, form_no, page_no, preview, dpi)
     if form_no not in available_forms(app) and not (
         app.program_code != "double_savings" and form_no == "job_interview_confirmation"
     ):
@@ -350,6 +363,8 @@ def form_page_png(
 def export_form(application_id: int, form_no: str) -> Response:
     """작성된 서식을 원본과 같은 모양의 PDF로 만들어 인라인으로 흘린다."""
     app = load_application(application_id)
+    if generic.is_generic(app.program_code):
+        return generic.form_response(app, form_no)
     if form_no not in available_forms(app):
         raise HTTPException(404, f"이 신청 건에는 {form_no} 서식이 없습니다.")
     if form_no == "서식5" and ((app.doc_context_json or {}).get("paper_forms") or {}).get("서식5"):
@@ -514,6 +529,8 @@ def _blank_form_pdf(app: Any, form_no: str) -> bytes:
 
 
 def _written_pdf_bytes(app: Any) -> tuple[bytes, int]:
+    if generic.is_generic(app.program_code):
+        return generic.written_pdf(app)
     form_numbers = available_forms(app)
     import fitz
 
@@ -637,6 +654,8 @@ def original_hwp_bundle(application_id: int) -> Response:
 @router.get("/{application_id}/forms/files/{form_no}/filled.pdf")
 def filled_form_file(application_id: int, form_no: str) -> Response:
     app = load_application(application_id)
+    if generic.is_generic(app.program_code):
+        return generic.form_response(app, form_no)
     if form_no not in available_forms(app) or (form_no == "서식5" and ((app.doc_context_json or {}).get("paper_forms") or {}).get("서식5")) or not _has_written_content(app, form_no):
         raise HTTPException(404, "작성한 서식이 없습니다.")
     pdf, _ = _filled_pdf(app, form_no)
@@ -647,6 +666,8 @@ def filled_form_file(application_id: int, form_no: str) -> Response:
 @router.get("/{application_id}/forms/files/{form_no}/blank.pdf")
 def blank_form_file(application_id: int, form_no: str) -> Response:
     app = load_application(application_id)
+    if generic.is_generic(app.program_code):
+        return generic.form_response(app, form_no, template=True)
     allowed = set(available_forms(app)) | ({"job_interview_confirmation"} if app.program_code != "double_savings" else set())
     spec = form_coords.load(form_no)
     if form_no not in allowed or spec is None or not spec.available:

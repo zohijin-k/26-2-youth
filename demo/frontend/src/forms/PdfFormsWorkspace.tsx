@@ -33,6 +33,7 @@ type ActiveForm = { formNo: string; mode: 'edit' | 'preview' }
 
 interface Props {
   applicationId: number
+  generic?: boolean
   identity: Identity | null
   form1: Form1Value
   answers: SelfCheckAnswers
@@ -135,7 +136,7 @@ function DownloadIcon() {
 }
 
 export default function PdfFormsWorkspace({
-  applicationId, identity, form1, answers, consent,
+  applicationId, identity, form1, answers, consent, generic = false,
   checkResult, onForm1, onAnswers, onConsent,
   onFlush, onChangedSubsidy, onContinue, continuing, error, readOnly = false, onProgress,
 }: Props) {
@@ -159,7 +160,7 @@ export default function PdfFormsWorkspace({
   const pendingOperation = useRef<number | null>(null)
   const resetPending = useRef<number | null>(null)
   const [availablePageWidth, setAvailablePageWidth] = useState(794)
-  const selfCheckItems = JOB_PACKAGE_SELF_CHECK_ITEMS
+  const selfCheckItems = generic ? [] : JOB_PACKAGE_SELF_CHECK_ITEMS
 
   useEffect(() => {
     let alive = true
@@ -176,7 +177,7 @@ export default function PdfFormsWorkspace({
       .catch((e: unknown) => {
         if (alive) setLocalError(friendlyError(e, '서식을 저장하지 못했습니다. 다시 시도해 주세요.'))
       })
-    {
+    if (!generic) {
       fetchSubsidyItems(applicationId).then((state) => {
         if (!alive) return
         setSelectedItems(state.selections.map((item) => item.item_type))
@@ -184,7 +185,7 @@ export default function PdfFormsWorkspace({
       }).catch(() => undefined)
     }
     return () => { alive = false; sessionEpoch.current += 1 }
-  }, [applicationId])
+  }, [applicationId, generic])
 
   const runSavedAction = async (action: (isCurrent: () => boolean) => void | Promise<void>, flush = true) => {
     if (pendingOperation.current !== null || continuing) return
@@ -237,7 +238,9 @@ export default function PdfFormsWorkspace({
   const pageWidth = Math.min(794, availablePageWidth)
   const scale = pageSize ? pageWidth / pageSize.width : 1
 
+  const genericField = (key: string) => Object.values(layouts).flatMap((layout) => Object.entries(layout.fields)).find(([id]) => id === key)?.[1]
   const readChoice = (key: string): boolean => {
+    if (generic) return readForm(form1, key) === true
     const [group, option] = [fieldGroup(key), key.split('.').slice(-1)[0]]
     if (group.startsWith('self_check.')) return answers[Number(group.split('.')[1])] === option
     if (group === 'consent.privacy') return consent.privacy === option
@@ -247,6 +250,7 @@ export default function PdfFormsWorkspace({
   }
 
   const readText = (key: string): string => {
+    if (generic) { const value = readForm(form1, key); return typeof value === 'string' ? value : '' }
     if (key === 'birth') return dateText(form1.birth)
     if (key === 'name' && identity) return identity.name
     if (key.startsWith('consent.job.') && !key.endsWith('signature')) {
@@ -274,7 +278,7 @@ export default function PdfFormsWorkspace({
   }
 
   const requiredItems = (formNo: string): string[] => {
-    const keys = requiredKeys(formNo)
+    const keys = generic ? Object.entries(layouts[formNo]?.fields || {}).filter(([, field]) => field.required).map(([key]) => key) : requiredKeys(formNo)
     for (const rule of layouts[formNo]?.requirements || []) {
       if (rule.kind === 'all_or_none') {
         if (rule.fields.some((field) => truthy(readForm(form1, field)))) keys.push(...rule.fields)
@@ -286,6 +290,11 @@ export default function PdfFormsWorkspace({
   }
 
   const requirementSatisfied = (key: string): boolean => {
+    if (generic) {
+      const field = genericField(key)
+      if (field?.field_type === 'radio' && field.group) return Object.values(layouts).some((layout) => Object.entries(layout.fields).some(([id, item]) => item.group === field.group && readForm(form1, id) === true))
+      return field?.type === 'check' ? readForm(form1, key) === true : truthy(readForm(form1, key))
+    }
     if (key.startsWith('self_check.')) return !!answers[Number(key.split('.')[1])]
     if (key === 'consent.privacy') return !!consent.privacy
     if (key === 'consent.thirdParty') return !!consent.thirdParty
@@ -336,6 +345,13 @@ export default function PdfFormsWorkspace({
   }
 
   const toggleChoice = (key: string, checked: boolean) => {
+    if (generic) {
+      const next = { ...(form1 as unknown as Record<string, unknown>), [key]: checked }
+      const field = genericField(key)
+      if (checked && field?.field_type === 'radio' && field.group) for (const layout of Object.values(layouts)) for (const [id, item] of Object.entries(layout.fields)) if (id !== key && item.group === field.group) next[id] = false
+      onForm1(next as unknown as Form1Value)
+      return
+    }
     const group = fieldGroup(key)
     const option = key.split('.').slice(-1)[0]
     if (group.startsWith('self_check.')) {
@@ -364,12 +380,12 @@ export default function PdfFormsWorkspace({
   }
 
   const setSignature = (formNo: string, value: string) => {
-    const storeKey = formNo === 'job_consent' ? 'consent.job.signature' : 'job.signature'
+    const storeKey = generic ? signatureTarget || '' : formNo === 'job_consent' ? 'consent.job.signature' : 'job.signature'
     onForm1({ ...(form1 as unknown as Record<string, unknown>), [storeKey]: value } as unknown as Form1Value)
   }
 
-  const signatureValue = (formNo: string): string => {
-    const key = formNo === 'job_consent' ? 'consent.job.signature' : 'job.signature'
+  const signatureValue = (formNo: string, fieldKey?: string): string => {
+    const key = generic ? fieldKey || signatureTarget || '' : formNo === 'job_consent' ? 'consent.job.signature' : 'job.signature'
     const value = readForm(form1, key)
     return typeof value === 'string' ? value : ''
   }
@@ -384,7 +400,11 @@ export default function PdfFormsWorkspace({
     try {
       if (epoch !== sessionEpoch.current) return
       resetPending.current = epoch
-      if (formNo === 'job_consent') {
+      if (generic) {
+        const next = { ...(form1 as unknown as Record<string, unknown>) }
+        for (const [key, field] of Object.entries(layouts[formNo]?.fields || {})) if (!field.readonly) next[key] = field.type === 'check' ? false : ''
+        onForm1(next as unknown as Form1Value)
+      } else if (formNo === 'job_consent') {
         onConsent({ ...consent, privacy: '', thirdParty: '' })
         onForm1({ ...(form1 as unknown as Record<string, unknown>), 'consent.job.signature': '' } as unknown as Form1Value)
       } else {
@@ -484,7 +504,8 @@ export default function PdfFormsWorkspace({
         <label key={key} data-field-ref={fieldRef} className="pdf-form__check" style={clickStyle}>
           <input
             id={publicId}
-            type="checkbox"
+            type={generic && field.field_type === 'radio' ? 'radio' : 'checkbox'}
+            name={generic && field.field_type === 'radio' ? field.group : undefined}
             checked={checked}
             disabled={readOnly}
             aria-label={`${label} ${field.label || '선택'}`}
@@ -502,7 +523,7 @@ export default function PdfFormsWorkspace({
       )
     }
     if (field.type === 'image') {
-      const value = signatureValue(active.formNo)
+      const value = signatureValue(active.formNo, key)
       return (
         <button
           key={key}
@@ -531,7 +552,7 @@ export default function PdfFormsWorkspace({
       ? subsidySelections.find((item) => item.item_type === 'suit')?.linked_interview_indices[Number(suitField[1]) - 1]
       : null
     const suitFieldsLinked = !!suitField && selectedItems.includes('interview') && !!suitLink
-    const locked = !!identity && (key === 'name' || key === 'birth')
+    const locked = generic ? !!field.readonly : !!identity && (key === 'name' || key === 'birth')
     const dateValue = key === 'birth'
       ? (() => {
           const b = form1.birth
@@ -553,7 +574,7 @@ export default function PdfFormsWorkspace({
         <input
         id={publicId}
         data-field-ref={fieldRef}
-        type={key === 'email' ? 'email' : 'text'}
+        type={generic && field.field_type === 'date' ? 'date' : generic && field.field_type === 'number' ? 'number' : key === 'email' ? 'email' : 'text'}
         className={`pdf-form__text pdf-form__text--${field.font_family || 'sans'} ${isMissing && required ? 'is-missing' : ''}`}
         style={{ ...boxStyle, fontSize: fitFont, textAlign: field.align || 'left' }}
         aria-label={label}
@@ -690,7 +711,7 @@ export default function PdfFormsWorkspace({
         })}
       </ul>
 
-      {(
+      {!generic && (
         <section className="pdf-forms__selfcheck" id="workspace-selfcheck">
           <h3>지원 자격 확인</h3>
           {selfCheckItems.map((item) => (
@@ -707,7 +728,7 @@ export default function PdfFormsWorkspace({
         </section>
       )}
 
-      <AccountInputs applicationId={applicationId} identity={identity} value={form1} onChange={onForm1} onFlush={onFlush} readOnly={readOnly || saving || continuing} onBusyChange={setAccountBusy} />
+      {!generic && <AccountInputs applicationId={applicationId} identity={identity} value={form1} onChange={onForm1} onFlush={onFlush} readOnly={readOnly || saving || continuing} onBusyChange={setAccountBusy} />}
 
       {checkResult && !checkResult.eligible && checkResult.failed_item && (
         <p className="pdf-forms__error" role="alert">{checkResult.failed_item}번 문항: {checkResult.reason}</p>
@@ -715,13 +736,13 @@ export default function PdfFormsWorkspace({
       {(localError || error) && <p className="pdf-forms__error" role="alert">{localError || error}</p>}
       {attempted && !allReady && <Notice tone="warning" role="alert" title="남은 항목을 작성해 주세요.">
         <ul>{formNos.filter((formNo) => missing(formNo).length > 0).map((formNo) => <li key={formNo}><button type="button" className="btn btn--quiet btn--small" onClick={() => { setPage(0); setActive({ formNo, mode: 'edit' }) }}>{formLabel(formNo)} · 남은 {missing(formNo).length}개 작성하기</button></li>)}</ul>
-        {(!form1.accountHolder || !form1.bankbookFileName) && <a href="#workspace-account">예금주와 통장 사본 첨부하기</a>}
+        {!generic && (!form1.accountHolder || !form1.bankbookFileName) && <a href="#workspace-account">예금주와 통장 사본 첨부하기</a>}
         {selfCheckItems.some((item) => !answers[item.no]) && <a href="#workspace-selfcheck">지원 자격 확인 문항 작성하기</a>}
       </Notice>}
       <div className="flow__actions">
         <button type="button" className="btn" onClick={() => window.scrollTo({ top: 0 })}>서식 목록</button>
         {!readOnly && <button type="button" className="btn btn--primary" disabled={continuing || saving || accountBusy} onClick={submitWorkspace}>
-          {continuing && <Spinner />}{continuing ? '저장하는 중' : '지원 항목 선택하기'}
+          {continuing && <Spinner />}{continuing ? '저장하는 중' : generic ? '서류 업로드로' : '지원 항목 선택하기'}
         </button>}
       </div>
 

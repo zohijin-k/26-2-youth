@@ -5,14 +5,15 @@
  *   /programs/:id   사업 안내
  *   /apply...       신청 (기존 ApplyFlow)
  *
- * ApplyFlow는 마운트되자마자 신청 건을 만들거나 복원한다. 그래서 사업을 찾아보는
- * 동안에는 올리지 않는다 — "신청하기"를 눌러 /apply로 들어올 때만 올린다.
+ * 신청 건은 본인인증 제출 시에만 생성하며 새로고침하면 진행 중인 신청을 복원한다.
  */
 import { useEffect, useState } from 'react'
 
 import { routeUrl } from '../../navigation-url.ts'
 import logo from '../../assets/brand/jbyouthhub-logo.png'
 import ApplyFlow from './ApplyFlow.tsx'
+import GenericProgramFlow from './GenericProgramFlow.tsx'
+import { genericPostingId } from '../../lib/program-route.ts'
 import ProgramFinder from './ProgramFinder.tsx'
 import ProgramInfo from './ProgramInfo.tsx'
 import '../../styles/tokens.css'
@@ -21,10 +22,12 @@ import '../../styles/components.css'
 import './applicant-shell.css'
 
 
-type Route = { screen: 'finder' } | { screen: 'info'; id: number } | { screen: 'flow' }
+type Route = { screen: 'finder' } | { screen: 'info'; id: number } | { screen: 'flow' } | { screen: 'program-flow'; id: number }
 
 function readRoute(): Route {
   const path = window.location.pathname
+  const postingId = genericPostingId(path, window.location.search)
+  if (postingId !== null) return { screen: 'program-flow', id: postingId }
   if (path.startsWith('/apply')) return { screen: 'flow' }
   const info = /^\/programs\/([1-9]\d*)\/?$/.exec(path)
   if (info) return { screen: 'info', id: Number(info[1]) }
@@ -46,14 +49,19 @@ export default function ApplicantApp() {
     window.scrollTo({ top: 0 })
   }
 
-  const content = route.screen === 'flow' ? <ApplyFlow headerHost={headerHost} /> : route.screen === 'info' ? (
+  const content = route.screen === 'program-flow' ? <GenericProgramFlow key={route.id} postingId={route.id} headerHost={headerHost} /> : route.screen === 'flow' ? <ApplyFlow headerHost={headerHost} /> : route.screen === 'info' ? (
       <ProgramInfo
         key={route.id}
         postingId={route.id}
         onBack={() => go({ screen: 'finder' }, '/')}
         onApply={(path) => {
           // 신청 화면은 같은 쪽이라 문서를 다시 부르지 않는다. 그 밖의 주소는 통째로 이동한다.
-          if (path.startsWith('/apply')) go({ screen: 'flow' }, path)
+          if (path.startsWith('/apply')) {
+            const target = new URL(path, window.location.href)
+            const postingId = genericPostingId(target.pathname, target.search)
+            if (postingId !== null) go({ screen: 'program-flow', id: postingId }, `/apply/programs/${postingId}/identity`)
+            else go({ screen: 'flow' }, target.pathname)
+          }
           else window.location.assign(path)
         }}
       />

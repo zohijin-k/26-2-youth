@@ -143,7 +143,9 @@ def _public_dict(posting: ProgramPosting, today: date) -> dict[str, Any]:
     """신청자 목록의 사업 한 건."""
     phase = phase_of(posting, today)
     builtin = posting.rule_code is not None
-    can_apply = phase == PHASE_OPEN and builtin
+    from . import posting_workspace, posting_workflow
+    generic_ready = posting_workspace.managed(posting) and not posting_workflow.publish_blockers(posting)
+    can_apply = phase == PHASE_OPEN and (builtin or generic_ready)
     return {
         "id": posting.id,
         "title": posting.title,
@@ -153,7 +155,7 @@ def _public_dict(posting: ProgramPosting, today: date) -> dict[str, Any]:
         "phase_label": PHASE_LABELS[phase],
         "builtin": builtin,
         "can_apply": can_apply,
-        "apply_path": APPLY_PATH if can_apply else None,
+        "apply_path": (APPLY_PATH if builtin else f"/apply/programs/{posting.id}/identity") if can_apply else None,
         "has_notice": _stored_file(posting, "notice") is not None,
     }
 
@@ -179,7 +181,7 @@ def _officer_dict(
     data = _public_detail_dict(posting, today)
     has_forms = _stored_file(posting, "forms") is not None
     base = f"/api/officer/postings/{posting.id}/files"
-    application_count, needs_check_count = counts.get(posting.rule_code or "", (0, 0))
+    application_count, needs_check_count = counts.get(posting.rule_code or f"posting_{posting.id}", (0, 0))
     data.update(
         {
             "notice_url": f"{base}/notice.pdf" if data["has_notice"] else None,
@@ -208,7 +210,7 @@ def _counts(postings: list[ProgramPosting]) -> dict[str, tuple[int, int]]:
     신청 목록의 확인 필요 탭과 같은 함수(`officer.queue_of`)로 가른다.
     규칙 코드가 없는 사업은 신청 화면이 아직 없어 여기에 잡히지 않고 0으로 나간다.
     """
-    codes = {p.rule_code for p in postings if p.rule_code}
+    codes = {p.rule_code or f"posting_{p.id}" for p in postings}
     if not codes:
         return {}
     tally = {code: [0, 0] for code in codes}

@@ -211,6 +211,14 @@ class ProgramPosting(SQLModel, table=True):
     published_at: Optional[datetime] = None
 
 
+class ProgramApplicationSnapshot(SQLModel, table=True):
+    """Immutable application-owned published form and document configuration."""
+    application_id: int = Field(primary_key=True, foreign_key="application.id")
+    posting_id: int = Field(index=True)
+    snapshot_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=datetime.now)
+
+
 class ProgramForm(SQLModel, table=True):
     """Uploaded form and officer-reviewed layout; additive for existing databases."""
     __table_args__ = {"sqlite_autoincrement": True}

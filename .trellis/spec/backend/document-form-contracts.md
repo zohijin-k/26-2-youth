@@ -157,3 +157,12 @@ The applicant account section stores bankbook bytes through the existing documen
 ## Managed posting templates
 
 New posting screens create `workflow_version=1`; extension data lives under `/workspace` while legacy response schemas remain stable. `ProgramForm` is an additive table, so existing databases start through `create_all` without a destructive reset. All automatic candidates, including AcroForm widgets, require explicit human review. Empty/image-only drafts require manual fields. Validate finite boxes against actual PDF page bounds, normalize absent choice groups, and keep renderer types compatible with existing coordinates. Saving a layout clears its confirmation hash. Publishing managed postings requires every form to have fields and a confirmation hash matching the current layout, existing PDFs and a valid period. Preserve original coordinate fixtures.
+
+
+## Published program applications
+
+Generic `posting_<id>` applications freeze confirmed layouts, selected document requirements and copied PDF bytes in an additive `ProgramApplicationSnapshot`. Keep built-in eligibility and engine rules unchanged. Applicant fields use globally unique public IDs and positive projections; validate field types and redact resident-number text before persistence. Name/birth autofill is server-locked. Generic application/form/file routes reuse the existing applicant cookie hash and require owner access; officer routes stay separate.
+
+Generic review is PASS only when all submitted documents and required slots are PASS and required form fields are complete. Otherwise use NEEDS_REVIEW; confirmed document FAIL still blocks submission through shared document checks. Always show the unconfigured-eligibility notice to officers. Recheck current posting state/period before draft submission; keep submitted snapshots readable after later posting edits or closure. Do not connect an incompatible score sheet by altering protected detail components.
+
+New browser job-package sessions and all actual bankbook uploads carry the strict flow marker. Require an existing matching document row and bytes, preserve the marker through context updates, clear stale filenames on delete, and store same-name replacements at unique paths. Legacy direct synthetic API contracts remain separate; never treat a filename as new-upload verification.

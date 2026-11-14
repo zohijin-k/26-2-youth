@@ -29,6 +29,7 @@ from .api import (
 )
 from .engine_adapter import apply_runtime_overrides
 from .models import init_db
+from .generic_access import GenericApplicantAccess
 from .rules.programs import PROGRAMS, get_program
 from .rules.self_check import item_numbers
 from .rules.subsidy import catalog
@@ -57,6 +58,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+app.add_middleware(GenericApplicantAccess)
 
 app.include_router(applications.router)
 app.include_router(criteria.public_router)

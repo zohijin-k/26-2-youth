@@ -9,6 +9,7 @@ import {
 import FilePreview from '../../components/FilePreview.tsx'
 import useBeforeUnload from '../../hooks/useBeforeUnload.ts'
 import ProgramStages from './ProgramStages.tsx'
+import GenericApplicationList from './GenericApplicationList.tsx'
 import ProgramTemplateEditor, { ProgramFormPreview } from './ProgramTemplateEditor.tsx'
 import './new-program.css'
 import './managed-program.css'
@@ -156,5 +157,6 @@ export default function ManagedProgramWorkspace({ postingId, onBack }: Props) {
       {saved && <p className="managed-program__saved" role="status">{saved}</p>}
     </>}
     {viewing && <FilePreview url={viewing.url} name={viewing.name} kind="pdf" onClose={() => setViewing(null)} />}
-  </main>
+  {data && data.posting.status !== 'draft' && <GenericApplicationList postingId={postingId} />}
+</main>
 }

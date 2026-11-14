@@ -53,3 +53,8 @@ Balance-wrap the unchanged savings title within its left overview column. Stage 
 ## Verification
 
 Run frontend lint and build. Check direct nonsequential form navigation, consent persistence, save failures, stale transitions, every original field type, all PDF pages, preview/edit/reset, paper mode, and completion gating. Verify background/overlay alignment after resizing and narrow-screen scrolling, plus signature dialog keyboard/pointer workflows. Regression-check the employment-package modal because it shares rendering and save helpers. Static checks alone do not establish visual or interaction correctness; record unavailable browser checks explicitly.
+
+
+## Generic published programs
+
+Reuse PdfFormsWorkspace with `generic` enabled. Read required fields and semantic kinds from the confirmed public layout; do not show built-in self-check, bank account or subsidy sections. Use public opaque IDs directly, keep radio groups exclusive, and address signature values by each field key so multiple signatures stay independent. Autosave must leave fields editable; use a separate navigation/flush state. Final-check supports identity and form blockers. Normalize legacy query links into `/apply/programs/<id>/<stage>` and keep active application storage scoped by posting. Generic officer rows reuse list tabs/reasons but do not open the protected built-in score sheet.

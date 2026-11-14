@@ -22,9 +22,10 @@ import { formatDate } from '../../lib/format.ts'
 import './final-check.css'
 
 /** 남은 항목을 어느 화면에서 고치는지 기준으로 묶는다. 순서는 신청 순서대로. */
-type ApplicantStage = 'forms' | 'subsidy' | 'upload'
+type ApplicantStage = 'identity' | 'forms' | 'subsidy' | 'upload'
 
 const BLOCKER_GROUPS: { goto: ApplicantStage; title: string; action: string }[] = [
+  { goto: 'identity', title: '본인인증', action: '본인인증으로' },
   { goto: 'forms', title: '신청 서식', action: '서식 작성으로' },
   { goto: 'subsidy', title: '지원 항목', action: '지원 항목으로' },
   { goto: 'upload', title: '서류', action: '서류 업로드로' },

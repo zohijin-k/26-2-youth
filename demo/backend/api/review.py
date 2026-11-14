@@ -65,6 +65,8 @@ from .common import (
     subsidy_rows,
 )
 
+from .. import generic_programs as generic
+
 router = APIRouter(prefix="/api/applications", tags=["review"])
 
 #: 마이페이지 진행 표시 5단계 (계획서 3.1절 [7]). 두배적금의 선발절차다.
@@ -190,6 +192,18 @@ def _blockers(app: Application) -> list[dict[str, Any]]:
                     "goto": "form1",
                 }
             )
+
+    if app.program_code == JOB_PACKAGE and (app.doc_context_json or {}).get("applicant_flow_version") == 1:
+        from . import common
+
+        storage_root = common.STORAGE.resolve()
+        copies = [row for row in list_documents(app.id or 0) if row.slot_key == "bank_account"]
+        has_copy = any((target := (common.STORAGE.parent / row.file_path).resolve()).is_relative_to(storage_root)
+                       and target.is_file() for row in copies)
+        if not has_copy:
+            items = [item for item in items if item["target"] != "bankbookFileName"]
+            items.append({"kind": "form", "target": "bankbookFileName", "label": "통장 사본(본인 명의)",
+                          "goto": "form1", "message": "본인 명의 통장 사본 파일을 첨부해 주세요."})
 
     holder = re.sub(r"\s+", "", str(form1.get("accountHolder") or ""))
     verified_name = re.sub(r"\s+", "", str((app.identity_json or {}).get("name") or ""))
@@ -451,6 +465,8 @@ def _load_review(application_id: int) -> Review | None:
 def final_check(application_id: int) -> dict[str, Any]:
     """제출 전 최종 확인 (계획서 3.1절 [5])."""
     app = load_application(application_id)
+    if generic.is_generic(app.program_code):
+        return generic.final_check(app)
     program = get_program(app.program_code)
     supplement = supplement_for_application(app)
     documents = list_documents(application_id)
@@ -768,6 +784,8 @@ def submit(application_id: int) -> dict[str, Any]:
     응답에는 **점수를 넣지 않는다**. 접수됐다는 사실과 다음 절차만 돌려준다.
     """
     app = load_application(application_id)
+    if generic.is_generic(app.program_code):
+        return generic.submit(app)
     if app.status != STATUS_DRAFT:
         raise HTTPException(400, "이미 제출된 신청입니다.")
 
@@ -835,6 +853,8 @@ def status(application_id: int) -> dict[str, Any]:
     읽더라도 진행 단계를 정하는 데만 쓴다.
     """
     app = load_application(application_id)
+    if generic.is_generic(app.program_code):
+        return generic.status(app)
     program = get_program(app.program_code)
     documents = list_documents(application_id)
 

@@ -27,7 +27,7 @@ export interface Program {
   document_cutoff: string
   age_basis_date: string
   birth_range: [string, string]
-  selection: 'scored' | 'first_come'
+  selection: 'scored' | 'first_come' | 'manual'
   is_first_come: boolean
   supplement_days: number | null
   allows_supplement: boolean
@@ -226,7 +226,7 @@ export interface DocContext {
 export interface ChecklistProgram {
   code: string
   name: string
-  selection: 'scored' | 'first_come'
+  selection: 'scored' | 'first_come' | 'manual'
   allows_supplement: boolean
   supplement_days: number | null
   document_cutoff: string
@@ -261,11 +261,11 @@ export interface MergedUploadResult {
 
 /** 제출을 막는 항목 하나. `goto`는 "어디로 가면 고칠 수 있는가"다. */
 export interface Blocker {
-  kind: 'form' | 'consent' | 'document' | 'context' | 'subsidy' | 'eligibility'
+  kind: 'form' | 'consent' | 'document' | 'context' | 'subsidy' | 'eligibility' | 'identity'
   target: string
   label: string
   message: string
-  goto: 'form1' | 'consent' | 'upload' | 'subsidy'
+  goto: 'form1' | 'consent' | 'upload' | 'subsidy' | 'identity' | 'forms'
 }
 
 export interface FinalCheck {
@@ -274,7 +274,7 @@ export interface FinalCheck {
   program_name: string
   allows_supplement: boolean
   supplement_days: number | null
-  selection: 'scored' | 'first_come'
+  selection: 'scored' | 'first_come' | 'manual'
   first_come: FirstComeInfo | null
   subsidy: SubsidyEstimate | null
   status: string
@@ -350,7 +350,7 @@ export const fetchPrograms = () => json<Program[]>('/api/programs')
 export const createApplication = (programCode: string) =>
   json<ApplicationRow>('/api/applications', {
     method: 'POST',
-    body: JSON.stringify({ program_code: programCode }),
+    body: JSON.stringify({ program_code: programCode, applicant_flow_version: 1 }),
   })
 
 export const fetchApplication = (id: number) =>
@@ -370,6 +370,10 @@ export const patchApplication = (
 
 export interface FormFieldLayout {
   type: 'text' | 'check' | 'image'
+  required?: boolean
+  field_type?: 'text' | 'number' | 'date' | 'check' | 'radio' | 'signature'
+  readonly?: boolean
+  group?: string
   control?: 'radio_text'
   page: number
   box: [number, number, number, number]
@@ -895,6 +899,7 @@ export const fetchOfficerRoles = async (): Promise<OfficerRole[]> => {
 }
 
 export const fetchOfficerList = async (params: OfficerListQuery): Promise<OfficerList> => {
+  if (params.program?.startsWith('posting_')) return json<OfficerList>(`/api/officer/applications?${query({ ...params, sort: 'submitted' })}`)
   const scoped = { ...params, program: YOUTH_PROGRAM, sort: 'submitted' }
   if (isOfficerMockActive()) return youthList(mockOfficerList(scoped))
   try {
