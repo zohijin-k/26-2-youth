@@ -21,7 +21,7 @@ Branch `feat/renewal-step1-program-store` from `main`. Two halves run in paralle
 
 1. [x] Check agent, then full verification: backend suite, 18 scenarios, frontend commands, browser walk-through with screenshots.
 2. [x] Documents (`README.md`, `demo/README.md`, `docs/DEVELOPMENT.md`) and `.trellis/spec/frontend/state-management.md` for the new routes.
-3. [ ] Commits, pull request, merge, archive.
+3. [x] Commits, pull request, merge, archive.
 
 ## Environment on this Mac
 
