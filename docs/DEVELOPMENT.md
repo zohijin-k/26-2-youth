@@ -82,13 +82,18 @@ npm run dev
 
 | 주소 | 열리는 화면 |
 |---|---|
-| <http://localhost:5173/apply/identity> | 신청자 화면. `/apply`로 시작하는 주소는 신청자 화면이며 본인인증 단계에서 시작합니다. |
-| <http://localhost:5173/officer> | 담당자 화면. `/officer`로 시작하는 주소는 담당자 화면이며 신청 목록에서 시작합니다. |
-| <http://localhost:5173/> | 그 밖의 주소는 `?mode=officer`가 있으면 담당자 화면, 없으면 신청자 화면입니다. 화면이 열리면 주소는 각각 `/officer`, `/apply/identity`로 바뀝니다. 담당자 화면으로 들어가는 주소는 `/officer...`와 `?mode=officer`뿐이며, `?o_open=...`처럼 `mode` 없이 저장해 둔 예전 담당자 주소는 신청자 화면으로 열립니다. |
+| <http://localhost:5173/> | 신청자 화면의 사업 찾기. 게시된 사업이 카드로 나옵니다. |
+| `/programs/<사업 번호>` | 신청자 화면의 사업 안내. 취업지원패키지는 신청하기가 `/apply/identity`(본인인증)로 이어집니다. |
+| `/apply/...` | 신청자 화면의 신청 흐름. 이 주소에서만 신청 건을 만들거나 복원합니다. |
+| <http://localhost:5173/officer> | 담당자 화면의 사업 목록. `/officer/programs/new`에서 새 사업을 올립니다. |
+| `/officer/programs/<사업 번호>` | 담당자 화면의 사업별 작업 공간. 취업지원패키지는 신청 목록과 심사 상세가 이 주소 아래에서 열립니다. |
+| 그 밖의 주소 | `?mode=officer`가 있으면 담당자 화면, 없으면 신청자 화면입니다. 예전 담당자 주소(`/officer/<역할>`, `/officer/<역할>/review/<번호>`, `?mode=officer&o_open=...`)는 취업지원패키지 작업 공간의 같은 화면으로 옮겨집니다. `mode` 없이 저장해 둔 `?o_open=...` 주소는 신청자 화면으로 열립니다. |
 
-화면을 고르는 규칙은 `demo/frontend/src/navigation-url.ts`의 `currentMode()`에 있고, `demo/frontend/src/App.tsx`가 그 결과에 따라 한 화면만 불러옵니다. 화면을 오가는 탭은 없습니다.
+신청자 쪽과 담당자 쪽을 고르는 규칙은 `demo/frontend/src/navigation-url.ts`의 `currentMode()`에 있고, `demo/frontend/src/App.tsx`가 그 결과에 따라 한쪽 입구(`pages/applicant/ApplicantApp.tsx` 또는 `pages/officer/OfficerApp.tsx`)만 불러옵니다. 각 입구가 자기 주소를 읽어 화면 하나를 올립니다.
 
-담당자 화면의 기존 합성 목업은 <http://localhost:5173/officer?mock=1>, 실제 API 목록만 확인하려면 <http://localhost:5173/officer?mock=0>을 사용합니다. 목업은 담당자 화면에만 있고 DB를 채우지 않으며 처리 결과는 새로고침하면 초기화됩니다. 신청자 화면은 열릴 때 같은 탭에 저장된 신청을 복원하고, 없으면 백엔드에 취업지원패키지 초안 신청을 새로 만들기 때문에 백엔드를 함께 실행합니다. FastAPI 문서는 <http://localhost:8000/docs>입니다.
+사업은 백엔드의 사업 저장소(`ProgramPosting`, `demo/backend/api/postings.py`)에 있습니다. 담당자 API는 `/api/officer/postings`, 신청자 API는 `/api/postings`이며 신청자 쪽에는 게시되거나 마감된 사업만 나갑니다. 취업지원패키지는 서버가 처음 뜰 때 게시된 사업 한 건으로 들어가고, 실제 접수 기간이 지났으면 시연을 위해 종료일을 그해 12월 31일로 넣습니다. 접수 기간은 담당자 API로 고칠 수 있고 심사 기준의 날짜와는 별개입니다. 해가 바뀌어 취업지원패키지가 마감으로 보이면 `PATCH /api/officer/postings/<사업 번호>`에 `{"apply_end": "YYYY-MM-DD"}`를 보내 기간을 늘립니다(기간을 고치는 화면은 아직 없습니다). 새로 올린 사업은 게시하면 사업 찾기에 보이지만 온라인 신청은 아직 연결되지 않았습니다. 화면을 오가는 탭은 없습니다.
+
+담당자 화면의 기존 합성 목업은 <http://localhost:5173/officer?mock=1>, 실제 API 목록만 확인하려면 <http://localhost:5173/officer?mock=0>을 사용합니다. 목업은 담당자 화면에만 있고 DB를 채우지 않으며 처리 결과는 새로고침하면 초기화됩니다. 신청 흐름(`/apply/...`)은 열릴 때 같은 탭에 저장된 신청을 복원하고, 없으면 백엔드에 취업지원패키지 초안 신청을 새로 만듭니다. 사업 찾기와 사업 안내는 신청 건을 만들지 않습니다. 두 쪽 모두 백엔드를 함께 실행합니다. FastAPI 문서는 <http://localhost:8000/docs>입니다.
 
 시나리오 시험용 가상 PDF는 `demo/fixtures/samples/`가 없으면 시험에서 자동 생성합니다. 담당자 합성 목업 시연에는 이 PDF 생성이나 DB 초기화가 필요하지 않습니다. 신청자 화면에서 만든 신청 건은 `demo/demo.db`와 `demo/storage/`에 남습니다. 개발 중 DB·업로드 저장소 초기화가 필요하면 서버를 멈추고 `python -m demo.backend.reset --dry-run`으로 삭제 대상을 먼저 확인합니다. 서류 업로드 단계 시험용 `seed_application` 도구의 사용법은 [데모 안내](../demo/README.md#3-기동)에 있습니다.
 
@@ -125,7 +130,7 @@ python -m pytest engine_v2/tests -q -ra
 python -m pytest demo/backend/tests -q -ra
 ```
 
-`e449c55`의 WSL2 기준선은 엔진 1,264개 통과·합성 글꼴 누락 3개 건너뜀, 백엔드 1,227개 통과입니다. 건너뛴 3개는 `engine_v2/tests/test_own_format_integration.py`의 시험으로, own 모델을 설치한 상태에서 합성 글꼴을 `python -m engine_v2.tools.fetch_synth_fonts`로 `engine_v2/data/synth_fonts/`에 받아 두면 함께 실행되어 엔진 기준선은 1,267개 통과가 됩니다. 시나리오 18개는 확인 1,885개 통과·실패 0이며 P14의 원본 서식 8개 검증도 통과했습니다. Apple Vision 관련 시험 건너뜀은 없고 `ocrmac` 설치는 Darwin 조건에 따라 제외됩니다. 위 반복문은 한 시나리오가 실패해도 나머지를 계속 실행합니다.
+`e449c55`의 WSL2 기준선은 엔진 1,264개 통과·합성 글꼴 누락 3개 건너뜀, 백엔드 1,227개 통과입니다. 건너뛴 3개는 `engine_v2/tests/test_own_format_integration.py`의 시험으로, own 모델을 설치한 상태에서 합성 글꼴을 `python -m engine_v2.tools.fetch_synth_fonts`로 `engine_v2/data/synth_fonts/`에 받아 두면 함께 실행되어 엔진 기준선은 1,267개 통과가 됩니다. 시나리오 18개는 확인 1,885개 통과·실패 0이며 P14의 원본 서식 8개 검증도 통과했습니다. Apple Vision 관련 시험 건너뜀은 없고 `ocrmac` 설치는 Darwin 조건에 따라 제외됩니다. 위 반복문은 한 시나리오가 실패해도 나머지를 계속 실행합니다. 사업 저장소를 넣은 뒤 백엔드는 시험 62개가 늘어 1,289개 통과입니다(macOS에서 확인).
 
 프론트엔드 타입 검사·린트·빌드와 단위 시험은 다음과 같습니다.
 
