@@ -13,7 +13,17 @@ from dataclasses import asdict
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api import applications, criteria, documents, files, forms, officer, review, subsidy
+from .api import (
+    applications,
+    criteria,
+    documents,
+    files,
+    forms,
+    officer,
+    postings,
+    review,
+    subsidy,
+)
 from .engine_adapter import apply_runtime_overrides
 from .models import init_db
 from .rules.programs import PROGRAMS, get_program
@@ -57,6 +67,9 @@ app.include_router(forms.router)
 # 담당자 심사 화면(P4). 원본은 files 라우터가 inline으로만 흘린다 — 다운로드 경로는 없다.
 app.include_router(officer.router)
 app.include_router(files.router)
+# 사업 저장소. 담당자가 게시한 사업을 신청자가 찾는다. 공고문·서식 PDF도 inline 으로만 나간다.
+app.include_router(postings.public_router)
+app.include_router(postings.officer_router)
 
 
 @app.get("/api/health")
