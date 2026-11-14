@@ -564,7 +564,7 @@ export default function DocumentUpload({applicationId, onProgress, onPendingChan
     <div className="dupload">
       <h2>서류 업로드</h2>
       <div className="dupload__progress">
-        제출 서류 <strong>{checklist.upload_done}</strong> / {checklist.upload_total}
+        <span className="dupload__count">제출 서류 <strong>{checklist.upload_done}</strong> / {checklist.upload_total}</span>
         {checklist.program.has_subsidy_items && (
           <span className="dupload__progress-hint">
             고르신 지원 항목에 따라 서류가 늘고 줍니다. 항목을 바꾸면 이 목록도 바뀝니다.

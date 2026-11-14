@@ -26,6 +26,7 @@ import Notice from '../components/Notice.tsx'
 import Icon from '../components/Icon.tsx'
 import Spinner from '../components/Spinner.tsx'
 import { friendlyError } from '../lib/error-copy.ts'
+import { splitEmphasis } from '../lib/emphasis.ts'
 import './pdf-forms-workspace.css'
 
 type ActiveForm = { formNo: string; mode: 'edit' | 'preview' }
@@ -694,7 +695,7 @@ export default function PdfFormsWorkspace({
           <h3>지원 자격 확인</h3>
           {selfCheckItems.map((item) => (
             <fieldset key={item.no}>
-              <legend>{item.question}</legend>
+              <legend>{splitEmphasis(item.question).map((part, index) => part.strong ? <strong key={index}>{part.text}</strong> : part.text)}</legend>
               {(['예', '아니오'] as const).map((answer) => (
                 <label key={answer}>
                   <input type="radio" disabled={readOnly} name={`job-selfcheck-${item.no}`} checked={answers[item.no] === answer} onChange={() => onAnswers({ ...answers, [item.no]: answer })} />

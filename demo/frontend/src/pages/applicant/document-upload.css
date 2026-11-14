@@ -1,5 +1,6 @@
 .dupload { display: grid; gap: var(--sp-6); }
 .dupload__progress { display: grid; gap: var(--sp-2); }
+.dupload__count { white-space: nowrap; }
 .dupload__progress strong { color: var(--color-text-brand); }
 .dupload__progress-hint { display: block; color: var(--color-text-subtle); font-size: var(--fs-15); }
 .dslots { display: grid; gap: var(--sp-5); padding: 0; margin: 0; list-style: none; }

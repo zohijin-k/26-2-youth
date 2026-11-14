@@ -398,10 +398,10 @@ export default function IdentityCheck({ appId, ensureApplication, identity, onVe
             )}
             <div className="idcheck__signature-foot">
               {signMode === '서명 파일 올리기' && file && <span className="idcheck__filename">{file.name}</span>}
-              <button type="button" className="btn btn--quiet btn--small" disabled={signMode === '직접 서명' ? !drawn : !file} onClick={() => setConfirming('clear')}>
+              {signMode === '서명 파일 올리기' && <button type="button" className="btn btn--quiet btn--small" disabled={!file} onClick={() => setConfirming('clear')}>
                 <Icon name="trash" />
                 지우기
-              </button>
+              </button>}
             </div>
             {errorLine('signature')}
           </div>
