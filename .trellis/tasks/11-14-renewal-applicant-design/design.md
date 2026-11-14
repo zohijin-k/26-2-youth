@@ -16,23 +16,27 @@ Port, do not copy blindly: this repository's applicant flow differs (job package
 
 ## Brand colours from `logo.png`
 
-Pixel sampling (432×112, fully opaque):
+Pixel sampling of the owner's replacement `logo.png` (844×226, RGBA, every alpha value 255):
 
-| Ink | Sampled colour | Share of the image | Role |
+| Ink | Sampled colour | Exact pixels | Role |
 | --- | --- | --- | --- |
-| Background | `#fefefe` | about 60% | logo sits on white |
-| Large lettering | `#241c14` (near-black brown) | about 7% | text ink, not a brand hue |
-| Small lettering and symbol | `#143c74` (navy; darker half of the blue pixels has median `#173975`) | about 5% | **primary** |
-| Symbol | `#bc2c2c` red, `#e4bc44` yellow, `#8cb444` green | about 1% each | decoration only |
+| Background | `#ffffff` | 113232 | Matches the white header |
+| Large lettering | `#211816` | 7963 | Neutral text ink |
+| Small lettering and symbol | `#173975` | 6406 | **Primary**, 11.179:1 on white |
+| Symbol | `#b82d2b` red | 1823 | Decoration only |
+| Symbol | `#e6b943` yellow | 1501 | Decoration only |
+| Symbol | `#8db243` green | 1065 | Decoration only |
 
-Decision: the primary is the navy, the most used dark colour that has a hue. The near-black lettering is treated as text ink (the neutral scale already covers it); a black primary would give no usable tints or focus colour. Navy `#143c74` on white is about 11:1.
+All four outermost image edges are pure opaque white. The replacement removes the old beige top strip; remove the old logo chip border while keeping the original image proportions and 48px/40px display heights. Of the four selected exact brand inks, the pixel shares round to 59:17:14:10 for the decoration band.
+
+The near-black lettering remains neutral ink; navy remains the primary as in the reviewed design. No text or status uses the decorative accent colors.
 
 The implementer re-samples to confirm, builds the nine-step scale from the navy hue (50 must reach 4.5:1 on white, 60 is the primary, 70 and 80 darker), sets `--brand-accent-*` from the symbol colours, and reports the contrast table. Red, yellow and green appear only in the 4px accent band and other information-free decoration.
 
 ## Logo and shell
 
 - Copy `logo.png` to `demo/frontend/src/assets/brand/jbyouthhub-logo.png` (the root file stays where the owner put it and is not committed by this task unless the owner asks). Add it to `THIRD_PARTY_NOTICES.md` the way the reference lists its banner: provided by the project owner, usage terms to be confirmed with the organisation.
-- Header: 4px accent band, logo at 48px height (40px on phones) as the home button, `alt="전북지역거점 청년지원센터 전북청년허브센터"`. The logo has its own white background; if sampling shows a non-white strip at an edge, wrap it in the chip described in the prompt, otherwise place it as is.
+- Header: 4px accent band, logo at 48px height (40px on phones) as the home button, `alt="전북지역거점 청년지원센터 전북청년허브센터"`. The logo has its own white background; the replacement has white edges and is placed directly on the white header.
 - Right side of the header: application number and "마이페이지" only while the application flow is mounted (as today, through the header portal).
 - Footer: inside the flow `「전북청년 취업지원패키지」 신청 · 전북청년허브센터`; on the finder and information screens `전북청년허브센터`. No phone line.
 - Head band `h1`: finder "사업 찾기"; information — the program title; flow — "전북청년 취업지원패키지 신청" followed by the step indicator. `document.title` follows `{단계명} | {사업명} 신청`; finder and information use `사업 찾기 | 전북청년허브센터` and `{사업명} | 전북청년허브센터`.

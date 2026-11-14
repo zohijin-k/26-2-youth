@@ -1,0 +1,247 @@
+{
+  "contrast_pairs": [
+    {
+      "foreground": "--gray-90",
+      "background": "--gray-0",
+      "ratio": 16.176,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--gray-90",
+      "background": "--gray-5",
+      "ratio": 14.819,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--gray-90",
+      "background": "--color-bg",
+      "ratio": 15.175,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--gray-90",
+      "background": "--brand-5",
+      "ratio": 14.802,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--gray-70",
+      "background": "--gray-0",
+      "ratio": 8.681,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--gray-70",
+      "background": "--gray-5",
+      "ratio": 7.953,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--gray-70",
+      "background": "--color-bg",
+      "ratio": 8.144,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--gray-70",
+      "background": "--brand-5",
+      "ratio": 7.944,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--gray-60",
+      "background": "--gray-0",
+      "ratio": 6.301,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--gray-60",
+      "background": "--gray-5",
+      "ratio": 5.772,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--gray-60",
+      "background": "--color-bg",
+      "ratio": 5.911,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--gray-60",
+      "background": "--brand-5",
+      "ratio": 5.766,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--brand-60",
+      "background": "--gray-0",
+      "ratio": 11.179,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--brand-60",
+      "background": "--gray-5",
+      "ratio": 10.241,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--brand-60",
+      "background": "--color-bg",
+      "ratio": 10.487,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--brand-60",
+      "background": "--brand-5",
+      "ratio": 10.23,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--brand-50",
+      "background": "--gray-0",
+      "ratio": 6.517,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--brand-50",
+      "background": "--gray-5",
+      "ratio": 5.97,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--brand-50",
+      "background": "--color-bg",
+      "ratio": 6.113,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--brand-50",
+      "background": "--brand-5",
+      "ratio": 5.963,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--danger-60",
+      "background": "--gray-0",
+      "ratio": 5.947,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--danger-60",
+      "background": "--danger-5",
+      "ratio": 5.306,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--danger-60",
+      "background": "--danger-10",
+      "ratio": 4.729,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--warning-60",
+      "background": "--gray-0",
+      "ratio": 5.815,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--warning-60",
+      "background": "--warning-5",
+      "ratio": 5.287,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--warning-60",
+      "background": "--warning-10",
+      "ratio": 4.553,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--success-60",
+      "background": "--gray-0",
+      "ratio": 5.85,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--success-60",
+      "background": "--success-5",
+      "ratio": 5.263,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--success-60",
+      "background": "--success-10",
+      "ratio": 4.789,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--info-60",
+      "background": "--gray-0",
+      "ratio": 5.639,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--info-60",
+      "background": "--info-5",
+      "ratio": 5.04,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--info-60",
+      "background": "--info-10",
+      "ratio": 4.584,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--gray-0",
+      "background": "--brand-60",
+      "ratio": 11.179,
+      "minimum": 7
+    },
+    {
+      "foreground": "--gray-0",
+      "background": "--brand-70",
+      "ratio": 14.251,
+      "minimum": 7
+    },
+    {
+      "foreground": "--gray-0",
+      "background": "--brand-80",
+      "ratio": 16.702,
+      "minimum": 7
+    },
+    {
+      "foreground": "--gray-60",
+      "background": "--gray-10",
+      "ratio": 5.129,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--success-60",
+      "background": "--brand-tint-a",
+      "ratio": 5.428,
+      "minimum": 4.5
+    },
+    {
+      "foreground": "--success-60",
+      "background": "--brand-tint-b",
+      "ratio": 5.422,
+      "minimum": 4.5
+    }
+  ],
+  "files_audited": [
+    "demo/frontend/src/pages/applicant/applicant-shell.css",
+    "demo/frontend/src/pages/applicant/apply-flow.css",
+    "demo/frontend/src/pages/applicant/document-upload.css",
+    "demo/frontend/src/pages/applicant/final-check.css",
+    "demo/frontend/src/pages/applicant/identity-check.css",
+    "demo/frontend/src/pages/applicant/my-page.css",
+    "demo/frontend/src/pages/applicant/program-finder.css",
+    "demo/frontend/src/pages/applicant/program-info.css",
+    "demo/frontend/src/pages/applicant/subsidy-items.css",
+    "demo/frontend/src/styles/base.css",
+    "demo/frontend/src/styles/components.css",
+    "demo/frontend/src/forms/pdf-forms-workspace.css"
+  ],
+  "status": "passed"
+}
