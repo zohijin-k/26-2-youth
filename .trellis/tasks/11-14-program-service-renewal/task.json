@@ -1,0 +1,28 @@
+{
+  "id": "program-service-renewal",
+  "name": "program-service-renewal",
+  "title": "범용 사업 서비스 리뉴얼",
+  "description": "Renew the frontend around user flows and add a program store: officers post programs, applicants find and apply to them. Parent task for the step tasks.",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "claude",
+  "assignee": "claude",
+  "createdAt": "2026-11-14",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "11-14-renewal-step1-program-store"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

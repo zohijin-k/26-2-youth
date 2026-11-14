@@ -1,0 +1,10 @@
+{"file": ".trellis/tasks/11-14-program-service-renewal/prd.md", "reason": "Parent requirements and fixed constraints"}
+{"file": ".trellis/tasks/11-14-renewal-step1-program-store/design.md", "reason": "API and route contract between backend and frontend"}
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend conventions"}
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "Model and column conventions"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Error responses"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Tests and synthetic data rules"}
+{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend conventions"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "Routing, one screen per side, tab-scoped state"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "Component and CSS conventions"}
+{"file": ".trellis/spec/frontend/directory-structure.md", "reason": "Where screens and components live"}
