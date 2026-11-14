@@ -32,6 +32,14 @@ import { CONSENT_OPTIONS } from '../../forms/consent-model.ts'
 import { EMPTY_FORM1, type Form1Value } from '../../forms/form1-model.ts'
 import type { SelfCheckAnswers } from '../../forms/form2-model.ts'
 import { currentParams, routeUrl } from '../../navigation-url.ts'
+import Icon from '../../components/Icon.tsx'
+import Notice from '../../components/Notice.tsx'
+import Spinner from '../../components/Spinner.tsx'
+import useDocumentTitle from '../../hooks/useDocumentTitle.ts'
+import useBeforeUnload from '../../hooks/useBeforeUnload.ts'
+import { friendlyError } from '../../lib/error-copy.ts'
+import { readReceiptSteps } from '../../lib/receipt-steps.ts'
+import { formatDateTime } from '../../lib/format.ts'
 import './apply-flow.css'
 
 type Stage =
@@ -111,6 +119,8 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
   const [form1, setForm1] = useState<Form1Value>(EMPTY_FORM1)
 
   const [consent, setConsent] = useState<ConsentValue>(EMPTY_CONSENT)
+  const [consentDirty, setConsentDirty] = useState(false)
+  const saveFailed = useRef(false)
 
   const [submitted, setSubmitted] = useState<SubmitResult | null>(null)
   /** 지원 항목이 바뀌면 업로드 화면의 체크리스트를 다시 읽게 하는 키. */
@@ -118,7 +128,20 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
   const [selectedSubsidyTypes, setSelectedSubsidyTypes] = useState(0)
   const [formContinuing, setFormContinuing] = useState(false)
   const [formError, setFormError] = useState('')
+  const [selectionAttempted, setSelectionAttempted] = useState(false)
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
+  const pendingSaves = useRef(0)
+  const stageHeading = useRef<HTMLHeadingElement>(null)
+  const stageNames: Record<Stage, string> = { identity: '본인인증', forms: '서식 작성', subsidy: '지원 항목 선택', upload: '서류 업로드', final: '확인 및 제출', complete: '접수 완료', mypage: '마이페이지' }
+  useDocumentTitle(`${stageNames[stage]} | ${program?.name ?? '전북청년 취업지원패키지'} 신청`)
+  useBeforeUnload(saveState === 'saving' || saveState === 'failed' || formContinuing || consentDirty)
+  useEffect(() => {
+    if (restoring) return
+    window.scrollTo({ top: 0 })
+    stageHeading.current?.focus()
+  }, [stage, restoring])
   const [formProgress, setFormProgress] = useState<StepperProgress>({ completed: 0, total: 0 })
+  const [uploadPending, setUploadPending] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<StepperProgress>({ completed: 0, total: 0 })
   const saveQueue = useRef<Promise<void>>(Promise.resolve())
 
@@ -176,15 +199,17 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
         }
         setConsent({ privacy: consentValue('privacy'), thirdParty: consentValue('third_party') })
         if (status.status !== 'draft') {
+          let nextSteps: string[] = []
+          try { nextSteps = readReceiptSteps(window.sessionStorage.getItem(`applicant.receiptSteps.${application.id}`)) } catch { /* Receipt still uses the current server status. */ }
           setSubmitted({ application_no: status.application_no, submitted_at: status.submitted_at,
-            status: status.status, message: '신청이 완료되었습니다.', next_steps: [],
+            status: status.status, message: '신청이 완료되었습니다.', next_steps: nextSteps,
             first_come: status.first_come, supplement: status.supplement, subsidy: status.subsidy, notice: status.result_notice })
         }
         const requestedStage = restored && initialPage ? initialPage.stage : 'identity'
         setStage(requestedStage === 'complete' && status.status === 'draft' ? 'final' : requestedStage)
         setStageBeforeMypage(restored && initialPage ? initialPage.previous : 'identity')
       } catch (error: unknown) {
-        if (active) setError(error instanceof Error ? error.message : String(error))
+        if (active) setError(friendlyError(error, '신청 화면을 불러오지 못했습니다. 다시 시도해 주세요.'))
       } finally {
         if (active) setRestoring(false)
       }
@@ -217,9 +242,42 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
 
   const save = (body: { form1?: unknown; self_check?: unknown }): Promise<void> => {
     if (appId === null) return Promise.resolve()
-    const next = saveQueue.current.catch(() => undefined).then(() => patchApplication(appId, body)).then(() => undefined)
-    saveQueue.current = next.catch(() => undefined)
+    pendingSaves.current += 1
+    setSaveState('saving')
+    const next = saveQueue.current.catch(() => undefined).then(() => patchApplication(appId, body)).then(() => {
+      pendingSaves.current -= 1
+      if (pendingSaves.current === 0) setSaveState(saveFailed.current ? 'failed' : 'saved')
+    })
+    saveQueue.current = next.catch(() => {
+      saveFailed.current = true
+      pendingSaves.current -= 1
+      setSaveState('failed')
+    })
     return saveQueue.current
+  }
+
+  const flushForms = async () => {
+    if (appId === null) return
+    setSaveState('saving')
+    try {
+      await saveQueue.current
+      await patchApplication(appId, { form1, self_check: answers })
+      const values: ConsentPayload[] = [
+        { consent_type: 'privacy', agreed: consent.privacy === '동의함' },
+        { consent_type: 'third_party', agreed: consent.thirdParty === '동의함' },
+      ]
+      await postConsents(appId, values.filter((item) => {
+        const selected = item.consent_type === 'privacy' ? consent.privacy : consent.thirdParty
+        return selected === '동의함' || selected === '동의하지 않음'
+      }))
+      saveFailed.current = false
+      setConsentDirty(false)
+      setSaveState('saved')
+    } catch (error: unknown) {
+      saveFailed.current = true
+      setSaveState('failed')
+      throw error
+    }
   }
 
   const continueFromForms = async () => {
@@ -239,9 +297,10 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
         { consent_type: 'privacy', agreed: consent.privacy === '동의함' },
         { consent_type: 'third_party', agreed: consent.thirdParty === '동의함' },
       ])
+      setConsentDirty(false)
       setStage('subsidy')
     } catch (e: unknown) {
-      setFormError(e instanceof Error ? e.message : String(e))
+      setFormError(friendlyError(e, '서식을 저장하지 못했습니다. 다시 시도해 주세요.'))
     } finally {
       setFormContinuing(false)
     }
@@ -255,7 +314,7 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
     window.scrollTo({ top: 0 })
   }
 
-  if (restoring) return <p className="flow">신청 화면을 불러오는 중입니다...</p>
+  if (restoring) return <div className="page" role="status"><Spinner /> 신청 화면을 불러오는 중입니다.</div>
   if (error) return <div className="flow"><p className="flow-error" role="alert">{error}</p><button type="button" className="btn" onClick={() => { setError(''); setRestoring(true); setStartupAttempt((attempt) => attempt + 1) }}>다시 시도</button></div>
 
   if (program === null) return <p className="flow">신청 화면을 불러오는 중입니다...</p>
@@ -288,7 +347,7 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
 
   const stepperNavigate = (index: number) => {
     const previouslyReachedUpload = index === 2 && uploadProgress.total > 0
-    if (submittedDone || stage === 'mypage' || index === 0) return
+    if (submittedDone || stage === 'mypage' || index === 0 || uploadPending) return
     if (index >= currentIndex && !previouslyReachedUpload) return
     setStage(index === 1 ? 'forms' : 'upload')
     window.scrollTo({ top: 0 })
@@ -306,19 +365,19 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
       {headerHost && appId !== null && createPortal(
         <div className="shell__application-controls">
           <span className="shell__application-number">신청번호 <strong>{appNo || '발급 중…'}</strong></span>
-          <button type="button" className="shell__mypage" onClick={openMyPage} disabled={stage === 'mypage'}>마이페이지</button>
+          <button type="button" className="btn btn--small" onClick={openMyPage} disabled={stage === 'mypage' || uploadPending}>마이페이지</button>
         </div>, headerHost,
       )}
-      <div className="flow__overview">
+      <div className="headband"><div className="flow__overview">
         <header className="flow__head flow__head--compact">
-          <h1>{program.name} 신청</h1>
+          <h1 ref={stageHeading} tabIndex={-1}>{program.name} 신청<span className="sr-only"> · {stageNames[stage]}</span></h1>
           {program.is_first_come && <span className="flow__submission-order">선착순 접수</span>}
         </header>
         <ol className="flow__stages" aria-label="신청 단계">
           {APPLY_STEPS.map(({ key, label }, i) => {
             const complete = submittedDone || i < currentIndex || (i === 2 && uploadComplete)
             const current = i === currentIndex
-            const canNavigate = !submittedDone && stage !== 'mypage' && i !== 0 &&
+            const canNavigate = !uploadPending && !submittedDone && stage !== 'mypage' && i !== 0 &&
               (i < currentIndex || (i === 2 && uploadProgress.total > 0))
             const status = stepStatus(i)
             return (
@@ -326,29 +385,27 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
               key={key}
               className={current ? 'is-current' : complete ? 'is-complete' : 'is-waiting'}
             >
-              <button
-                type="button"
-                aria-current={current ? 'step' : undefined}
-                aria-disabled={!canNavigate}
-                title={i === 0 && identity ? '본인인증은 완료되었습니다' : undefined}
-                onClick={() => stepperNavigate(i)}
-              >
-                <span className="flow__stage-no" aria-hidden="true">
-                  {complete && !current && <span className="flow__stage-check" aria-hidden="true">✓</span>}
-                </span>
-                <span className="flow__stage-copy">
-                  <span className="flow__stage-caption">
-                    <span>{i + 1}단계</span>
-                    <span className="flow__stage-status">{status}</span>
+              {(() => {
+                const content = <>
+                  <span className="flow__stage-no" aria-hidden="true">{complete && !current ? <Icon name="check" size={18} /> : !current ? i + 1 : null}</span>
+                  <span className="flow__stage-copy">
+                    <span className="flow__stage-caption">{i + 1}단계 · {status}</span>
+                    <span className="flow__stage-label">{label}</span>
                   </span>
-                  <span className="flow__stage-label">{label}</span>
-                </span>
-              </button>
+                </>
+                return canNavigate
+                  ? <button type="button" className="flow__stage-content" aria-current={current ? 'step' : undefined} onClick={() => stepperNavigate(i)}>{content}</button>
+                  : <span className="flow__stage-content" aria-current={current ? 'step' : undefined}>{content}</span>
+              })()}
             </li>
             )
           })}
         </ol>
-      </div>
+      </div></div>
+      <div className={`flow__body${stage === 'forms' ? ' flow__body--wide' : ''}`}>
+      {stage === 'forms' && <p className="flow__save" role="status" aria-live="polite">
+        {saveState === 'saving' ? <><Spinner /> 저장 중…</> : saveState === 'failed' ? <><Icon name="alertCircle" /> 저장하지 못했습니다. 내용을 확인하고 다시 저장해 주세요.</> : consentDirty ? '동의 내용을 저장하려면 서식에서 저장하고 닫기를 눌러 주세요.' : saveState === 'saved' ? <><Icon name="checkCircle" /> 저장했습니다</> : '서식을 작성하면 저장 상태가 여기에 표시됩니다.'}
+      </p>}
 
       {/* ── 본인인증 (데모) ── */}
       {stage === 'identity' && appId !== null && (
@@ -379,20 +436,8 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
           checkResult={checkResult}
           onForm1={onForm1}
           onAnswers={(next) => { setAnswers(next); setCheckResult(null); save({ self_check: next }) }}
-          onConsent={setConsent}
-          onFlush={async () => {
-            if (appId === null) return
-            await saveQueue.current
-            await patchApplication(appId, { form1, self_check: answers })
-            const values: ConsentPayload[] = [
-              { consent_type: 'privacy', agreed: consent.privacy === '동의함' },
-              { consent_type: 'third_party', agreed: consent.thirdParty === '동의함' },
-            ]
-            await postConsents(appId, values.filter((item) => {
-              const selected = item.consent_type === 'privacy' ? consent.privacy : consent.thirdParty
-              return selected === '동의함' || selected === '동의하지 않음'
-            }))
-          }}
+          onConsent={(next) => { setConsent(next); setConsentDirty(true) }}
+          onFlush={flushForms}
           onChangedSubsidy={(state) => { setSelectedSubsidyTypes(state.selections.length); setChecklistKey((key) => key + 1) }}
           onContinue={() => void continueFromForms()}
           continuing={formContinuing}
@@ -406,10 +451,10 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
       {stage === 'subsidy' && appId !== null && (
         <>
           <div className="flow-block flow-block--ok">
-            <strong>신청서와 동의서 작성이 끝났습니다. 종이·자필서명 0건.</strong>
+            <strong>신청서와 동의서 작성이 끝났습니다.</strong>
             <p>신청번호 {appNo}</p>
             <p>
-              이제 지원받을 항목을 고르세요. 항목은 여러 개를 함께 신청할 수 있고,
+              이제 지원받을 항목을 선택해 주세요. 항목은 여러 개를 함께 신청할 수 있고,
               고른 항목에 따라 올려야 할 서류가 정해집니다.
             </p>
           </div>
@@ -428,15 +473,12 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
             <button
               type="button"
               className="btn btn--primary"
-              disabled={selectedSubsidyTypes === 0}
-              onClick={() => setStage('upload')}
+              onClick={() => { setSelectionAttempted(true); if (selectedSubsidyTypes > 0) setStage('upload'); else window.requestAnimationFrame(() => document.getElementById('subsidy-missing')?.focus()) }}
             >
               서류 업로드로
             </button>
           </div>
-          {selectedSubsidyTypes === 0 && (
-            <p className="flow__validation" role="alert">지원받을 항목을 하나 이상 고르세요.</p>
-          )}
+          {selectionAttempted && selectedSubsidyTypes === 0 && <Notice id="subsidy-missing" tabIndex={-1} tone="warning" role="alert" title="지원 항목 1건을 선택해 주세요."><a href="#subsidy-items">지원 항목 선택으로 이동하기</a></Notice>}
         </>
       )}
 
@@ -454,16 +496,18 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
               </p>
             </div>
           )}
-          <DocumentUpload key={checklistKey} applicationId={appId} onProgress={reportUploadProgress} />
+          <DocumentUpload key={checklistKey} applicationId={appId} onProgress={reportUploadProgress} onPendingChange={setUploadPending} />
+          <p className="field__hint" role="status">{uploadPending ? '선택하신 파일을 처리하고 있습니다. 다른 칸의 파일을 선택하며 기다릴 수 있습니다.' : ''}</p>
           <div className="flow__actions">
             <button
               type="button"
               className="btn"
+              disabled={uploadPending}
               onClick={() => setStage('subsidy')}
             >
               이전
             </button>
-            <button type="button" className="btn btn--primary" onClick={() => setStage('final')}>
+            <button type="button" className="btn btn--primary" disabled={uploadPending} onClick={() => setStage('final')}>
               제출 전 최종 확인
             </button>
           </div>
@@ -477,6 +521,7 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
             applicationId={appId}
             onSubmitted={(result) => {
               setSubmitted(result)
+              try { window.sessionStorage.setItem(`applicant.receiptSteps.${appId}`, JSON.stringify(result.next_steps)) } catch { /* A storage-disabled browser shows current status on refresh. */ }
               setStage('complete')
               window.scrollTo({ top: 0 })
             }}
@@ -489,29 +534,20 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
       {/* ── 제출 완료 ── */}
       {stage === 'complete' && submitted && appId !== null && (
         <>
-          <div className="flow-block flow-block--ok">
-            <strong>{submitted.message}</strong>
-            <p>신청번호 {submitted.application_no}</p>
-            {submitted.first_come && (
-              <p className="flow-queue">
-                접수 순번 <strong>{submitted.first_come.position}번</strong>
-                {submitted.first_come.quota !== null &&
-                  ` / 총 지원규모 ${submitted.first_come.quota.toLocaleString('ko-KR')}건`}
-              </p>
-            )}
-            {submitted.subsidy && submitted.subsidy.lines.length > 0 && (
-              <p className="flow-queue">
-                신청하신 항목의 지급 예정액{' '}
-                <strong>{submitted.subsidy.total_granted.toLocaleString('ko-KR')}원</strong>
-              </p>
-            )}
-            <ol className="flow-steps-list">
-              {submitted.next_steps.map((s) => <li key={s}>{s}</li>)}
-            </ol>
-            <p className="flow-alt">{submitted.notice}</p>
+          <section className="receipt card" aria-labelledby="receipt-title">
+            <header className="receipt__head"><Icon name="checkCircle" size={32} /><h2 id="receipt-title">신청이 접수되었습니다</h2></header>
+            <dl className="fact-list">
+              <div><dt>신청번호</dt><dd className="receipt__number">{submitted.application_no}</dd></div>
+              {submitted.submitted_at && <div><dt>접수 일시</dt><dd>{formatDateTime(submitted.submitted_at)}</dd></div>}
+              <div><dt>사업명</dt><dd>{program.name}</dd></div>
+              {submitted.first_come && <div><dt>접수 순번</dt><dd>{submitted.first_come.position}번</dd></div>}
+              {submitted.subsidy && submitted.subsidy.lines.length > 0 && <div><dt>지급 예정액</dt><dd>{submitted.subsidy.total_granted.toLocaleString('ko-KR')}원</dd></div>}
+            </dl>
+            {submitted.next_steps.length > 0 && <><h3>다음 절차</h3><ol>{submitted.next_steps.map((step) => <li key={step}>{step}</li>)}</ol></>}
+            {submitted.notice && <p>{submitted.notice}</p>}
             <ApplicantFormsBulkMenu applicationId={appId} refreshKey={1} />
-            <button type="button" className="btn btn--primary" onClick={openMyPage}>마이페이지</button>
-          </div>
+            <div className="flow__actions"><button type="button" className="btn" onClick={() => window.print()}><Icon name="printer" />접수증 인쇄하기</button><button type="button" className="btn btn--primary" onClick={openMyPage}>마이페이지 열기</button></div>
+          </section>
         </>
       )}
 
@@ -523,6 +559,7 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
           <MyPage applicationId={appId} />
         </>
       )}
+      </div>
     </div>
   )
 }

@@ -1,0 +1,64 @@
+/*
+ * 신청자 화면 디자인 토큰. 신청자 쪽 입구(pages/applicant/ApplicantApp.tsx)만 불러온다.
+ * 담당자 화면이 읽는 옛 변수(--brand, --border 등, src/index.css)와 이름이 겹치지 않는다.
+ *
+ * 브랜드 색은 전북청년허브센터 로고(assets/brand/jbyouthhub-logo.png, 844×226)를 픽셀 표본으로 뽑았다.
+ *   남색 글자·심볼  #173975  (파랑 계열 픽셀의 어두운 절반 중앙값이자 최빈값) → --brand-60
+ *   심볼 빨강 #b82d2b · 노랑 #e6b943 · 초록 #8db243                          → 장식 전용
+ *   큰 글자 #211816(거의 검정)은 글자 잉크로 보고 회색 척도가 맡는다.
+ * 척도는 --brand-60의 색상(218°)을 그대로 두고 채도·명도만 바꿔 만들었다.
+ * 화면 CSS는 이 파일의 변수만 읽는다.
+ */
+:root {
+  /* brand — 로고에서 뽑은 값 */
+  --brand-5:#f2f5fa; --brand-10:#dfe7f6; --brand-20:#bdcdea; --brand-30:#8ea8d7; --brand-40:#557bbe;
+  --brand-50:#2c5baf; --brand-60:#173975; --brand-70:#102956; --brand-80:#0b1d3d;
+  /* 장식 전용: 글자 · 상태 · 버튼 색으로 쓰지 않는다. */
+  --brand-accent-1:#b82d2b; --brand-accent-2:#e6b943; --brand-accent-3:#8db243;
+  --brand-tint-a:#f4f8ec; --brand-tint-b:#fcf6e6;       /* 접수증 머리 등 옅은 그라데이션 */
+
+  /* neutral — 고정 */
+  --gray-0:#fff; --gray-5:#f4f5f6; --gray-10:#e6e8ea; --gray-20:#cdd1d5; --gray-30:#b1b8be; --gray-40:#8a949e;
+  --gray-50:#6d7882; --gray-60:#58616a; --gray-70:#464c53; --gray-80:#33363d; --gray-90:#1e2124;
+
+  /* status — 고정. -5 배경, -10 테두리, -50 아이콘, -60 글자 */
+  --danger-5:#fdefec; --danger-10:#fcdfd9; --danger-50:#de3412; --danger-60:#bd2c0f;
+  --warning-5:#fff3db; --warning-10:#ffe0a3; --warning-50:#9e6a00; --warning-60:#8a5c00;
+  --success-5:#eaf6ec; --success-10:#d8eedd; --success-50:#228738; --success-60:#267337;
+  --info-5:#e7f4fe; --info-10:#d3ebfd; --info-50:#0b78cb; --info-60:#096ab3;
+
+  /* semantic */
+  --color-bg:#f7f8f5; --color-surface:#fff; --color-surface-subtle:var(--gray-5); --color-surface-brand:var(--brand-5);
+  --color-text:var(--gray-90); --color-text-subtle:var(--gray-70); --color-text-muted:var(--gray-60);
+  --color-text-disabled:var(--gray-50); --color-text-brand:var(--brand-60); --color-text-on-primary:#fff;
+  --color-border:var(--gray-20); --color-border-strong:var(--gray-60); --color-divider:var(--gray-10);
+  --color-primary:var(--brand-60); --color-primary-hover:var(--brand-70); --color-primary-pressed:var(--brand-80);
+  --color-focus:var(--brand-50); --color-dim:rgb(0 0 0 / 60%);
+
+  /* type */
+  --font-ui:'Pretendard GOV','Pretendard','Apple SD Gothic Neo','Malgun Gothic','맑은 고딕','Noto Sans KR',system-ui,sans-serif;
+  --fs-13:13px; --fs-15:15px; --fs-16:16px; --fs-17:17px; --fs-19:19px; --fs-22:22px; --fs-24:24px; --fs-28:28px;
+  --lh-tight:1.35; --lh-base:1.55; --fw-regular:400; --fw-medium:500; --fw-bold:700;
+
+  /* space — 4px 격자 */
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px; --sp-8:32px; --sp-10:40px; --sp-12:48px; --sp-16:64px;
+
+  /* shape */
+  --radius-4:4px; --radius-6:6px; --radius-8:8px; --radius-12:12px; --radius-pill:999px;
+  --shadow-1:0 0 2px rgb(0 0 0 / 5%),0 4px 8px rgb(0 0 0 / 8%);
+  --shadow-2:0 0 2px rgb(0 0 0 / 8%),0 8px 16px rgb(0 0 0 / 12%);
+  --shadow-3:0 0 2px rgb(0 0 0 / 8%),0 16px 24px rgb(0 0 0 / 12%);
+
+  /* Original PDF renderer: preserve document ink, overlays and scaled geometry. */
+  --pdf-ink:#101d42; --pdf-print-ink:#141414; --pdf-check-ink:#112861;
+  --pdf-input-border:rgb(51 83 147 / 25%); --pdf-input-bg:rgb(242 247 255 / 72%);
+  --pdf-readonly-bg:rgb(239 242 246 / 65%); --pdf-shadow-color:rgb(0 0 0 / 18%); --pdf-field-radius:2px;
+
+  /* control / layout */
+  --control-lg:56px; --control-md:48px; --control-sm:40px; --ease:160ms ease;
+  --shell-max:1200px; --content-max:880px; --gutter:24px; --shell-h:72px;
+  --z-sticky:20; --z-skip:90; --z-modal:100;
+}
+
+/* 좁은 화면에서는 화면 여백과 머리글 높이만 줄인다. */
+@media (max-width: 600px) { :root { --gutter:16px; --shell-h:64px; } }

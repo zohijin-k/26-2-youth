@@ -9,7 +9,7 @@
  *   업로드 즉시 확인 안내 + 해결 방법 + 재업로드 (R2.1·R2.2)
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 
 import {
   deleteDocument,
@@ -20,15 +20,66 @@ import {
   type DocRequirementRow,
   type UploadedDocument,
 } from '../../api.ts'
-import FilePreview from '../../components/FilePreview.tsx'
-import { Skeleton, SkeletonBlock, SkeletonCard, SkeletonLine } from '../../components/Skeleton.tsx'
+import FilePreview from '../../components/ApplicantFilePreview.tsx'
+import { Skeleton, SkeletonCard, SkeletonLine } from '../../components/Skeleton.tsx'
 import useDelayedFlag from '../../hooks/useDelayedFlag.ts'
-import Modal from '../../components/Modal.tsx'
+import Modal from '../../components/ApplicantModal.tsx'
 import PdfPages from '../../components/PdfPages.tsx'
-import StatusBadge from '../../components/StatusBadge.tsx'
+import StatusBadge from '../../components/ApplicantStatusBadge.tsx'
 import { DateTriple } from '../../forms/FormSheet.tsx'
 import { EMPTY_YMD, isCompleteYMD, ymdToISO, type YMD } from '../../forms/ymd.ts'
+import Dialog from '../../components/Dialog.tsx'
+import ConfirmDialog from '../../components/ConfirmDialog.tsx'
+import Icon from '../../components/Icon.tsx'
+import Notice from '../../components/Notice.tsx'
+import ProgressBar from '../../components/ProgressBar.tsx'
+import Spinner from '../../components/Spinner.tsx'
+import useBeforeUnload from '../../hooks/useBeforeUnload.ts'
+import { friendlyError } from '../../lib/error-copy.ts'
+import { formatBytes, formatDuration, formatDate } from '../../lib/format.ts'
+import { precheckFile, type PdfProbe } from '../../lib/file-precheck.ts'
+import { estimateSeconds, rememberObservation, slowThresholdSec, type Observation } from '../../lib/upload-estimate.ts'
+import { queueReducer, nextRunnable, slotItem, isActive, transferPercentage, type QueueItem } from './upload-queue.ts'
 import './document-upload.css'
+
+const probePdf: PdfProbe = async (file) => {
+  const pdfjs = await import('pdfjs-dist')
+  const task = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) })
+  try {
+    const pdf = await task.promise
+    const text = await (await pdf.getPage(1)).getTextContent()
+    return { pages: pdf.numPages, hasText: text.items.some((part) => 'str' in part && part.str.trim().length > 0) }
+  } finally { await task.destroy() }
+}
+
+function PendingFile({file, url, job, onCancel, onRetry}: { file: File; url: string; job?: QueueItem; onCancel?: () => void; onRetry?: () => void }) {
+  const [now, setNow] = useState(() => Date.now())
+  const status = job?.status
+  useEffect(() => {
+    if (!status || !['sending', 'reading'].includes(status)) return
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [status])
+  const elapsed = Math.max(0, Math.floor((now - (job?.sentAt ?? job?.startedAt ?? now)) / 1000))
+  const reading = job?.status === 'reading'
+  const percentage = job ? transferPercentage(job) : null
+  const slow = reading && elapsed > slowThresholdSec(job.estimateSec)
+  const label = !job ? '파일을 확인하고 있습니다.' : job.status === 'queued' ? '대기 중' : job.status === 'failed' ? '올리지 못했습니다.' : reading ? '서류를 읽고 확인하고 있습니다.' : '파일을 보내고 있습니다.'
+  return <div className="upload-pending">
+    <div className="upload-pending__file">
+      {file.name.toLowerCase().endsWith('.pdf') ? <PdfPages url={url} width={56} maxPages={1} maxHeight={76} /> : <img src={url} alt="선택한 서류 미리보기" />}
+      <div><strong>{file.name}</strong><p>{formatBytes(file.size)}</p></div>
+    </div>
+    <p>{job?.status !== 'failed' && job?.status !== 'queued' && <Spinner />} {label}</p>
+    {job?.status === 'sending' && <><ProgressBar indeterminate={percentage === null} value={job.sent} max={job.total} label="파일 전송" />{percentage !== null && <p>{percentage}% 전송</p>}</>}
+    {reading && <><ProgressBar indeterminate label="서류 자동 확인" /><p>{elapsed}초 경과 · {job.estimateSec === null ? '이번 접속의 측정값이 없어 예상 시간을 표시하지 않습니다.' : `예상 ${formatDuration(job.estimateSec)}`}</p></>}
+    {slow && <Notice tone="warning">평소보다 오래 걸리고 있습니다. 창을 닫지 말고 기다려 주세요.</Notice>}
+    {job?.error && <Notice tone="danger">{job.error}</Notice>}
+    {job?.hint && <p>{job.hint}</p>}
+    {onCancel && <button type="button" className="btn btn--small" onClick={onCancel}>대기 취소하기</button>}
+    {onRetry && <button type="button" className="btn btn--small" onClick={onRetry}>같은 파일로 다시 시도하기</button>}
+  </div>
+}
 
 
 /** 판독 계층·신뢰도·소요시간은 신청자에게 의미가 없다. 시연에서 보여줄 때만 `?debug=1`. */
@@ -142,13 +193,14 @@ function DocumentResult({
         />
       )}
 
+      {status !== 'PASS' && <p className="dresult__automatic">{status === 'FAIL' ? '자동 확인 결과입니다. 사유와 해결 방법을 확인한 뒤 다시 올려 주세요.' : '자동 확인 결과입니다. 담당자 확인이 필요한 서류입니다.'}</p>}
       {doc.findings.map((f) => (
         <div key={f.code} className="dfinding">
           <p className="dfinding__msg">{f.message}</p>
           {f.how_to_fix && <p className="dfinding__fix">{f.how_to_fix}</p>}
           {f.link && (
             <a className="dfinding__link" href={f.link} target="_blank" rel="noreferrer">
-              발급처 바로가기 ↗
+              발급처 바로가기 <Icon name="external" size={16} />
             </a>
           )}
         </div>
@@ -172,7 +224,7 @@ function hasInfo(item: DocRequirementRow): boolean {
     카드에 남겨 새 창으로 바로 열리게 한다 — 모달 안에 숨기지 않는다. */
 function SlotInfoModal({ item, onClose }: { item: DocRequirementRow; onClose: () => void }) {
   return (
-    <Modal title={item.label} onClose={onClose}>
+    <Dialog title={item.label} onClose={onClose}>
       {item.doc_type_choices.length > 1 && (
         <div className="dinfo__section">
           <h4>인정되는 서류</h4>
@@ -213,14 +265,17 @@ function SlotInfoModal({ item, onClose }: { item: DocRequirementRow; onClose: ()
           </ul>
         </div>
       )}
-    </Modal>
+    </Dialog>
   )
 }
 
 function SlotCard({
   item,
   applicationId,
-  busy,
+  job,
+  problem,
+  onCancel,
+  onSameFile,
   declared,
   onDeclaredChange,
   onPick,
@@ -228,10 +283,13 @@ function SlotCard({
 }: {
   item: DocRequirementRow
   applicationId: number
-  busy: boolean
+  job: QueueItem | null
+  problem?: string
+  onCancel: () => void
+  onSameFile: () => void
   declared: YMD
   onDeclaredChange: (v: YMD) => void
-  onPick: (file: File) => void
+  onPick: (file: File) => Promise<void>
   onRetry: (doc: UploadedDocument) => void
 }) {
   const input = useRef<HTMLInputElement>(null)
@@ -239,8 +297,18 @@ function SlotCard({
   const [interviewFormOpen, setInterviewFormOpen] = useState(false)
   const [interviewPdfReady, setInterviewPdfReady] = useState(false)
   const [interviewHwp, setInterviewHwp] = useState<string | null>(null)
-  const [busyFileName, setBusyFileName] = useState('')
-  const showBusySkeleton = useDelayedFlag(busy)
+  const [preparing, setPreparing] = useState<{file: File; url: string} | null>(null)
+  const [dateAttempted, setDateAttempted] = useState(false)
+  const [announcement, setAnnouncement] = useState('')
+  const previousStatus = useRef('')
+  useEffect(() => {
+    const status = preparing ? 'checking' : job?.status ?? (item.documents.length ? 'complete' : problem ? 'failed' : '')
+    if (status === previousStatus.current) return
+    previousStatus.current = status
+    const text: Record<string, string> = { checking: '파일을 확인하고 있습니다.', queued: '대기 중입니다.', sending: '파일을 보내기 시작했습니다.', reading: '', failed: '파일을 올리지 못했습니다.', complete: '서류 자동 확인을 마쳤습니다.' }
+    setAnnouncement(`${item.label} ${status === 'checking' ? '파일을 확인하고 있습니다.' : text[status] ?? ''}`)
+  }, [preparing, job?.status, item.label, item.documents.length, problem])
+  useEffect(() => () => { if (preparing) URL.revokeObjectURL(preparing.url) }, [preparing])
   const doc = item.documents[0]
   const status = doc?.status ?? null
   // 발급일 직접 입력이 있는 서류는 날짜를 먼저 받아야 업로드 즉시 2차 검증을 할 수 있다.
@@ -252,7 +320,7 @@ function SlotCard({
   const dateWarning = issueISO && issueISO > todayISO
     ? `${basisLabel}이 오늘 이후입니다. 다시 확인해 주세요.`
     : issueISO && item.min_issue_date && issueISO < item.min_issue_date
-      ? `이 사업은 ${item.min_issue_date.replaceAll('-', '.')} 이후 ${basisLabel}만 인정합니다. 서류를 확인해 주세요.`
+      ? `이 사업은 ${formatDate(item.min_issue_date)} 이후 ${basisLabel}만 인정합니다. 서류를 확인해 주세요.`
       : ''
 
   useEffect(() => {
@@ -280,27 +348,23 @@ function SlotCard({
               onClick={() => setInfoOpen(true)}
               aria-label={`${item.label} 요건 안내`}
             >
-              ⓘ
+              <Icon name="info" />
             </button>
           )}
         </div>
         <div className="dslot__head-meta">
           {status ? (
             <StatusBadge status={status} audience="applicant" />
-          ) : showBusySkeleton ? (
-            <span className="status-badge status-badge--loading" role="status" aria-live="polite">
-              <span className="dslot__spinner" aria-hidden="true" />
-              읽는 중…
-            </span>
           ) : null}
           {!status && item.issuer_url && (
             <a className="dslot__issuer" href={item.issuer_url} target="_blank" rel="noreferrer">
-              {item.issuer}에서 발급받기 ↗
+              {item.issuer}에서 발급받기 <Icon name="external" size={16} />
             </a>
           )}
         </div>
       </div>
 
+      <p className="dslot__formats">받는 형식: {item.accept.map((format) => format.toUpperCase()).join(' · ')}. 발급처의 PDF를 권장합니다. 촬영할 때는 서류 전체가 밝고 선명하게 나오도록 해 주세요.</p>
       <p className="dslot__criteria">{item.issue_rule_label}{item.notes.filter((note) => note.startsWith('조회기간에 ') || note.startsWith('최근 ')).map((note) => ` · ${note}`).join('')}</p>
 
       {/^(interview|suit)_\d+_confirmation$/.test(item.slot_key) && (
@@ -312,65 +376,48 @@ function SlotCard({
       )}
 
       {/* 올리기 전: 발급일 → 파일 업로드. 올린 뒤에는 결과만 남긴다. */}
-      {!doc && !busy && (
+      {!doc && !job && !preparing && (
         <div className="dslot__action">
           <input
             ref={input}
             className="dslot__file"
             type="file"
             accept={item.accept.map((f) => `.${f}`).join(',')}
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              if (file) {
-                setBusyFileName(file.name)
-                onPick(file)
-              }
-              e.target.value = ''
+            aria-label={`${item.label} 파일 선택`}
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              event.target.value = ''
+              if (!file) return
+              setPreparing({ file, url: URL.createObjectURL(file) })
+              void onPick(file).finally(() => setPreparing(null))
             }}
           />
           {item.check_declared_date && (
-            <label className="dslot__declared">
-              <span className="dslot__declared-label">서류에 적힌 {basisLabel}</span>
-              <DateTriple value={declared} onChange={onDeclaredChange} ariaPrefix={item.label} />
-            </label>
+            <fieldset className="dslot__declared" onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node) && Object.values(declared).some(Boolean)) setDateAttempted(true)
+            }}>
+              <legend className="dslot__declared-label">서류에 적힌 {basisLabel} (필수)</legend>
+              <DateTriple value={declared} onChange={onDeclaredChange} ariaPrefix={item.label} describedBy={`slot-${item.slot_key}-date-hint`} invalid={dateAttempted && !dateReady} />
+              <p id={`slot-${item.slot_key}-date-hint`} className="dslot__gate" role={dateAttempted && !dateReady ? 'alert' : undefined}>
+                {dateReady ? `서류에 적힌 ${basisLabel}과 같은지 확인해 주세요.` : `${basisLabel}을 실제 달력에 있는 날짜로 모두 입력하면 파일을 올릴 수 있습니다.`}
+              </p>
+            </fieldset>
           )}
           {dateWarning && <p className="dslot__date-warning" role="status">{dateWarning}</p>}
-          {!dateReady && (
-            <p className="dslot__gate">{basisLabel}을 입력하면 파일을 올릴 수 있습니다.</p>
-          )}
           <button
             type="button"
-            className="btn btn--primary dslot__upload"
-            disabled={!dateReady}
-            onClick={() => input.current?.click()}
+            className="btn dslot__upload"
+            onClick={() => { setDateAttempted(true); if (dateReady) input.current?.click(); else document.querySelector<HTMLElement>(`#slot-${item.slot_key} .form-date input`)?.focus() }}
           >
-            파일 업로드
+            파일 선택
           </button>
         </div>
       )}
 
-      {!doc && busy && showBusySkeleton && (
-        <div className="dresult dresult--loading">
-          <div className="dresult__file">
-            <div className="dresult__kind dresult__kind--loading" aria-hidden="true">
-              <SkeletonBlock className="dresult__thumbnail-shimmer" />
-            </div>
-            <div className="dresult__body dresult__body--loading">
-              {busyFileName ? (
-                <span className="dresult__name dresult__name--loading">{busyFileName}</span>
-              ) : (
-                <SkeletonLine className="dresult__filename-shimmer" />
-              )}
-              <span className="dresult__issue-date"><span>발급일</span><SkeletonLine width="7em" /></span>
-            </div>
-            <div className="dresult__actions">
-              <button type="button" className="btn btn--small" disabled aria-disabled="true">미리보기</button>
-              <button type="button" className="btn btn--small dresult__retry" disabled aria-disabled="true">다시 올리기</button>
-            </div>
-          </div>
-        </div>
-      )}
-
+      {preparing && <PendingFile file={preparing.file} url={preparing.url} />}
+      {!preparing && job && <PendingFile file={job.file} url={job.previewUrl} job={job} onCancel={job.status === 'queued' ? onCancel : undefined} onRetry={job.status === 'failed' ? onSameFile : undefined} />}
+      {!preparing && !job && problem && <Notice tone="danger" role="alert">{problem}</Notice>}
+      <p className="sr-only" aria-live="polite" aria-atomic="true">{announcement}</p>
       {doc && <DocumentResult doc={doc} onRetry={() => onRetry(doc)} />}
       {infoOpen && <SlotInfoModal item={item} onClose={() => setInfoOpen(false)} />}
       {interviewFormOpen && (
@@ -396,52 +443,108 @@ function SlotCard({
   )
 }
 
-export default function DocumentUpload({
-  applicationId,
-  onProgress,
-}: {
+export default function DocumentUpload({applicationId, onProgress, onPendingChange}: {
   applicationId: number
   onProgress: (uploaded: number, total: number) => void
+  onPendingChange: (pending: boolean) => void
 }) {
   const [checklist, setChecklist] = useState<Checklist | null>(null)
   const [declared, setDeclared] = useState<Record<string, YMD>>({})
-  const [busySlot, setBusySlot] = useState('')
+  const [queue, dispatch] = useReducer(queueReducer, [])
+  const [problems, setProblems] = useState<Record<string, string>>({})
   const [error, setError] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [removeTarget, setRemoveTarget] = useState<UploadedDocument | null>(null)
+  const [preparingCount, setPreparingCount] = useState(0)
+  const [attempt, setAttempt] = useState(0)
   const showChecklistSkeleton = useDelayedFlag(!checklist && !error)
+  const observation = useRef<Observation[]>([])
+  const revision = useRef(0)
+  const request = useRef<AbortController | null>(null)
+  const epoch = useRef(0)
+  const urls = useRef(new Set<string>())
+  const active = isActive(queue) || preparingCount > 0 || deleting
+  useBeforeUnload(active)
+  useEffect(() => { onPendingChange(active); return () => onPendingChange(false) }, [active, onPendingChange])
+  useEffect(() => {
+    epoch.current += 1
+    const ownedUrls = urls.current
+    return () => { epoch.current += 1; request.current?.abort(); request.current = null; for (const url of ownedUrls) URL.revokeObjectURL(url); ownedUrls.clear() }
+  }, [])
+  useEffect(() => {
+    let alive = true
+    fetchChecklist(applicationId).then((next) => { if (alive) setChecklist(next) }).catch((error: unknown) => { if (alive) setError(friendlyError(error, '서류 목록을 불러오지 못했습니다. 다시 시도해 주세요.')) })
+    return () => { alive = false }
+  }, [applicationId, attempt])
+  useEffect(() => { if (checklist) onProgress(checklist.upload_done, checklist.upload_total) }, [checklist, onProgress])
+
+  const refresh = useCallback(() => {
+    const current = revision.current
+    const generation = epoch.current
+    return fetchChecklist(applicationId).then((next) => { if (epoch.current === generation && revision.current === current) setChecklist(next) })
+  }, [applicationId])
 
   useEffect(() => {
-    fetchChecklist(applicationId)
-      .then((next) => {
-        setChecklist(next)
-        onProgress(next.upload_done, next.upload_total)
+    const item = nextRunnable(queue)
+    if (!item || request.current) return
+    const controller = new AbortController()
+    request.current = controller
+    const generation = epoch.current
+    let sentAt: number | null = null
+    dispatch({ type: 'start', id: item.id, now: Date.now() })
+    uploadDocument(applicationId, item.slotKey, item.file, item.declared, {
+      signal: controller.signal,
+      onProgress: (sent, total) => { if (epoch.current === generation) dispatch({ type: 'progress', id: item.id, sent, total }) },
+      onSent: () => { if (epoch.current !== generation) return; sentAt = Date.now(); dispatch({ type: 'sent', id: item.id, now: sentAt }) },
+    }).then((doc) => {
+      if (epoch.current !== generation) return
+      revision.current += 1
+      setChecklist((current) => {
+        if (!current) return current
+        const items = current.items.map((row) => row.slot_key === doc.slot_key ? { ...row, documents: [doc] } : row)
+        return { ...current, items, upload_done: items.filter((row) => row.upload && row.documents.length > 0).length }
       })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
-  }, [applicationId, onProgress])
-
-  const refresh = () => fetchChecklist(applicationId).then((next) => {
-    setChecklist(next)
-    onProgress(next.upload_done, next.upload_total)
-  })
+      if (sentAt !== null) observation.current = rememberObservation(observation.current, { kind: item.kind, pages: item.pages ?? 1, ms: Date.now() - sentAt })
+      request.current = null
+      dispatch({ type: 'succeed', id: item.id })
+      URL.revokeObjectURL(item.previewUrl); urls.current.delete(item.previewUrl)
+      void refresh().catch(() => setError('서류는 올렸지만 최신 목록을 불러오지 못했습니다. 목록을 다시 확인해 주세요.'))
+    }).catch((error: unknown) => {
+      if (epoch.current !== generation) return
+      request.current = null
+      dispatch({ type: 'fail', id: item.id, now: Date.now(), error: friendlyError(error, '파일을 올리지 못했습니다. 같은 파일로 다시 시도해 주세요.') })
+    })
+  }, [queue, applicationId, refresh])
 
   const upload = async (item: DocRequirementRow, file: File) => {
-    setBusySlot(item.slot_key)
-    setError('')
+    const generation = epoch.current
+    setPreparingCount((count) => count + 1)
+    setProblems((current) => ({ ...current, [item.slot_key]: '' }))
     try {
-      await uploadDocument(applicationId, item.slot_key, file, ymdToISO(declared[item.slot_key] ?? EMPTY_YMD))
-      await refresh()
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setBusySlot('')
+      const checked = await precheckFile(file, probePdf)
+      if (epoch.current !== generation) { if (checked.ok) URL.revokeObjectURL(checked.previewUrl); return }
+      if (!checked.ok) { setProblems((current) => ({ ...current, [item.slot_key]: checked.message })); return }
+      urls.current.add(checked.previewUrl)
+      dispatch({ type: 'enqueue', now: Date.now(), item: {
+        id: crypto.randomUUID(), slotKey: item.slot_key, file, declared: ymdToISO(declared[item.slot_key] ?? EMPTY_YMD),
+        previewUrl: checked.previewUrl, kind: checked.kind, pages: checked.pages, hint: checked.hint,
+        estimateSec: estimateSeconds(checked.kind, checked.pages, observation.current),
+      } })
+    } finally { if (epoch.current === generation) setPreparingCount((count) => count - 1) }
+  }
+  const remove = async () => {
+    if (!removeTarget || deleting) return
+    const doc = removeTarget
+    setRemoveTarget(null); setDeleting(true)
+    try { await deleteDocument(applicationId, doc.document_id); revision.current += 1; await refresh() }
+    catch (error: unknown) {
+      const message = friendlyError(error, '서류를 삭제하지 못했습니다. 다시 시도해 주세요.')
+      if (checklist?.items.some((item) => item.slot_key === doc.slot_key)) setProblems((current) => ({ ...current, [doc.slot_key]: message }))
+      else setError(message)
     }
+    finally { setDeleting(false) }
   }
-
-  const retry = async (doc: UploadedDocument) => {
-    await deleteDocument(applicationId, doc.document_id)
-    await refresh()
-  }
-
-  if (error && !checklist) return <p className="flow-error">{error}</p>
+  if (error && !checklist) return <Notice tone="danger" role="alert" title="서류 목록을 불러오지 못했습니다.">{error}<button type="button" className="btn btn--small" onClick={() => { setError(''); setAttempt((value) => value + 1) }}>다시 시도하기</button></Notice>
   if (!checklist) return showChecklistSkeleton ? (
     <Skeleton className="dupload__skeleton-list">
       {Array.from({ length: 5 }, (_, index) => (
@@ -459,6 +562,7 @@ export default function DocumentUpload({
 
   return (
     <div className="dupload">
+      <h2>서류 업로드</h2>
       <div className="dupload__progress">
         제출 서류 <strong>{checklist.upload_done}</strong> / {checklist.upload_total}
         {checklist.program.has_subsidy_items && (
@@ -466,14 +570,7 @@ export default function DocumentUpload({
             고르신 지원 항목에 따라 서류가 늘고 줍니다. 항목을 바꾸면 이 목록도 바뀝니다.
           </span>
         )}
-        <div className="dupload__bar">
-          <div
-            className="dupload__bar-fill"
-            style={{
-              width: `${checklist.upload_total ? (checklist.upload_done / checklist.upload_total) * 100 : 0}%`,
-            }}
-          />
-        </div>
+        <ProgressBar value={checklist.upload_done} max={checklist.upload_total || 1} label="제출 서류" />
       </div>
 
       <ul className="dslots">
@@ -482,11 +579,14 @@ export default function DocumentUpload({
             key={item.slot_key}
             item={item}
             applicationId={applicationId}
-            busy={busySlot === item.slot_key}
+            job={slotItem(queue, item.slot_key)}
+            problem={problems[item.slot_key]}
+            onCancel={() => { const job = slotItem(queue, item.slot_key); if (job?.status === 'queued') { dispatch({type: 'cancel', id: job.id}); URL.revokeObjectURL(job.previewUrl); urls.current.delete(job.previewUrl) } }}
+            onSameFile={() => { const job = slotItem(queue, item.slot_key); if (job) dispatch({ type: 'retry', id: job.id, now: Date.now() }) }}
             declared={declared[item.slot_key] ?? EMPTY_YMD}
-            onDeclaredChange={(v) => setDeclared({ ...declared, [item.slot_key]: v })}
-            onPick={(file) => void upload(item, file)}
-            onRetry={(doc) => void retry(doc)}
+            onDeclaredChange={(value) => setDeclared((current) => ({ ...current, [item.slot_key]: value }))}
+            onPick={(file) => upload(item, file)}
+            onRetry={setRemoveTarget}
           />
         ))}
       </ul>
@@ -516,7 +616,7 @@ export default function DocumentUpload({
                 <button
                   type="button"
                   className="btn btn--small"
-                  onClick={() => void retry(d)}
+                  onClick={() => setRemoveTarget(d)}
                 >
                   삭제
                 </button>
@@ -526,7 +626,8 @@ export default function DocumentUpload({
         </section>
       )}
 
-      {error && <p className="dupload__error">{error}</p>}
+      {error && <Notice tone="danger" role="alert">{error}<button type="button" className="btn btn--small" onClick={() => void refresh().then(() => setError('')).catch(() => setError('목록을 불러오지 못했습니다. 다시 시도해 주세요.'))}>목록 다시 확인하기</button></Notice>}
+      {removeTarget && <ConfirmDialog title="이 서류를 삭제하시겠습니까?" description="삭제한 서류는 다시 올려야 합니다." confirmLabel="서류 삭제하기" tone="danger" onCancel={() => setRemoveTarget(null)} onConfirm={() => void remove()}><p>{removeTarget.file_name}</p></ConfirmDialog>}
     </div>
   )
 }

@@ -10,7 +10,9 @@ import { fetchPostings, type PublicPosting } from '../../api.ts'
 import { Skeleton, SkeletonLine } from '../../components/Skeleton.tsx'
 import useDelayedFlag from '../../hooks/useDelayedFlag.ts'
 import { isPlainClick, routeHref } from '../../navigation-url.ts'
-import { formatPeriod } from '../../posting-format.ts'
+import { formatDate } from '../../lib/format.ts'
+import useDocumentTitle from '../../hooks/useDocumentTitle.ts'
+import Icon from '../../components/Icon.tsx'
 import './program-finder.css'
 
 function Card({ posting, onOpen }: { posting: PublicPosting; onOpen: (id: number) => void }) {
@@ -26,11 +28,11 @@ function Card({ posting, onOpen }: { posting: PublicPosting; onOpen: (id: number
         }}
       >
         <span className="pfinder__card-main">
-          <span className={`pfinder__status pfinder__status--${posting.phase}`}>{posting.phase_label}</span>
+          <span className={`pfinder__status pfinder__status--${posting.phase}`}><Icon name="calendar" size={16} />{posting.phase_label}</span>
           <strong className="pfinder__name">{posting.title}</strong>
           <span className="pfinder__period">
             <span className="pfinder__period-label">신청 기간</span>
-            {formatPeriod(posting.apply_start, posting.apply_end)}
+            {formatDate(posting.apply_start.slice(0, 10))} ~ {formatDate(posting.apply_end.slice(0, 10))}
           </span>
         </span>
         <span className="pfinder__go" aria-hidden="true">안내 보기</span>
@@ -45,6 +47,9 @@ export default function ProgramFinder({ onOpen }: { onOpen: (id: number) => void
   const [attempt, setAttempt] = useState(0)
   const showSkeleton = useDelayedFlag(items === null && !failed)
 
+  useDocumentTitle('사업 찾기 | 전북청년허브센터')
+  useEffect(() => { document.querySelector<HTMLElement>('#main h1')?.focus() }, [])
+
   useEffect(() => {
     let active = true
     fetchPostings()
@@ -57,9 +62,9 @@ export default function ProgramFinder({ onOpen }: { onOpen: (id: number) => void
   const closed = items?.filter((item) => item.phase === 'closed') ?? []
 
   return (
-    <main className="pfinder">
-      <header className="pfinder__head">
-        <h1 className="pfinder__title">사업 찾기</h1>
+    <div className="pfinder">
+      <header className="pfinder__head headband">
+        <h1 tabIndex={-1} className="pfinder__title">사업 찾기</h1>
         <p className="pfinder__lead">지원 사업의 안내와 공고문을 확인하고 온라인으로 신청할 수 있습니다.</p>
       </header>
 
@@ -70,10 +75,10 @@ export default function ProgramFinder({ onOpen }: { onOpen: (id: number) => void
             <p>잠시 후 다시 시도해 주세요.</p>
             <button
               type="button"
-              className="pfinder__retry"
+              className="btn"
               onClick={() => { setFailed(false); setAttempt((value) => value + 1) }}
             >
-              다시 시도
+              다시 시도하기
             </button>
           </div>
         ) : items === null ? (
@@ -114,6 +119,6 @@ export default function ProgramFinder({ onOpen }: { onOpen: (id: number) => void
           </>
         )}
       </div>
-    </main>
+    </div>
   )
 }

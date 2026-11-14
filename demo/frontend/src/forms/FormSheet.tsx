@@ -7,17 +7,17 @@ export function DateTriple({
   onChange,
   ariaPrefix,
   readOnly = false,
+  describedBy,
+  invalid = false,
 }: {
   value: YMD
   onChange: (v: YMD) => void
   ariaPrefix: string
   readOnly?: boolean
+  describedBy?: string
+  invalid?: boolean
 }) {
-  const set = (k: keyof YMD, max: number) => (raw: string) => {
-    const digits = raw.replace(/\D/g, '').slice(0, k === 'y' ? 4 : 2)
-    if (digits && Number(digits) > max) return
-    onChange({ ...value, [k]: digits })
-  }
+  const set = (key: keyof YMD) => (raw: string) => onChange({ ...value, [key]: raw })
   return (
     <span className="form-date">
       <input
@@ -25,8 +25,10 @@ export function DateTriple({
         inputMode="numeric"
         aria-label={`${ariaPrefix} 년`}
         readOnly={readOnly}
+        aria-describedby={describedBy}
+        aria-invalid={invalid}
         value={value.y}
-        onChange={(e) => set('y', 9999)(e.target.value)}
+        onChange={(e) => set('y')(e.target.value)}
       />
       <span className="form-date__unit">년</span>
       <input
@@ -34,8 +36,10 @@ export function DateTriple({
         inputMode="numeric"
         aria-label={`${ariaPrefix} 월`}
         readOnly={readOnly}
+        aria-describedby={describedBy}
+        aria-invalid={invalid}
         value={value.m}
-        onChange={(e) => set('m', 12)(e.target.value)}
+        onChange={(e) => set('m')(e.target.value)}
       />
       <span className="form-date__unit">월</span>
       <input
@@ -43,8 +47,10 @@ export function DateTriple({
         inputMode="numeric"
         aria-label={`${ariaPrefix} 일`}
         readOnly={readOnly}
+        aria-describedby={describedBy}
+        aria-invalid={invalid}
         value={value.d}
-        onChange={(e) => set('d', 31)(e.target.value)}
+        onChange={(e) => set('d')(e.target.value)}
       />
       <span className="form-date__unit">일</span>
     </span>

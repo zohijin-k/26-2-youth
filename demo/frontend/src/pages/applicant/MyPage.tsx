@@ -13,24 +13,29 @@
 import { useEffect, useState } from 'react'
 
 import { fetchStatus, type ApplicationStatus } from '../../api.ts'
-import FileLink from '../../components/FileLink.tsx'
-import StatusBadge from '../../components/StatusBadge.tsx'
+import FileLink from '../../components/ApplicantFileLink.tsx'
+import StatusBadge from '../../components/ApplicantStatusBadge.tsx'
 import { Skeleton, SkeletonLine } from '../../components/Skeleton.tsx'
 import useDelayedFlag from '../../hooks/useDelayedFlag.ts'
+import Icon from '../../components/Icon.tsx'
+import Notice from '../../components/Notice.tsx'
+import { friendlyError } from '../../lib/error-copy.ts'
+import { formatDateTime } from '../../lib/format.ts'
 import './my-page.css'
 
 export default function MyPage({ applicationId }: { applicationId: number }) {
   const [data, setData] = useState<ApplicationStatus | null>(null)
   const [error, setError] = useState('')
+  const [attempt, setAttempt] = useState(0)
   const showSkeleton = useDelayedFlag(!data && !error)
 
   useEffect(() => {
     fetchStatus(applicationId)
       .then(setData)
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
-  }, [applicationId])
+      .catch((e: unknown) => setError(friendlyError(e, '신청 현황을 불러오지 못했습니다. 다시 시도해 주세요.')))
+  }, [applicationId, attempt])
 
-  if (error) return <p className="flow-error">{error}</p>
+  if (error) return <Notice tone="danger" role="alert">{error}<button type="button" className="btn" onClick={() => { setError(''); setAttempt((value) => value + 1) }}>다시 시도하기</button></Notice>
   if (!data) return showSkeleton ? (
     <Skeleton className="mypage mypage__skeleton">
       <section className="mypage__head">
@@ -41,8 +46,8 @@ export default function MyPage({ applicationId }: { applicationId: number }) {
         {['접수', '서류검토', '자격심사', '선정심사', '결과발표'].map((label, index) => <li className="mpstep" key={label}><span className="mpstep__no">{index + 1}</span><span className="mpstep__label">{label}</span></li>)}
       </ol>
       <p className="mypage__notice"><SkeletonLine width="74%" /></p>
-      <section className="mypage__box"><h3>신청한 지원 항목</h3><table className="mypage__docs"><thead><tr><th>항목</th><th>영수증 금액</th><th>지급 예정액</th><th>계산 근거</th></tr></thead><tbody>{[0, 1].map((row) => <tr key={row}>{[0, 1, 2, 3].map((col) => <td key={col}><SkeletonLine width={col === 3 ? '88%' : '64%'} /></td>)}</tr>)}</tbody></table></section>
-      <section className="mypage__box"><h3>제출한 서류</h3><table className="mypage__docs"><thead><tr><th>파일</th><th>판독된 서류</th><th>판정</th><th>내용</th></tr></thead><tbody>{[0, 1, 2].map((row) => <tr key={row}>{[0, 1, 2, 3].map((col) => <td key={col}><SkeletonLine width={col === 3 ? '88%' : '64%'} /></td>)}</tr>)}</tbody></table></section>
+      <section className="mypage__box"><h3>신청한 지원 항목</h3><table className="mypage__docs"><thead><tr><th>항목</th><th>영수증 금액</th><th>지급 예정액</th><th>계산 근거</th></tr></thead><tbody>{[0, 1].map((row) => <tr key={row}>{[0, 1, 2, 3].map((col) => <td data-label="항목" key={col}><SkeletonLine width={col === 3 ? '88%' : '64%'} /></td>)}</tr>)}</tbody></table></section>
+      <section className="mypage__box"><h3>제출한 서류</h3><table className="mypage__docs"><thead><tr><th>파일</th><th>판독된 서류</th><th>판정</th><th>내용</th></tr></thead><tbody>{[0, 1, 2].map((row) => <tr key={row}>{[0, 1, 2, 3].map((col) => <td data-label="파일" key={col}><SkeletonLine width={col === 3 ? '88%' : '64%'} /></td>)}</tr>)}</tbody></table></section>
       <section className="mypage__box"><h3>동의 이력</h3><ul className="mypage__consents">{[0, 1, 2].map((row) => <li key={row}><SkeletonLine width="35%" /><SkeletonLine width="20%" /><SkeletonLine width="30%" /></li>)}</ul></section>
     </Skeleton>
   ) : null
@@ -54,17 +59,17 @@ export default function MyPage({ applicationId }: { applicationId: number }) {
           <h2>{data.program_name}</h2>
           <p>
             신청번호 <strong>{data.application_no}</strong>
-            {data.submitted_at && ` · 접수 ${data.submitted_at.replace('T', ' ')}`}
+            {data.submitted_at && ` · 접수 ${formatDateTime(data.submitted_at)}`}
           </p>
         </div>
-        {data.call_center && <p className="mypage__call">문의 {data.call_center}</p>}
+        {data.call_center && <p className="mypage__call">문의 <a href={`tel:${data.call_center.replace(/[^+0-9]/g, '')}`}>{data.call_center}</a></p>}
       </section>
 
       <ol className="mypage__progress">
         {data.progress.map((p, i) => (
-          <li key={p.label} className={`mpstep mpstep--${p.state}`}>
-            <span className="mpstep__no">{i + 1}</span>
-            <span className="mpstep__label">{p.label}</span>
+          <li key={p.label} className={`mpstep mpstep--${p.state}`} aria-current={p.state === 'current' ? 'step' : undefined}>
+            <span className="mpstep__no" aria-hidden="true">{p.state === 'done' ? <Icon name="check" size={16} /> : p.state === 'current' ? null : i + 1}</span>
+            <span className="mpstep__label">{p.label}</span><span className="mpstep__state">{p.state === 'current' ? '진행 중' : p.state === 'done' ? '완료' : '예정'}</span>
           </li>
         ))}
       </ol>
@@ -99,7 +104,7 @@ export default function MyPage({ applicationId }: { applicationId: number }) {
               {data.supplement.expired ? '기한 종료' : `D-${data.supplement.days_left}`}
             </span>
             <span>
-              보완 기한 {data.supplement.deadline.replace('T', ' ')}
+              보완 기한 {formatDateTime(data.supplement.deadline)}
               {!data.supplement.expired && ` (약 ${data.supplement.hours_left}시간 남음)`}
             </span>
           </div>
@@ -132,23 +137,23 @@ export default function MyPage({ applicationId }: { applicationId: number }) {
             <tbody>
               {data.subsidy.lines.map((line) => (
                 <tr key={`${line.item_type}-${line.index}`}>
-                  <td>{line.label}{line.linked_interview_index && <small className="subsidy__link-note">면접 {line.linked_interview_index}회차와 연결</small>}</td>
-                  <td>
+                  <td data-label="항목">{line.label}{line.linked_interview_index && <small className="subsidy__link-note">면접 {line.linked_interview_index}회차와 연결</small>}</td>
+                  <td data-label="영수증 금액">
                     {line.actual_cost
                       ? line.receipt_amount === null
                         ? '미입력'
                         : `${line.receipt_amount.toLocaleString('ko-KR')}원`
                       : '불요'}
                   </td>
-                  <td>
+                  <td data-label="지급 예정액">
                     <strong>{line.granted_amount.toLocaleString('ko-KR')}원</strong>
                   </td>
-                  <td>{line.calculation}</td>
+                  <td data-label="계산 근거">{line.calculation}</td>
                 </tr>
               ))}
               <tr>
                 <th colSpan={2}>합계</th>
-                <td colSpan={2}>
+                <td data-label="지급 예정액" colSpan={2}>
                   <strong>{data.subsidy.total_granted.toLocaleString('ko-KR')}원</strong>
                 </td>
               </tr>
@@ -173,14 +178,14 @@ export default function MyPage({ applicationId }: { applicationId: number }) {
               const status = d.status ?? 'NEEDS_REVIEW'
               return (
                 <tr key={d.document_id}>
-                  <td>
+                  <td data-label="파일">
                     <FileLink url={d.file_url} name={d.file_name} format={d.file_format} />
                   </td>
-                  <td>{d.detected_doc_type ?? '미판별'}</td>
-                  <td>
+                  <td data-label="판독된 서류">{d.detected_doc_type ?? '미판별'}</td>
+                  <td data-label="판정">
                     <StatusBadge status={status} audience="applicant" />
                   </td>
-                  <td className="mypage__extract">
+                  <td data-label="내용" className="mypage__extract">
                     {Object.entries(d.extracted)
                       .map(([k, v]) => `${k} ${v}`)
                       .join(' · ') || '-'}
@@ -201,7 +206,7 @@ export default function MyPage({ applicationId }: { applicationId: number }) {
               <span>{c.label}</span>
               <span>{c.agreed ? '동의함' : '동의하지 않음'}</span>
               <span className="mypage__time">
-                {c.agreed_at.replace('T', ' ')}
+                {formatDateTime(c.agreed_at)}
                 {c.signature_kind === 'electronic' && ' · 전자서명'}
                 {c.signature_kind === 'handwritten' && ' · 자필서명 스캔'}
               </span>

@@ -489,12 +489,34 @@ export function uploadDocument(
   slotKey: string,
   file: File,
   declaredIssueDate: string,
+  progress?: { onProgress: (sent: number, total: number) => void; onSent: () => void; signal: AbortSignal },
 ) {
   const body = new FormData()
   body.append('file', file)
   body.append('slot_key', slotKey)
   if (declaredIssueDate) body.append('declared_issue_date', declaredIssueDate)
-  return form<UploadedDocument>(`/api/applications/${id}/documents`, body)
+  const path = `/api/applications/${id}/documents`
+  if (!progress) return form<UploadedDocument>(path, body)
+  // Same multipart request and response; XHR exposes real transport progress.
+  return new Promise<UploadedDocument>((resolve, reject) => {
+    const request = new XMLHttpRequest()
+    const abort = () => request.abort()
+    const clean = () => progress.signal.removeEventListener('abort', abort)
+    request.open('POST', path)
+    request.responseType = 'json'
+    request.upload.onprogress = (event) => { if (event.lengthComputable) progress.onProgress(event.loaded, event.total) }
+    request.upload.onload = progress.onSent
+    request.onload = () => {
+      clean()
+      if (request.status >= 200 && request.status < 300) resolve(request.response as UploadedDocument)
+      else reject(new Error(typeof request.response?.detail === 'string' ? request.response.detail : `업로드 실패 (${request.status})`))
+    }
+    request.onerror = () => { clean(); reject(new TypeError('Network request failed')) }
+    request.onabort = () => { clean(); reject(new DOMException('Request aborted', 'AbortError')) }
+    progress.signal.addEventListener('abort', abort, { once: true })
+    if (progress.signal.aborted) { clean(); reject(new DOMException('Request aborted', 'AbortError')); return }
+    request.send(body)
+  })
 }
 
 /** 여러 서류를 한 파일로 올린 경우. 페이지별로 쪼개 슬롯에 자동 배정한다. */

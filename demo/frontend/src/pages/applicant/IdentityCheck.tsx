@@ -14,11 +14,18 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { fetchApplication, verifyIdentity, type Identity, type Blocker } from '../../api.ts'
-import FilePreview from '../../components/FilePreview.tsx'
+import FilePreview from '../../components/ApplicantFilePreview.tsx'
 import PdfPages from '../../components/PdfPages.tsx'
 import SignaturePad from '../../components/SignaturePad.tsx'
-import { DateTriple } from '../../forms/FormSheet.tsx'
-import { formatPhone, isValidPhone, phoneCursorPosition } from '../../forms/phone.ts'
+import ConfirmDialog from '../../components/ConfirmDialog.tsx'
+import Icon from '../../components/Icon.tsx'
+import Notice from '../../components/Notice.tsx'
+import Spinner from '../../components/Spinner.tsx'
+import useBeforeUnload from '../../hooks/useBeforeUnload.ts'
+import { friendlyError } from '../../lib/error-copy.ts'
+import { formatDate } from '../../lib/format.ts'
+import { validateIdentity, IDENTITY_FIELDS, type IdentityField } from '../../lib/identity-validation.ts'
+import { formatPhone, phoneCursorPosition } from '../../forms/phone.ts'
 import { EMPTY_YMD, ymdToISO, type YMD } from '../../forms/ymd.ts'
 import './identity-check.css'
 
@@ -76,8 +83,22 @@ export default function IdentityCheck({ appId, identity, onVerified, onNext }: P
   const [file, setFile] = useState<SignFile | null>(null)
   const [fileKey, setFileKey] = useState(0)
   const [viewing, setViewing] = useState(false)
+  const fileVersion = useRef(0)
+  useEffect(() => () => { fileVersion.current += 1 }, [])
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [touched, setTouched] = useState<Partial<Record<IdentityField, boolean>>>({})
+  const [attempted, setAttempted] = useState(false)
+  const [confirming, setConfirming] = useState<'identity' | 'clear' | null>(null)
+  const signatureValue = signMode === '직접 서명' ? drawn : (file?.dataUrl ?? '')
+  const errors = validateIdentity({ name, birth, phone, pledge, signature: signatureValue })
+  useBeforeUnload(!identity && (busy || !!name || !!phone || !!signatureValue || Object.values(birth).some(Boolean) || pledge))
+  const focusField = (field: IdentityField) => {
+    document.querySelector<HTMLElement>(`[data-identity-field="${field}"] input, [data-identity-field="${field}"] button`)?.focus()
+  }
+  const fieldError = (field: IdentityField) => (attempted || touched[field]) && errors[field]
+  const errorLine = (field: IdentityField) => fieldError(field) ? <p className="field__error" id={`identity-${field}-error`}><Icon name="alertCircle" size={18} />{errors[field]}</p> : null
+  const describedBy = (field: IdentityField) => `identity-${field}-hint${fieldError(field) ? ` identity-${field}-error` : ''}`
   const [eligibilityResult, setEligibilityResult] = useState<{
     appId: number; birth: string; blockers: Blocker[]
   } | null>(null)
@@ -137,7 +158,7 @@ export default function IdentityCheck({ appId, identity, onVerified, onNext }: P
             </div>
             <div>
               <dt>생년월일</dt>
-              <dd>{identity.birth}</dd>
+              <dd>{formatDate(identity.birth)}</dd>
             </div>
             <div>
               <dt>휴대폰</dt>
@@ -151,7 +172,7 @@ export default function IdentityCheck({ appId, identity, onVerified, onNext }: P
         </div>
         <div className="flow__actions">
           <button type="button" className="btn btn--primary" onClick={onNext}>
-            자가진단으로
+            서식 작성하기
           </button>
         </div>
       </section>
@@ -160,13 +181,10 @@ export default function IdentityCheck({ appId, identity, onVerified, onNext }: P
 
   const birthISO = ymdToISO(birth)
   const signature = signMode === '직접 서명' ? drawn : (file?.dataUrl ?? '')
-  const phoneDigits = phone.replace(/\D/g, '')
-  const phoneValid = isValidPhone(phone)
-  const phoneInvalid = phoneDigits.length === 11 && !phoneValid
-  const ready = Boolean(name.trim() && birthISO && phoneValid && pledge && signature)
 
   /** 서명 파일을 data URL로 읽는다. 형식·크기는 서버도 다시 확인한다. */
   const pickFile = (picked: File | undefined) => {
+    const version = ++fileVersion.current
     setError('')
     if (!picked) {
       setFile(null)
@@ -178,13 +196,16 @@ export default function IdentityCheck({ appId, identity, onVerified, onNext }: P
       setError('서명 파일은 PNG·JPG·PDF만 올릴 수 있습니다.')
       return
     }
+    if (!picked.size) { setError('파일 내용이 비어 있습니다. 서명 파일을 다시 선택해 주세요.'); return }
     if (picked.size > SIGN_FILE_MAX) {
       setFile(null)
       setError('서명 파일은 5MB 이하로 올려 주세요.')
       return
     }
     const reader = new FileReader()
+    reader.onerror = () => { if (version === fileVersion.current) setError('서명 파일을 읽지 못했습니다. 다시 선택해 주세요.') }
     reader.onload = () => {
+      if (version !== fileVersion.current) return
       // 형식을 비워 보낸 파일도 서버가 읽을 수 있게 data URL 머리를 판별한 형식으로 맞춘다.
       const raw = String(reader.result)
       const dataUrl = `data:${type};base64,${raw.slice(raw.indexOf(',') + 1)}`
@@ -194,11 +215,13 @@ export default function IdentityCheck({ appId, identity, onVerified, onNext }: P
   }
 
   const clearFile = () => {
+    fileVersion.current += 1
     setFile(null)
     setFileKey((k) => k + 1) // 같은 파일을 다시 고를 수 있게 입력칸을 새로 만든다
   }
 
   const submit = async () => {
+    setConfirming(null)
     setBusy(true)
     setError('')
     try {
@@ -212,38 +235,52 @@ export default function IdentityCheck({ appId, identity, onVerified, onNext }: P
       })
       onVerified(result, phone)
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(friendlyError(e, '본인인증을 완료하지 못했습니다. 다시 시도해 주세요.'))
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <section className="idcheck">
+    <section className="idcheck card" onBlurCapture={(event) => {
+      const field = (event.target as HTMLElement).closest<HTMLElement>('[data-identity-field]')?.dataset.identityField as IdentityField | undefined
+      if (field && !event.currentTarget.querySelector(`[data-identity-field="${field}"]`)?.contains(event.relatedTarget as Node)) setTouched((current) => ({ ...current, [field]: true }))
+    }}>
       <h2 className="idcheck__title">본인인증</h2>
-      <p className="idcheck__demo">
-        데모 화면입니다. 실제 서비스에서는 로그인할 때 휴대폰·간편인증으로 대신합니다.
-      </p>
+      <Notice tone="info" title="신청 전에 확인해 주세요.">
+        <p>본인인증 → 서식 작성 → 서류 업로드 → 확인 및 제출 순서로 진행합니다. 본인 명의의 서류와 서명을 준비해 주세요.</p>
+        <p>데모 화면입니다. 실제 서비스에서는 로그인할 때 휴대폰·간편인증으로 대신합니다.</p>
+      </Notice>
+      {attempted && Object.keys(errors).length > 0 && <Notice tone="danger" role="alert" title={`입력 내용을 ${Object.keys(errors).length}곳 확인해 주세요.`}>
+        <ul>{IDENTITY_FIELDS.filter((field) => errors[field]).map((field) => <li key={field}><a href={`#identity-${field}`} onClick={(event) => { event.preventDefault(); focusField(field) }}>{errors[field]}</a></li>)}</ul>
+      </Notice>}
 
       <div className="idcheck__form">
-        <label>
-          <span>성명</span>
+        <div className="field" data-identity-field="name" id="identity-name">
+          <label htmlFor="identity-name-input" className="field__label">성명 <span className="field__req">필수</span></label>
           <input
-            className="form-input"
+            className="input"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            aria-label="성명"
+            id="identity-name-input"
+            aria-required="true"
+            aria-invalid={!!fieldError('name')}
+            aria-describedby={describedBy('name')}
             autoComplete="name"
           />
-        </label>
-        <label>
-          <span>생년월일</span>
-          <DateTriple value={birth} onChange={setBirth} ariaPrefix="생년월일" />
-        </label>
-        <label>
-          <span>휴대폰</span>
+          <p className="field__hint" id="identity-name-hint">본인 서류에 기재된 성명을 입력해 주세요.</p>{errorLine('name')}
+        </div>
+        <fieldset className="field" data-identity-field="birth" id="identity-birth">
+          <legend className="field__label">생년월일 <span className="field__req">필수</span></legend>
+          <div className="date-triple--ui">
+            {(['y', 'm', 'd'] as const).map((part, index) => <span key={part} className="idcheck__date-part"><input className={`input date-triple__${part}`} inputMode="numeric" aria-label={`생년월일 ${['연도', '월', '일'][index]}`} aria-required="true" aria-invalid={!!fieldError('birth')} aria-describedby={describedBy('birth')} value={birth[part]} onChange={(event) => setBirth({ ...birth, [part]: event.target.value })} /><span>{['년', '월', '일'][index]}</span></span>)}
+          </div>
+          <p className="field__hint" id="identity-birth-hint">연도는 네 자리, 월과 일은 숫자로 입력해 주세요.</p>{errorLine('birth')}
+        </fieldset>
+        <div className="field" data-identity-field="phone" id="identity-phone">
+          <label htmlFor="identity-phone-input" className="field__label">휴대폰 <span className="field__req">필수</span></label>
           <input
-            className="form-input"
+            className="input"
             type="tel"
             inputMode="numeric"
             autoComplete="tel"
@@ -284,25 +321,24 @@ export default function IdentityCheck({ appId, identity, onVerified, onNext }: P
               pendingPhoneCaret.current = digitCount - 1
               setPhone(formatPhone(`${digits.slice(0, digitCount - 1)}${digits.slice(digitCount)}`))
             }}
-            aria-label="휴대폰 번호"
+            id="identity-phone-input"
+            aria-required="true"
+            aria-invalid={!!fieldError('phone')}
+            aria-describedby={describedBy('phone')}
           />
-          {phoneInvalid && (
-            <small className="idcheck__phone-error">
-              010으로 시작하는 휴대폰 번호를 입력해 주세요.
-            </small>
-          )}
-        </label>
+          <p className="field__hint" id="identity-phone-hint">010으로 시작하는 본인 휴대폰 번호를 입력해 주세요.</p>{errorLine('phone')}
+        </div>
       </div>
 
       <div className="idcheck__pledge">
         <h3>본인 확인 서약</h3>
         <p>{PLEDGE}</p>
-        <label className="idcheck__agree">
-          <input type="checkbox" checked={pledge} onChange={(e) => setPledge(e.target.checked)} />
-          위 내용을 확인했으며 동의합니다.
-        </label>
-        <div className="idcheck__sign">
-          <span className="idcheck__sign-label">서명</span>
+        <div data-identity-field="pledge" id="identity-pledge"><label className="idcheck__agree check">
+          <input type="checkbox" aria-required="true" aria-invalid={!!fieldError('pledge')} aria-describedby={describedBy('pledge')} checked={pledge} onChange={(e) => setPledge(e.target.checked)} />
+          위 내용을 확인했으며 동의합니다. (필수)
+        </label><p className="field__hint sr-only" id="identity-pledge-hint">본인 확인 서약에 동의해 주세요.</p>{errorLine('pledge')}</div>
+        <div className="idcheck__sign" data-identity-field="signature" id="identity-signature">
+          <span className="idcheck__sign-label">서명 <span className="field__req">필수</span></span>
           <div>
             <div className="idcheck__modes" role="radiogroup" aria-label="서명 방식">
               {SIGN_MODES.map((m) => (
@@ -320,6 +356,7 @@ export default function IdentityCheck({ appId, identity, onVerified, onNext }: P
                 </label>
               ))}
             </div>
+<p className="field__hint" id="identity-signature-hint">직접 그리거나 PNG·JPG·PDF 서명 파일(5MB 이하)을 선택해 주세요.</p>
             <div className="idcheck__signature-body" ref={signBody}>
               {signMode === '직접 서명' ? (
                 <SignaturePad key={drawn ? `signed-${signWidth}` : `empty-${signWidth}`} value={drawn} onChange={setDrawn} width={signWidth} height={210} />
@@ -358,27 +395,37 @@ export default function IdentityCheck({ appId, identity, onVerified, onNext }: P
             )}
             <div className="idcheck__signature-foot">
               {signMode === '서명 파일 올리기' && file && <span className="idcheck__filename">{file.name}</span>}
-              <button type="button" className="btn idcheck__clear" disabled={signMode === '직접 서명' ? !drawn : !file} onClick={() => signMode === '직접 서명' ? setDrawn('') : clearFile()}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v6m4-6v6" /></svg>
+              <button type="button" className="btn btn--quiet btn--small" disabled={signMode === '직접 서명' ? !drawn : !file} onClick={() => setConfirming('clear')}>
+                <Icon name="trash" />
                 지우기
               </button>
             </div>
+            {errorLine('signature')}
           </div>
         </div>
       </div>
 
-      {error && <p className="idcheck__error">{error}</p>}
+      {error && <Notice tone="danger" role="alert">{error}</Notice>}
 
       <div className="flow__actions">
         <button
           type="button"
           className="btn btn--primary"
-          disabled={!ready || busy}
-          onClick={submit}
+          disabled={busy}
+          onClick={() => {
+            setAttempted(true)
+            const first = IDENTITY_FIELDS.find((field) => errors[field])
+            if (first) focusField(first)
+            else setConfirming('identity')
+          }}
         >
-          {busy ? '확인 중…' : '본인인증'}
+          {busy && <Spinner />}{busy ? '본인인증 하는 중' : '본인인증 하기'}
         </button>
       </div>
+      {confirming === 'identity' && <ConfirmDialog title="입력하신 정보로 본인인증 하시겠습니까?" description="본인인증 후에는 성명과 생년월일을 수정할 수 없습니다." confirmLabel="본인인증 하기" onCancel={() => setConfirming(null)} onConfirm={() => void submit()}>
+        <dl className="fact-list"><div><dt>성명</dt><dd>{name}</dd></div><div><dt>생년월일</dt><dd>{formatDate(birthISO)}</dd></div><div><dt>휴대폰</dt><dd>{phone}</dd></div></dl>
+      </ConfirmDialog>}
+      {confirming === 'clear' && <ConfirmDialog title="작성하신 서명을 지우시겠습니까?" description="서명을 지우면 다시 그리거나 서명 파일을 선택해야 합니다." confirmLabel="서명 지우기" tone="danger" onCancel={() => setConfirming(null)} onConfirm={() => { if (signMode === '직접 서명') setDrawn(''); else clearFile(); setConfirming(null) }} />}
     </section>
   )
 }
