@@ -789,7 +789,8 @@ function query(params: Record<string, unknown>): string {
  * 켜지는 조건은 둘이다.
  *
  *   - `?mock=1` — 강제로 켠다. 백엔드가 떠 있어도 목업을 본다.
- *   - 자동 — 담당자 목록 API가 실패했거나 **접수 건이 0건**일 때. 빈 표를 띄우고
+ *   - 자동 — 신청 목록 API가 실패했거나 **접수 건이 0건**일 때. (사업 목록은 항상 백엔드에서
+ *     읽으므로, 백엔드가 꺼져 있으면 신청 목록까지 들어갈 수 없다.) 빈 표를 띄우고
  *     "데이터가 없습니다"로 시연이 끊기는 것보다, 예시로 채운 화면을 보여주고
  *     목업임을 상단에 밝히는 편이 낫다.
  *
@@ -889,3 +890,153 @@ export const postBulkDecision = (body: {
     method: 'POST', body: JSON.stringify(body),
   })
 }
+
+/* ================================================================== 사업 저장소 (postings)
+ *
+ * 담당자가 올린 사업 한 건이 posting이다. 화면에서는 늘 "사업"이라고 부른다.
+ * 공고문·서식 PDF는 인라인으로만 열린다 — 뷰어가 주소를 직접 읽는다.
+ */
+
+/** 서버가 오늘 날짜와 상태로 정해 주는 단계. 화면은 이 값으로만 갈린다. */
+export type PostingPhase = 'draft' | 'upcoming' | 'open' | 'closed'
+
+export type PostingStatus = 'draft' | 'published' | 'closed'
+
+export interface PublicPosting {
+  id: number
+  title: string
+  /** YYYY-MM-DD */
+  apply_start: string
+  /** YYYY-MM-DD */
+  apply_end: string
+  phase: PostingPhase
+  /** 작성 중 / 접수 예정 / 접수 중 / 마감 */
+  phase_label: string
+  /** 규칙이 연결된 기본 사업인지. */
+  builtin: boolean
+  can_apply: boolean
+  apply_path: string | null
+  has_notice: boolean
+}
+
+export interface PublicPostingDetail extends PublicPosting {
+  guidance_text: string
+  /** 공고문을 인라인으로 여는 주소. 파일이 없으면 null. 담당자 응답에서는 담당자용 주소다. */
+  notice_url: string | null
+}
+
+export interface OfficerPosting extends PublicPostingDetail {
+  status: PostingStatus
+  has_forms: boolean
+  /** 서식 PDF를 인라인으로 여는 주소. 파일이 없으면 null. */
+  forms_url: string | null
+  notice_file_name: string | null
+  forms_file_name: string | null
+  application_count: number
+  /** 담당자 판단이 없고 AI 판정이 적합이 아닌 건. 보류한 건은 판단한 것으로 센다. */
+  needs_check_count: number
+  /** 사업명을 고치거나 지울 수 있는지. 기본 사업은 false다. */
+  editable: boolean
+  created_at: string | null
+  updated_at: string | null
+  published_at: string | null
+}
+
+export interface NewPostingFields {
+  title: string
+  /** YYYY-MM-DD */
+  apply_start: string
+  /** YYYY-MM-DD */
+  apply_end: string
+  notice_pdf: File
+  forms_pdf: File
+}
+
+export type PostingPatch = Partial<Pick<OfficerPosting, 'title' | 'apply_start' | 'apply_end' | 'guidance_text'>>
+
+/** `json<T>`가 던진 오류가 404였는지. 없는 사업과 일시 오류를 화면에서 가른다. */
+export const isNotFound = (error: unknown) => error instanceof Error && /실패 \(404\)/.test(error.message)
+
+/**
+ * 사업을 고치는 호출. 실패하면 서버가 준 한국어 문장을 그대로 던진다 — 어느 칸이
+ * 왜 틀렸는지가 그 문장에 들어 있다. 204 응답에는 본문이 없다.
+ */
+async function writePosting<T>(path: string, init: RequestInit): Promise<T> {
+  let res: Response
+  try {
+    res = await fetch(path, init)
+  } catch {
+    throw new Error('서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.')
+  }
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { detail?: unknown } | null
+    throw new Error(typeof body?.detail === 'string' ? body.detail : `요청을 처리하지 못했습니다 (${res.status})`)
+  }
+  return (res.status === 204 ? undefined : await res.json()) as T
+}
+
+/** 기본 사업의 건수를 목업 목록에서 셌는지. 사업 목록의 목업 안내에 쓴다. */
+let mockCountsUsed = false
+export const isOfficerMockCounted = () => mockCountsUsed
+
+/**
+ * 신청 목록이 목업으로 채워지는 경우에는 기본 사업의 건수도 목업 목록에서 센다.
+ * 카드의 숫자와 그 카드를 눌러 들어간 목록의 숫자가 같아야 한다. 신청 목록은
+ * `?mock=1`이거나, `?mock=0`이 아니면서 실제 접수 건이 0건일 때 목업으로 바뀐다.
+ */
+function withMockCounts(posting: OfficerPosting): OfficerPosting {
+  if (!posting.builtin) return posting
+  const mode = mockMode()
+  const mocked = !mode.blocked && (mode.forced || posting.application_count === 0)
+  mockCountsUsed = mocked
+  if (!mocked) return posting
+  const total = (filter: Partial<OfficerListQuery>) => mockOfficerList({
+    role: 'province', program: YOUTH_PROGRAM, sort: 'submitted', page: 1, page_size: 1, ...filter,
+  }).total
+  return {
+    ...posting,
+    application_count: total({}),
+    needs_check_count: total({ status: 'pending' }) - total({ status: 'pending', ai_status: 'PASS' }),
+  }
+}
+
+/** 신청자 화면: 게시됐거나 마감된 사업. 접수 중 → 접수 예정 → 마감 순으로 온다. */
+export const fetchPostings = async (): Promise<PublicPosting[]> =>
+  (await json<{ items: PublicPosting[] }>('/api/postings')).items
+
+export const fetchPosting = (id: number) => json<PublicPostingDetail>(`/api/postings/${id}`)
+
+/** 담당자 화면: 작성 중인 사업까지. 작성 중이 맨 앞에 온다. */
+export const fetchOfficerPostings = async (): Promise<OfficerPosting[]> =>
+  (await json<{ items: OfficerPosting[] }>('/api/officer/postings')).items.map(withMockCounts)
+
+export const fetchOfficerPosting = async (id: number): Promise<OfficerPosting> =>
+  withMockCounts(await json<OfficerPosting>(`/api/officer/postings/${id}`))
+
+/** 작성 중 상태로 만든다. multipart라 Content-Type은 브라우저가 붙인다. */
+export function createPosting(fields: NewPostingFields) {
+  const body = new FormData()
+  body.append('title', fields.title)
+  body.append('apply_start', fields.apply_start)
+  body.append('apply_end', fields.apply_end)
+  body.append('notice_pdf', fields.notice_pdf)
+  body.append('forms_pdf', fields.forms_pdf)
+  return writePosting<OfficerPosting>('/api/officer/postings', { method: 'POST', body })
+}
+
+export const updatePosting = (id: number, patch: PostingPatch) =>
+  writePosting<OfficerPosting>(`/api/officer/postings/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  })
+
+export const publishPosting = (id: number) =>
+  writePosting<OfficerPosting>(`/api/officer/postings/${id}/publish`, { method: 'POST' })
+
+export const closePosting = (id: number) =>
+  writePosting<OfficerPosting>(`/api/officer/postings/${id}/close`, { method: 'POST' })
+
+/** 작성 중인 사업만 지울 수 있다. 올린 PDF도 함께 지워진다. */
+export const deletePosting = (id: number) =>
+  writePosting<void>(`/api/officer/postings/${id}`, { method: 'DELETE' })

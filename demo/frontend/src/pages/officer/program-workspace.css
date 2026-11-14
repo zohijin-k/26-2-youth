@@ -1,0 +1,233 @@
+/* 사업 작업 공간 (담당자). 기본 사업은 위에 한 줄만 얹고 접수 목록을 그대로 둔다. */
+
+.pwork--page {
+  max-width: 1040px;
+  padding: 12px 20px 40px;
+}
+
+/* 접수 목록(.officer)과 같은 폭·여백으로 윗줄을 맞춘다. */
+.pwork--console {
+  min-width: 1280px;
+}
+
+.pwork__bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 28px;
+  font-size: 13px;
+}
+
+.pwork--console .pwork__bar {
+  padding: 10px 20px;
+  border-bottom: 1px solid #ddd;
+  background: #fafafa;
+}
+
+.pwork__back {
+  padding: 3px 10px;
+  border: 1px solid #aaa;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.pwork__back::before {
+  margin-right: 4px;
+  content: '‹';
+}
+
+.pwork__bar-name {
+  font-size: 14px;
+}
+
+.pwork__bar-period {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 상태는 글자와 색을 함께 쓴다. */
+.pwork__chip {
+  padding: 0 8px;
+  border: 1px solid currentColor;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.pwork__chip--draft {
+  background: #fffbe8;
+  color: #6b5200;
+}
+
+.pwork__chip--upcoming {
+  background: #eef3fb;
+  color: #1c3c6e;
+}
+
+.pwork__chip--open {
+  background: #f1faf4;
+  color: #177245;
+}
+
+.pwork__chip--closed {
+  background: #f2f2f2;
+  color: #555;
+}
+
+.pwork__head {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  min-height: 84px;
+  margin: 12px 0;
+}
+
+.pwork__title {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.pwork__period {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pwork__state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border: 1px solid #c6d9f5;
+  background: #f1f6ff;
+  font-size: 13px;
+}
+
+.pwork__state-text {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.pwork__actions {
+  display: flex;
+  flex: none;
+  gap: 8px;
+}
+
+.pwork__columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.pwork__facts {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 6px 8px;
+  margin: 0;
+}
+
+.pwork__facts dt {
+  color: var(--muted);
+}
+
+.pwork__facts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.pwork__files {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pwork__files li {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px dotted #ddd;
+}
+
+.pwork__files li:last-child {
+  border-bottom: none;
+}
+
+.pwork__file-kind {
+  color: var(--muted);
+}
+
+.pwork__file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pwork__empty {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  margin: 0;
+  padding: 20px 0;
+  color: var(--muted);
+  text-align: center;
+}
+
+.pwork__empty strong {
+  color: var(--text);
+}
+
+.pwork__notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px solid #ddd;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.pwork__notice strong {
+  color: var(--text);
+}
+
+.pwork__confirm-name {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.pwork__confirm-text {
+  margin: 0;
+}
+
+.pwork__confirm-error {
+  margin: 10px 0 0;
+  padding: 6px 10px;
+  border: 1px solid #c00;
+  background: #fff4f4;
+  color: #900;
+}
+
+.pwork__skeleton-title {
+  height: 20px;
+  margin: 4px 0;
+}
+
+.pwork__skeleton-block {
+  min-height: 220px;
+  border-radius: 0;
+}

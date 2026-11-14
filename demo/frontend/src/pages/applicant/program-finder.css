@@ -1,0 +1,243 @@
+/* 사업 찾기. 신청자 껍데기(흰 머리글, --workspace-* 색) 위에 놓이는 첫 화면이다. */
+
+.pfinder {
+  width: 100%;
+  max-width: 972px;
+  margin: 0 auto;
+  padding: 36px 16px 96px;
+  color: var(--workspace-ink);
+}
+
+.pfinder__head {
+  margin-bottom: 24px;
+}
+
+.pfinder__title {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.3;
+  letter-spacing: -0.03em;
+}
+
+.pfinder__lead {
+  margin: 6px 0 0;
+  color: var(--workspace-muted);
+  font-size: 14.5px;
+  word-break: keep-all;
+}
+
+/* 목록이 도착하기 전에도 같은 자리를 잡아 둔다. */
+.pfinder__body {
+  min-height: 348px;
+}
+
+.pfinder__list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pfinder__card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 24px;
+  min-height: 108px;
+  padding: 18px 24px;
+  border: 1px solid var(--workspace-border);
+  border-radius: var(--radius-md);
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color var(--ease), box-shadow var(--ease);
+}
+
+.pfinder__card:hover {
+  border-color: #adbedf;
+  box-shadow: 0 2px 10px rgb(35 48 71 / 7%);
+}
+
+.pfinder__card:focus-visible {
+  outline: 2px solid var(--workspace-accent);
+  outline-offset: 2px;
+}
+
+.pfinder__card--loading {
+  pointer-events: none;
+}
+
+.pfinder__card-main {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* 상태는 글자와 색을 함께 쓴다. */
+.pfinder__status {
+  padding: 2px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.pfinder__status--open {
+  border-color: color-mix(in srgb, var(--success) 30%, transparent);
+  background: var(--success-tint);
+  color: #0f6a3d;
+}
+
+.pfinder__status--upcoming {
+  border-color: #c9d8f7;
+  background: var(--workspace-tint);
+  color: #2a52b8;
+}
+
+.pfinder__status--closed {
+  border-color: #dde2e9;
+  background: #eef1f5;
+  color: #566273;
+}
+
+.pfinder__name {
+  max-width: 100%;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.pfinder__period {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  color: var(--workspace-muted);
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pfinder__period-label {
+  color: #7d8a9c;
+}
+
+.pfinder__go {
+  color: var(--workspace-accent);
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pfinder__go::after {
+  margin-left: 6px;
+  content: '›';
+}
+
+.pfinder__card:hover .pfinder__go {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* 마감된 사업은 한 단계 물러나 보이게 한다. */
+.pfinder__closed {
+  margin-top: 36px;
+}
+
+.pfinder__section-title {
+  margin: 0 0 10px;
+  color: var(--workspace-muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.pfinder__card--closed {
+  min-height: 92px;
+  padding-top: 14px;
+  padding-bottom: 14px;
+  background: #fafbfc;
+}
+
+.pfinder__card--closed .pfinder__name {
+  color: #4f5b6c;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.pfinder__card--closed .pfinder__go {
+  color: #566273;
+}
+
+.pfinder__skeleton-name {
+  height: 18px;
+  margin: 4px 0;
+}
+
+/* 빈 목록·오류 안내 */
+.pfinder__notice {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 44px 24px;
+  border: 1px dashed #cdd6e2;
+  border-radius: var(--radius-md);
+  background: #fff;
+  text-align: center;
+}
+
+.pfinder__notice strong {
+  font-size: 16px;
+}
+
+.pfinder__notice p {
+  margin: 0;
+  color: var(--workspace-muted);
+  font-size: 13.5px;
+}
+
+.pfinder__retry {
+  min-height: 40px;
+  margin-top: 12px;
+  padding: 0 20px;
+  border: 1px solid #c3cad5;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: #2b3442;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pfinder__retry:hover {
+  border-color: var(--workspace-accent);
+  color: var(--workspace-accent);
+}
+
+.pfinder__retry:focus-visible {
+  outline: 2px solid var(--workspace-accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 560px) {
+  .pfinder {
+    padding: 24px 16px 72px;
+  }
+
+  .pfinder__title {
+    font-size: 22px;
+  }
+
+  .pfinder__card {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 16px 18px;
+  }
+
+  .pfinder__name {
+    font-size: 17px;
+  }
+}

@@ -1,0 +1,6 @@
+{"file": ".trellis/tasks/11-14-program-service-renewal/prd.md", "reason": "Parent requirements and fixed constraints"}
+{"file": ".trellis/tasks/11-14-renewal-step1-program-store/design.md", "reason": "API and route contract"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Backend review checklist"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Frontend review checklist"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "Routing and state rules"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Backend and frontend contract check"}

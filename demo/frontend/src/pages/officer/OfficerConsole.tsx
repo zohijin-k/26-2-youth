@@ -5,6 +5,9 @@
  * 읍·면·동 → 시군 → 도·청년허브센터로 올라가는데, 같은 화면에서 보이는 범위와
  * 가능한 액션만 달라지는 것을 보여주면 충분하다. 데모는 로그인을 하지 않는다 —
  * 인증이 아니라 절차 구조를 시연하는 것이 목적이다.
+ *
+ * 주소는 사업 작업 공간(`/officer/programs/<id>`)을 바닥으로 삼는다. 역할·심사 건·
+ * 심사 기준 경로가 그 뒤에 붙는다 (`<바닥>/city/review/9`).
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -34,7 +37,7 @@ const QUERY_KEYS = [
   'region', 'town', 'status', 'ai_status', 'submitted_from', 'submitted_to',
 ] as const
 
-function savedOfficerPage(): {
+function savedOfficerPage(basePath: string): {
   query: OfficerListQuery
   open: { id: number; slot: string | null } | null
   showCriteria: boolean
@@ -44,8 +47,10 @@ function savedOfficerPage(): {
   if (window.location.pathname.startsWith('/apply')
     || /(?:double_savings|doubling_savings|double-savings)/.test(window.location.pathname)
     || (!window.location.pathname.startsWith('/officer') && params.get('mode') === 'applicant')) return null
-  const detailRoute = /^\/officer(?:\/([^/]+))?(?:\/review\/([1-9]\d*))?\/?$/.exec(window.location.pathname)
-  const criteriaRoute = /^\/officer\/criteria\/([^/]+)\/?$/.exec(window.location.pathname)
+  // 바닥 경로 뒤에 붙은 부분만 읽는다. 다른 사업의 주소면 아무것도 복원하지 않는다.
+  const rest = window.location.pathname.startsWith(basePath) ? window.location.pathname.slice(basePath.length) : null
+  const detailRoute = rest === null ? null : /^(?:\/([^/]+))?(?:\/review\/([1-9]\d*))?\/?$/.exec(rest)
+  const criteriaRoute = rest === null ? null : /^\/criteria\/([^/]+)\/?$/.exec(rest)
   const legacy = [...QUERY_KEYS.map((key) => `o_${key}`), 'o_role', 'o_page', 'o_page_size', 'o_open', 'o_slot', 'o_criteria', 'o_criteria_program'].some((key) => params.has(key))
   if (!detailRoute && !criteriaRoute && !legacy) return null
   const query: OfficerListQuery = {
@@ -68,8 +73,8 @@ function savedOfficerPage(): {
   }
 }
 
-export default function OfficerConsole() {
-  const [initialPage] = useState(savedOfficerPage)
+export default function OfficerConsole({ basePath }: { basePath: string }) {
+  const [initialPage] = useState(() => savedOfficerPage(basePath))
   const initialUrlWrite = useRef(true)
   const [roles, setRoles] = useState<OfficerRole[]>([])
   const [query, setQuery] = useState<OfficerListQuery>(initialPage?.query ?? DEFAULT_QUERY)
@@ -107,9 +112,9 @@ export default function OfficerConsole() {
 
   useEffect(() => {
     const path = showCriteria
-      ? `/officer/criteria/${YOUTH_PROGRAM}`
-      : open ? `/officer/${encodeURIComponent(query.role)}/review/${open.id}`
-        : query.role === DEFAULT_QUERY.role ? '/officer' : `/officer/${encodeURIComponent(query.role)}`
+      ? `${basePath}/criteria/${YOUTH_PROGRAM}`
+      : open ? `${basePath}/${encodeURIComponent(query.role)}/review/${open.id}`
+        : query.role === DEFAULT_QUERY.role ? basePath : `${basePath}/${encodeURIComponent(query.role)}`
     const params: Record<string, string | null> = {
       page: query.page === DEFAULT_QUERY.page ? null : String(query.page ?? 1),
       page_size: query.page_size === DEFAULT_QUERY.page_size ? null : String(query.page_size ?? 20),
@@ -118,7 +123,7 @@ export default function OfficerConsole() {
     for (const key of QUERY_KEYS) params[key === 'ai_status' ? 'ai' : key] = query[key] ?? null
     routeUrl(path, params, initialUrlWrite.current)
     initialUrlWrite.current = false
-  }, [query, open, showCriteria])
+  }, [query, open, showCriteria, basePath])
 
   const patch = (next: Partial<OfficerListQuery>) => {
     setQuery((prev) => ({ ...prev, ...next, program: YOUTH_PROGRAM, sort: 'submitted' }))

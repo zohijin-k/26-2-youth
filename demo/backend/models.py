@@ -172,6 +172,45 @@ class Review(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
 
 
+class ProgramPosting(SQLModel, table=True):
+    """담당자가 올린 사업 한 건 (사업 저장소).
+
+    `rules/programs.py`의 "program"은 코드에 박힌 규칙 세트이고, 이쪽은 담당자가
+    게시하는 단위다. 둘을 잇는 것은 `rule_code` 하나뿐이다 — 규칙 세트가 있는
+    기본 사업(취업지원패키지)만 값을 갖고, 그 값이 `Application.program_code`와
+    같다. 담당자가 새로 올린 사업은 `rule_code`가 비어 있다.
+    """
+
+    #: 지운 작성 중 사업의 번호를 다시 쓰지 않는다. 번호가 저장 폴더 이름이라, 다시 쓰면
+    #: 늦게 끝난 삭제가 새 사업의 파일을 지우거나 옛 주소가 다른 사업을 열 수 있다.
+    __table_args__ = {"sqlite_autoincrement": True}
+
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    #: 앞뒤 공백을 뗀 1~100자.
+    title: str
+    apply_start: date
+    apply_end: date
+    #: draft | published | closed
+    status: str = Field(default="draft", index=True)
+    #: 기본 사업에서만 채운다. `rules/programs.py`의 사업 코드.
+    rule_code: Optional[str] = Field(default=None, index=True, unique=True)
+    #: 올린 파일의 원래 이름. 화면 표시용이다.
+    notice_file_name: Optional[str] = None
+    forms_file_name: Optional[str] = None
+    #: 저장소 루트 기준 상대 경로 (`postings/<id>/notice.pdf`, `postings/<id>/forms.pdf`).
+    notice_path: Optional[str] = None
+    forms_path: Optional[str] = None
+    #: 신청자 안내 문구. 3단계에서 채운다.
+    guidance_text: str = ""
+    #: 서식 템플릿. 3단계에서 채운다.
+    template_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+    #: 처음 게시한 시각. 마감했다가 다시 게시해도 바뀌지 않는다.
+    published_at: Optional[datetime] = None
+
+
 #: 병합 PDF 페이지 중 어느 슬롯에도 배정되지 않은 것.
 UNASSIGNED_SLOT = "unassigned"
 
@@ -181,6 +220,14 @@ STATUS_SUBMITTED = "submitted"
 STATUS_REVIEWING = "reviewing"
 STATUS_DECIDED = "decided"
 
+#: 사업(`ProgramPosting`) 상태. 작성 중 → 게시 → 마감, 마감한 사업은 다시 게시할 수 있다.
+POSTING_DRAFT = "draft"
+POSTING_PUBLISHED = "published"
+POSTING_CLOSED = "closed"
+
+#: 사업 저장소에 미리 올려 두는 기본 사업의 규칙 코드. 두배적금은 올리지 않는다.
+BUILTIN_POSTING_CODES = ("job_package",)
+
 
 def init_db() -> None:
     SQLModel.metadata.create_all(engine)
@@ -188,6 +235,58 @@ def init_db() -> None:
     from .rules.criteria import ensure_defaults
 
     ensure_defaults()
+    _ensure_builtin_postings()
+
+
+def posting_today() -> date:
+    """사업 저장소가 보는 오늘 날짜.
+
+    기본 사업을 올릴 때와 접수 단계를 계산할 때 같은 날짜를 써야 한다. 두 곳이 다른
+    날짜를 보면 방금 올린 사업이 올리자마자 마감으로 보일 수 있다. 시험은 이 함수
+    하나만 바꿔 끼운다.
+    """
+    return date.today()
+
+
+def _ensure_builtin_postings() -> None:
+    """기본 사업을 사업 저장소에 한 번만 올린다.
+
+    같은 `rule_code`의 행이 이미 있으면 아무것도 하지 않는다. 담당자가 기간이나 안내
+    문구를 고치거나 마감한 뒤 서버를 다시 띄워도 그 행을 덮어쓰지 않는다.
+    """
+    from sqlmodel import select
+
+    from .rules.programs import get_program
+
+    today = posting_today()
+    with get_session() as session:
+        for code in BUILTIN_POSTING_CODES:
+            existing = session.exec(
+                select(ProgramPosting).where(ProgramPosting.rule_code == code)
+            ).first()
+            if existing is not None:
+                continue
+            program = get_program(code)
+            start, end = program.apply_period
+            # 실제 접수 기간이 이미 지났으면 데모에서 신청 흐름을 계속 쓸 수 있게
+            # 종료일을 올리는 해의 12월 31일로 늘려 둔다. 규칙 세트의 기준일·심사
+            # 기준은 그대로이고, 이 기간은 담당자가 사업 화면에서 바꿀 수 있다.
+            if end < today:
+                end = date(today.year, 12, 31)
+            now = datetime.now()
+            session.add(
+                ProgramPosting(
+                    title=program.name,
+                    apply_start=start,
+                    apply_end=end,
+                    status=POSTING_PUBLISHED,
+                    rule_code=code,
+                    created_at=now,
+                    updated_at=now,
+                    published_at=now,
+                )
+            )
+        session.commit()
 
 
 def _add_missing_columns() -> None:
