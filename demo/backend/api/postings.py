@@ -39,7 +39,7 @@ from ..models import (
 )
 from .common import STORAGE
 from .files import DISPOSITION, INLINE_MEDIA_TYPES
-from .officer import _load_entries
+from .officer import QUEUE_NEEDS_CHECK, _load_entries, queue_of
 
 public_router = APIRouter(prefix="/api/postings", tags=["postings"])
 officer_router = APIRouter(prefix="/api/officer/postings", tags=["officer postings"])
@@ -205,6 +205,7 @@ def _counts(postings: list[ProgramPosting]) -> dict[str, tuple[int, int]]:
 
     제출된 신청 건만 센다(`_load_entries`가 임시저장을 뺀다). 확인 필요는 담당자
     판단이 아직 없고 AI 판정이 적합이 아닌 건 — 확인필요·부적합·미심사 — 이다.
+    신청 목록의 확인 필요 탭과 같은 함수(`officer.queue_of`)로 가른다.
     규칙 코드가 없는 사업은 신청 화면이 아직 없어 여기에 잡히지 않고 0으로 나간다.
     """
     codes = {p.rule_code for p in postings if p.rule_code}
@@ -216,7 +217,7 @@ def _counts(postings: list[ProgramPosting]) -> dict[str, tuple[int, int]]:
         if row is None:
             continue
         row[0] += 1
-        if not entry.decision and entry.ai_status != "PASS":
+        if queue_of(entry) == QUEUE_NEEDS_CHECK:
             row[1] += 1
     return {code: (total, needs) for code, (total, needs) in tally.items()}
 
