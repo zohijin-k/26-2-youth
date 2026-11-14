@@ -211,6 +211,19 @@ class ProgramPosting(SQLModel, table=True):
     published_at: Optional[datetime] = None
 
 
+class ProgramForm(SQLModel, table=True):
+    """Uploaded form and officer-reviewed layout; additive for existing databases."""
+    __table_args__ = {"sqlite_autoincrement": True}
+    id: Optional[int] = Field(default=None, primary_key=True)
+    posting_id: int = Field(index=True, foreign_key="programposting.id")
+    file_name: str
+    file_path: str
+    layout_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    confirmed_hash: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+
 #: 병합 PDF 페이지 중 어느 슬롯에도 배정되지 않은 것.
 UNASSIGNED_SLOT = "unassigned"
 

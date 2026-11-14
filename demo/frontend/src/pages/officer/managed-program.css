@@ -1,0 +1,30 @@
+/* Scoped to the posting workflow; existing review detail rules remain untouched. */
+.managed-program { max-width: 980px; padding: 12px 20px 40px; }
+.managed-program .pnew__form { max-width: 900px; }
+.managed-program__steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 900px; margin: 16px 0; padding: 0; list-style: none; border: 1px solid #c8c8c8; background: #f6f6f6; }
+.managed-program__steps li { display: flex; align-items: stretch; min-width: 0; border-right: 1px solid #d5d5d5; font-size: 13px; }
+.managed-program__steps li:last-child { border-right: 0; }
+.managed-program__steps span, .managed-program__steps button { display: block; width: 100%; padding: 10px 8px; text-align: center; }
+.managed-program__steps button { border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.managed-program__steps [aria-current="step"] { background: #eaf2ff; color: #154c99; font-weight: 700; }
+.managed-program__steps [aria-disabled="true"] { color: #666; }
+.managed-program__slots { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin: 0; padding: 12px; border: 1px solid #ddd; }
+.managed-program__slots legend { padding: 0 5px; font-size: 13px; font-weight: 700; }
+.managed-program__slots label { display: flex; align-items: start; gap: 6px; font-size: 13px; }
+.managed-program__slots input { flex: none; margin: 3px 0 0; }
+.managed-program__slots .pnew__note { grid-column: 1 / -1; }
+.managed-program__files { margin: 4px 0 0; padding-left: 20px; color: #555; font-size: 12.5px; overflow-wrap: anywhere; }
+.managed-program__saved { padding: 8px 12px; border: 1px solid #a3c8ae; background: #f1faf4; font-size: 13px; }
+.managed-program__notice { max-width: 900px; padding: 12px; border: 1px solid #c6d9f5; background: #f1f6ff; font-size: 13px; }
+.managed-program__existing { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #eee; }
+.managed-program__existing span { flex: 1; overflow-wrap: anywhere; }
+.managed-program textarea { resize: vertical; min-height: 110px; }
+.managed-program .pnew__actions { flex-wrap: wrap; }
+@media (max-width: 680px) {
+  .managed-program { padding: 12px 12px 28px; }
+  .managed-program__steps { grid-template-columns: 1fr 1fr; }
+  .managed-program__steps li:nth-child(2) { border-right: 0; }
+  .managed-program__steps li:nth-child(-n + 2) { border-bottom: 1px solid #d5d5d5; }
+  .managed-program__slots { grid-template-columns: 1fr; }
+  .managed-program .pnew__dates { grid-template-columns: 1fr; }
+}

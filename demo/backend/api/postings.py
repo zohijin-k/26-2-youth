@@ -294,6 +294,19 @@ def _read_pdf(upload: UploadFile | None, kind: str) -> tuple[bytes, str]:
         raise HTTPException(422, f"{label}는 {MAX_PDF_LABEL} 이하만 올릴 수 있습니다.")
     if not data.startswith(PDF_MAGIC):
         raise HTTPException(422, f"{label}는 PDF 파일만 올릴 수 있습니다.")
+    import pymupdf
+    try:
+        with pymupdf.open(stream=data, filetype="pdf") as pdf:
+            if pdf.needs_pass:
+                raise HTTPException(422, f"{label}의 암호를 해제한 뒤 올려 주세요.")
+            if not pdf.page_count:
+                raise HTTPException(422, f"{label}에 쪽이 없습니다.")
+            if kind == "forms" and pdf.page_count > 20:
+                raise HTTPException(422, "서식 PDF는 파일당 20쪽 이하로 올려 주세요.")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(422, f"{label}를 읽을 수 없습니다. 정상적인 PDF를 올려 주세요.") from None
     name = Path(upload.filename.replace("\\", "/")).name.strip()[:200]
     return data, name or f"{kind}.pdf"
 
@@ -376,6 +389,10 @@ def create_posting(
     apply_end: str | None = Form(None),
     notice_pdf: UploadFile | None = File(None),
     forms_pdf: UploadFile | None = File(None),
+    forms_pdfs: list[UploadFile] = File(default=[]),
+    workflow_version: int = Form(0),
+    required_docs: str = Form("[]"),
+    guidance_text: str = Form(""),
 ) -> dict[str, Any]:
     """새 사업을 작성 중 상태로 만든다.
 
@@ -389,6 +406,16 @@ def create_posting(
     _check_period(start, end)
     notice_bytes, notice_name = _read_pdf(notice_pdf, "notice")
     forms_bytes, forms_name = _read_pdf(forms_pdf, "forms")
+
+    if workflow_version not in (0, 1):
+        raise HTTPException(422, "사업 작성 방식을 확인해 주세요.")
+    from . import posting_workspace
+    slots = posting_workspace.validate_slots(required_docs)
+    extras = [_read_pdf(upload, "forms") for upload in forms_pdfs]
+    if len(extras) > 9:
+        raise HTTPException(422, "서식 PDF는 10개 이하로 올려 주세요.")
+    if len(guidance_text) > GUIDANCE_MAX:
+        raise HTTPException(422, "안내 문구는 20,000자 이하로 입력해 주세요.")
 
     posting = ProgramPosting(
         title=clean_title,
@@ -411,6 +438,8 @@ def create_posting(
             (folder / "forms.pdf").write_bytes(forms_bytes)
             posting.notice_path = f"{POSTINGS_DIR}/{posting.id}/notice.pdf"
             posting.forms_path = f"{POSTINGS_DIR}/{posting.id}/forms.pdf"
+            if workflow_version == 1:
+                posting_workspace.initialize(s, posting, slots, [(forms_bytes, forms_name), *extras], guidance_text)
             s.add(posting)
             s.commit()
         except Exception:

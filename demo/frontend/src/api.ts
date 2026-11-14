@@ -1023,6 +1023,10 @@ export interface NewPostingFields {
   apply_end: string
   notice_pdf: File
   forms_pdf: File
+  forms_pdfs?: File[]
+  required_docs?: string[]
+  guidance_text?: string
+  workflow_version?: number
 }
 
 export type PostingPatch = Partial<Pick<OfficerPosting, 'title' | 'apply_start' | 'apply_end' | 'guidance_text'>>
@@ -1088,6 +1092,10 @@ export function createPosting(fields: NewPostingFields) {
   body.append('apply_end', fields.apply_end)
   body.append('notice_pdf', fields.notice_pdf)
   body.append('forms_pdf', fields.forms_pdf)
+  for (const form of fields.forms_pdfs || []) body.append('forms_pdfs', form)
+  if (fields.workflow_version !== undefined) body.append('workflow_version', String(fields.workflow_version))
+  if (fields.required_docs !== undefined) body.append('required_docs', JSON.stringify(fields.required_docs))
+  if (fields.guidance_text !== undefined) body.append('guidance_text', fields.guidance_text)
   return writePosting<OfficerPosting>('/api/officer/postings', { method: 'POST', body })
 }
 

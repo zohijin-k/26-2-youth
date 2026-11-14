@@ -21,6 +21,7 @@ from .api import (
     forms,
     officer,
     postings,
+    posting_workspace,
     review,
     subsidy,
 )

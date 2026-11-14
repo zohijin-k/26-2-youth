@@ -26,6 +26,8 @@ import { Skeleton, SkeletonBlock, SkeletonLine } from '../../components/Skeleton
 import useDelayedFlag from '../../hooks/useDelayedFlag.ts'
 import { formatDayTime, formatPeriod } from '../../posting-format.ts'
 import OfficerConsole from './OfficerConsole.tsx'
+import ManagedProgramWorkspace from './ManagedProgramWorkspace.tsx'
+import { fetchProgramWorkspace } from '../../program-workspace-api.ts'
 import './officer.css'
 import './program-workspace.css'
 
@@ -84,6 +86,15 @@ export default function ProgramWorkspace({ target, initialPosting, onBuiltinFoun
   const [asking, setAsking] = useState<Action | null>(null)
   const [busy, setBusy] = useState(false)
   const [actionError, setActionError] = useState('')
+  const [managed, setManaged] = useState(false)
+  useEffect(() => {
+    if (!posting || posting.builtin) return
+    let active = true
+    fetchProgramWorkspace(posting.id).then((workspace) => {
+      if (active) setManaged(workspace.managed)
+    }).catch(() => { /* Legacy posting overview remains available. */ })
+    return () => { active = false }
+  }, [posting])
   const showSkeleton = useDelayedFlag(posting === null && !problem)
 
   // 그려 둔 사업을 기억한다. 아래의 불러오기보다 먼저 돌아야 한다.
@@ -196,6 +207,8 @@ export default function ProgramWorkspace({ target, initialPosting, onBuiltinFoun
       </div>
     )
   }
+
+  if (managed) return <ManagedProgramWorkspace postingId={posting.id} onBack={onBack} />
 
   const run = async (action: Action) => {
     actions.current += 1
