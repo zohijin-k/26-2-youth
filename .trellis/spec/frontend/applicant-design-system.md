@@ -79,3 +79,8 @@ Good: two files selected in different slots are queued, one request active, seco
 ### 7. Wrong vs Correct
 
 Wrong: increment a timer-driven percentage until the server responds. Correct: use transport bytes while sending, then an indeterminate progressbar with elapsed time until the response arrives.
+
+
+## Entry bundle boundary
+
+Keep officer screens lazy and officer mock data behind dynamic imports in the shared API. Import the built-in program code from program-scope.ts; officer-scope reexports it for older callers. Do not statically import mock-data from the officer container, because that defeats the dedicated dynamic mock chunk. Validate the Vite manifest's applicant static graph and scan generated applicant chunks for mock-only identifiers after changing shared API imports. The development proxy can use VITE_API_TARGET to isolate manual test servers.

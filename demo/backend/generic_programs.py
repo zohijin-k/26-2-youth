@@ -278,7 +278,7 @@ def required_missing(app:Application) -> list[dict[str,Any]]:
         if not field.get('required'): continue
         if field.get('field_type')=='radio' and field.get('group') in selected_groups: continue
         value=(app.form1_json or {}).get(key)
-        if value is None or value=='' or value is False:
+        if value is None or value is False or (isinstance(value, str) and not value.strip()):
             missing.append({'kind':'form','target':key,'label':field['label'],'code':'FORM_REQUIRED_MISSING',
                 'message':f'{field["label"]} 입력칸을 작성해 주세요.','goto':'forms'})
     return missing

@@ -240,6 +240,7 @@ def _save_row(
     *,
     page_index: int | None = None,
     source_file_path: str | None = None,
+    replace_existing: bool = False,
 ) -> Document:
     row = Document(
         application_id=app.id or 0,
@@ -256,6 +257,14 @@ def _save_row(
         source_file_path=source_file_path,
     )
     with get_session() as s:
+        if generic.is_generic(app.program_code):
+            current = s.get(Application, app.id)
+            if current is None or current.status != "draft":
+                raise HTTPException(409, "제출한 신청서는 수정할 수 없습니다.")
+            if replace_existing:
+                for previous in s.exec(select(Document).where(
+                        Document.application_id == app.id, Document.slot_key == slot_key)).all():
+                    s.delete(previous)
         s.add(row)
         s.commit()
         s.refresh(row)
@@ -318,7 +327,27 @@ async def upload_document(
 
     target_slot = slot_key or AUTO_SLOT
     if target_slot == AUTO_SLOT:
-        return await _upload_merged(app, checklist, file)
+        if not generic.is_generic(app.program_code):
+            return await _upload_merged(app, checklist, file)
+        previous_paths = {row.file_path for row in _list_documents(application_id)}
+        try:
+            return await _upload_merged(app, checklist, file)
+        except Exception:
+            # A partially processed source must never leave newly saved PASS
+            # pages authoritative. Earlier valid uploads remain unchanged.
+            with get_session() as session:
+                for row in session.exec(select(Document).where(Document.application_id == application_id)).all():
+                    if row.file_path in previous_paths:
+                        continue
+                    if row.stage1_status != "FAIL":
+                        row.stage1_status = "NEEDS_REVIEW"
+                    row.findings_json = [*(row.findings_json or []), {
+                        "code": "MERGED_PROCESSING_INTERRUPTED", "severity": "NEEDS_REVIEW",
+                        "message": "병합 서류 처리가 완료되지 않아 담당자가 전체 원본을 확인해야 합니다.",
+                        "how_to_fix": "원본 파일을 확인하고 다시 올려 주세요.", "link": ""}]
+                    session.add(row)
+                session.commit()
+            raise
 
     req = find_slot(checklist, target_slot)
     if req is not None and target_slot == "bank_account":
@@ -328,6 +357,8 @@ async def upload_document(
 
     declared = _parse_date(declared_issue_date)
     dest_dir = DOCUMENTS / app.application_no / req.slot_key
+    if generic.is_generic(app.program_code):
+        dest_dir = dest_dir / uuid4().hex
     dest_dir.mkdir(parents=True, exist_ok=True)
     path = dest_dir / _safe_name(file.filename or "upload")
     path.write_bytes(await file.read())
@@ -356,7 +387,8 @@ async def upload_document(
         reader=read_document,
     )
 
-    _replace_existing(application_id, req.slot_key)
+    if not generic.is_generic(app.program_code):
+        _replace_existing(application_id, req.slot_key)
     row = _save_row(
         app,
         req,
@@ -366,6 +398,7 @@ async def upload_document(
         declared,
         [f.as_dict() for f in result.findings],
         result.status,
+        replace_existing=generic.is_generic(app.program_code),
     )
     if req.doc_type in (DocType.NHIS_PAYMENT, DocType.NHIS_QUALIFICATION) or ocr.detected_doc_type in (
         DocType.NHIS_PAYMENT, DocType.NHIS_QUALIFICATION,
@@ -452,6 +485,8 @@ async def _upload_merged(
         raise HTTPException(400, "여러 서류를 한 파일로 올리는 기능은 pdf만 지원합니다.")
 
     base = DOCUMENTS / app.application_no / "_merged"
+    if generic.is_generic(app.program_code):
+        base = base / uuid4().hex
     base.mkdir(parents=True, exist_ok=True)
     source = base / _safe_name(file.filename or "merged.pdf")
     source.write_bytes(await file.read())
@@ -520,7 +555,8 @@ async def _upload_merged(
 
         taken.add(req.slot_key)
         result = check_document(req, ocr, None, "pdf", identity_of(app.identity_json))
-        _replace_existing(app.id or 0, req.slot_key)
+        if not generic.is_generic(app.program_code):
+            _replace_existing(app.id or 0, req.slot_key)
         row = _save_row(
             app,
             req,
@@ -532,6 +568,7 @@ async def _upload_merged(
             result.status,
             page_index=index,
             source_file_path=rel_source,
+            replace_existing=generic.is_generic(app.program_code),
         )
         assigned.append(_document_dict(row))
 
@@ -563,6 +600,8 @@ def list_documents(application_id: int) -> list[dict[str, Any]]:
 def delete_document(application_id: int, document_id: int) -> dict[str, str]:
     """재업로드를 위한 삭제. 파일도 같이 지운다."""
     app = _load(application_id)
+    if generic.is_generic(app.program_code) and app.status != "draft":
+        raise HTTPException(409, "제출한 신청서는 수정할 수 없습니다.")
     checklist = _checklist(app)
     nhis_types = {str(DocType.NHIS_PAYMENT), str(DocType.NHIS_QUALIFICATION)}
     refresh_nhis = False

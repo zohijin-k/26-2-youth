@@ -17,6 +17,7 @@ import {
   fetchOfficerList,
   fetchOfficerRoles,
   isOfficerMockActive,
+  isOfficerMockId as isMockId,
   postBulkDecision,
   type DecisionKey,
   type OfficerList,
@@ -30,7 +31,6 @@ import CriteriaEditor from '../../components/CriteriaEditor.tsx'
 import useDelayedFlag from '../../hooks/useDelayedFlag.ts'
 import { currentParams, routeUrl } from '../../navigation-url.ts'
 import { YOUTH_PROGRAM } from '../../officer-scope.ts'
-import { isMockId } from './mock-data.ts'
 import './officer.css'
 
 /** 처음 여는 구분은 확인 필요다 — 담당자가 지금 봐야 할 건부터 보인다. */

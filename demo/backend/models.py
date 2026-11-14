@@ -13,6 +13,7 @@ from typing import Any, Optional
 
 from sqlalchemy import JSON, Column, UniqueConstraint
 from sqlmodel import Field, Session, SQLModel, create_engine
+from .rules.programs import JOB_PACKAGE
 
 DB_PATH = Path(__file__).resolve().parents[1] / "demo.db"
 engine = create_engine(f"sqlite:///{DB_PATH}", connect_args={"check_same_thread": False})
@@ -247,7 +248,7 @@ POSTING_PUBLISHED = "published"
 POSTING_CLOSED = "closed"
 
 #: 사업 저장소에 미리 올려 두는 기본 사업의 규칙 코드. 두배적금은 올리지 않는다.
-BUILTIN_POSTING_CODES = ("job_package",)
+BUILTIN_POSTING_CODES = (JOB_PACKAGE,)
 
 
 def init_db() -> None:

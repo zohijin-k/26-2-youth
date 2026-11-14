@@ -40,6 +40,7 @@ import { friendlyError } from '../../lib/error-copy.ts'
 import { readReceiptSteps } from '../../lib/receipt-steps.ts'
 import { formatDateTime } from '../../lib/format.ts'
 import { ACTIVE_APPLICATION_KEY, createIdentitySession } from '../../lib/identity-session.ts'
+import { YOUTH_PROGRAM as YOUTH_PROGRAM_CODE } from '../../program-scope.ts'
 import './apply-flow.css'
 
 type Stage =
@@ -51,7 +52,6 @@ type Stage =
   | 'complete'
   | 'mypage'
 
-const YOUTH_PROGRAM_CODE = 'job_package'
 
 function savedPage(): { appId: number; stage: Stage; previous: Stage } | null {
   const params = currentParams()

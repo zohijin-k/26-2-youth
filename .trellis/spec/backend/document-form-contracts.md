@@ -171,3 +171,9 @@ New browser job-package sessions and all actual bankbook uploads carry the stric
 ## Optional text drafting
 
 Default provider is none. JBAI requires explicit provider/enabled settings plus environment credentials; tests inject fake transports and never call live services. Guidance accepts only server-owned public posting facts, selected canonical document labels and public notice text. Review explanations accept canonical codes only and reconstruct static field labels/rule wording; never pass stored messages, OCR values or applicant fields. Project inputs again immediately before transport, disable redirects, and do not log provider exceptions. Explanations are non-authoritative text displayed below rule results and cannot change decisions.
+
+
+Required dynamic text uses trimmed emptiness checks at final-check, submit and review aggregation; whitespace, tabs and nonbreaking spaces must never establish a complete required field. Keep a synthetic API regression that verifies both submission refusal and NEEDS_REVIEW.
+
+
+Generic submitted documents are immutable: deny deletes and uploads after submission. Generic replacements use fresh directories and replace rows in one save transaction; original bytes remain available if processing fails. Serialize owner-authorized generic mutations per application/event loop in the local ASGI process. Interrupted generic merges retain FAIL and mark only newly saved incomplete rows NEEDS_REVIEW. Preserve all legacy document assessment behavior.
