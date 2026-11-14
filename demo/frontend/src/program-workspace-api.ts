@@ -1,15 +1,19 @@
 import type { OfficerPosting } from './api.ts'
 
+export type FieldKind = 'text' | 'number' | 'date' | 'check' | 'radio' | 'signature'
+export type AutofillSource = 'name' | 'birth' | 'mobile' | 'phone' | 'address' | 'email'
+
 export interface DocumentSlotOption { key: string; label: string }
 
 export interface ManagedFormField {
   type: 'text' | 'check' | 'image'
-  kind?: 'text' | 'number' | 'date' | 'check' | 'radio' | 'signature'
+  field_type?: FieldKind
   page: number
   box: [number, number, number, number]
   label?: string
   required?: boolean
-  autofill?: string | null
+  autofill_source?: AutofillSource | null
+  group?: string
   confidence?: number
   needs_review?: boolean
   [key: string]: unknown
@@ -38,7 +42,7 @@ export interface ManagedProgramData {
   required_docs: string[]
   slot_options: DocumentSlotOption[]
   forms: ManagedProgramForm[]
-  publication_blockers?: string[]
+  publish_blockers?: string[]
 }
 
 export interface ManagedProgramFields {
@@ -77,3 +81,18 @@ export function replaceProgramFiles(id: number, notice: File | null, forms: File
   for (const form of forms) body.append('forms_pdfs', form)
   return workspaceRequest<ManagedProgramData>(`/api/officer/postings/${id}/workspace/files`, { method: 'POST', body })
 }
+
+
+export const draftProgramForm = (postingId: number, formId: number) =>
+  workspaceRequest<ManagedProgramData>(`/api/officer/postings/${postingId}/workspace/forms/${formId}/draft`, { method: 'POST' })
+
+export const saveProgramForm = (postingId: number, formId: number, layout: ManagedFormLayout) =>
+  workspaceRequest<ManagedProgramData>(`/api/officer/postings/${postingId}/workspace/forms/${formId}/layout`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ layout }),
+  })
+
+export const confirmProgramForm = (postingId: number, formId: number) =>
+  workspaceRequest<ManagedProgramData>(`/api/officer/postings/${postingId}/workspace/forms/${formId}/confirm`, { method: 'POST' })
+
+export const unpublishProgram = (id: number) =>
+  workspaceRequest<ManagedProgramData>(`/api/officer/postings/${id}/unpublish`, { method: 'POST' })

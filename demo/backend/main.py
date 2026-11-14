@@ -23,6 +23,7 @@ from .api import (
     postings,
     posting_workspace,
     posting_draft,
+    posting_workflow,
     review,
     subsidy,
 )

@@ -73,7 +73,8 @@ def _form_dict(row: ProgramForm) -> dict[str, Any]:
 
 def view(posting: ProgramPosting) -> dict[str, Any]:
     metadata = posting.template_json or {}
-    return {'posting': postings._officer_view(posting), 'managed': managed(posting),
+    from .posting_workflow import publish_blockers
+    return {'publish_blockers': publish_blockers(posting), 'posting': postings._officer_view(posting), 'managed': managed(posting),
         'required_docs': metadata.get('required_docs', []),
         'slot_options': [{'key': key, 'label': req.label} for key, req in slot_catalog().items()],
         'forms': [_form_dict(row) for row in form_rows(posting.id or 0)]}

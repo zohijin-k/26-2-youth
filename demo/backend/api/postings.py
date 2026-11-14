@@ -508,6 +508,10 @@ def publish_posting(posting_id: int) -> dict[str, Any]:
             for kind, (_, _, label) in FILE_KINDS.items():
                 if _stored_file(posting, kind) is None:
                     raise HTTPException(409, f"{label}가 없어 게시할 수 없습니다.")
+        from .posting_workflow import publish_blockers
+        blockers = publish_blockers(posting)
+        if blockers:
+            raise HTTPException(409, " ".join(blockers))
         now = datetime.now()
         posting.status = POSTING_PUBLISHED
         if posting.published_at is None:

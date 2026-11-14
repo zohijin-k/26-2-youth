@@ -152,3 +152,8 @@ Reading/identity/history uncertainty does not downgrade a separately measured or
 ## Account attachment boundary
 
 The applicant account section stores bankbook bytes through the existing document store and inline preview route. Validate content and size before persistence; retain `bankbookFileName` across delayed autosaves. An uploaded bankbook is `NEEDS_REVIEW` until an officer compares the printed account, and its review status participates in review aggregation without changing engine rules. Compare account holder against verified identity at final-check and submit. Historical filename-only fixtures retain compatibility; filenames alone are not document verification.
+
+
+## Managed posting templates
+
+New posting screens create `workflow_version=1`; extension data lives under `/workspace` while legacy response schemas remain stable. `ProgramForm` is an additive table, so existing databases start through `create_all` without a destructive reset. All automatic candidates, including AcroForm widgets, require explicit human review. Empty/image-only drafts require manual fields. Validate finite boxes against actual PDF page bounds, normalize absent choice groups, and keep renderer types compatible with existing coordinates. Saving a layout clears its confirmation hash. Publishing managed postings requires every form to have fields and a confirmation hash matching the current layout, existing PDFs and a valid period. Preserve original coordinate fixtures.
