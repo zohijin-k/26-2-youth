@@ -4,6 +4,7 @@ import { FORM_FIELD_KEYS } from './forms/form-field-bindings.ts'
 import {
   MOCK_ROLES,
   isMockId,
+  mockApplicationReasons,
   mockDecide,
   mockOfficerList,
   mockReviewDetail,
@@ -633,6 +634,17 @@ export interface OfficerRow {
 
 }
 
+/**
+ * 신청 목록의 세 구분.
+ *
+ *   needs_check  담당자 판단이 없고 자동 판정이 적합이 아닌 건 (확인필요·부적합·미심사)
+ *   pass         담당자 판단이 없고 자동 판정이 적합인 건
+ *   done         담당자가 판단한 건 (보류 포함)
+ */
+export type OfficerQueue = 'needs_check' | 'pass' | 'done'
+
+export const OFFICER_QUEUES: readonly OfficerQueue[] = ['needs_check', 'pass', 'done']
+
 export interface OfficerListQuery {
   role: string
   region?: string
@@ -645,6 +657,9 @@ export interface OfficerListQuery {
   sort?: string
   page?: number
   page_size?: number
+  queue?: OfficerQueue
+  /** 신청번호 또는 성명에서 찾을 글자. 50자 이하. */
+  q?: string
 }
 
 export interface OfficerList {
@@ -681,11 +696,35 @@ export interface OfficerList {
     supplement_days: number | null
     notice: string
   } | null
+  /**
+   * 구분별 건수. 관할·검색어·기간까지만 건 뒤에 센 값이라 어느 구분을 보고 있어도
+   * 세 숫자가 같다.
+   */
+  queues: Record<OfficerQueue, number>
   total: number
   page: number
   page_size: number
   page_count: number
   rows: OfficerRow[]
+}
+
+/** 목록에서 행을 펼쳤을 때 보이는, 이 건을 확인해야 하는 사유. */
+export interface ApplicationReasons {
+  application_id: number
+  ai_status: DocStatus | null
+  ai_status_label: string
+  /** 사유의 출처. 지금은 규칙 판정 결과(`rules`)뿐이다. */
+  source: string
+  /** 올렸지만 적합이 아닌 서류. 체크리스트 순서다. */
+  documents: {
+    slot_key: string
+    label: string
+    status: DocStatus | null
+    status_label: string
+    findings: { code: string; message: string; severity: string }[]
+  }[]
+  /** 아직 올리지 않은 필수 서류. */
+  missing: { slot_key: string; label: string }[]
 }
 
 export interface OfficerDocument {
@@ -837,9 +876,12 @@ export const fetchOfficerList = async (params: OfficerListQuery): Promise<Office
   if (isOfficerMockActive()) return youthList(mockOfficerList(scoped))
   try {
     const body = await json<OfficerList>(`/api/officer/applications?${query(scoped)}`)
-    const unfiltered = !params.region && !params.town && !params.status && !params.ai_status
+    // 구분별 건수는 구분·처리상태·AI판정 필터와 무관하다. 그래서 "접수 건이 하나도
+    // 없다"는 관할·검색어·기간을 걸지 않았을 때 세 구분의 합이 0인 경우다.
+    const unfiltered = !params.region && !params.town && !params.q
       && !params.submitted_from && !params.submitted_to
-    if (body.total === 0 && unfiltered && !mockMode().blocked) {
+    const received = body.queues.needs_check + body.queues.pass + body.queues.done
+    if (received === 0 && unfiltered && !mockMode().blocked) {
       mockActive = true
       return youthList(mockOfficerList(scoped))
     }
@@ -861,6 +903,12 @@ export const fetchReviewDetail = async (applicationId: number, role: string): Pr
   }
   return { ...detail, role: youthOfficerRole(detail.role) }
 }
+
+/** 행을 펼쳤을 때 읽는 확인 필요 사유. 저장된 규칙 판정 결과만 온다. */
+export const fetchApplicationReasons = async (applicationId: number, role: string): Promise<ApplicationReasons> =>
+  isMockId(applicationId) && !mockMode().blocked
+    ? mockApplicationReasons(applicationId)
+    : json<ApplicationReasons>(`/api/officer/applications/${applicationId}/reasons?${query({ role })}`)
 
 export const postDecision = (
   applicationId: number,
@@ -990,14 +1038,8 @@ function withMockCounts(posting: OfficerPosting): OfficerPosting {
   const mocked = !mode.blocked && (mode.forced || posting.application_count === 0)
   mockCountsUsed = mocked
   if (!mocked) return posting
-  const total = (filter: Partial<OfficerListQuery>) => mockOfficerList({
-    role: 'province', program: YOUTH_PROGRAM, sort: 'submitted', page: 1, page_size: 1, ...filter,
-  }).total
-  return {
-    ...posting,
-    application_count: total({}),
-    needs_check_count: total({ status: 'pending' }) - total({ status: 'pending', ai_status: 'PASS' }),
-  }
+  const list = mockOfficerList({ role: 'province', program: YOUTH_PROGRAM, sort: 'submitted', page: 1, page_size: 1 })
+  return { ...posting, application_count: list.total, needs_check_count: list.queues.needs_check }
 }
 
 /** 신청자 화면: 게시됐거나 마감된 사업. 접수 중 → 접수 예정 → 마감 순으로 온다. */

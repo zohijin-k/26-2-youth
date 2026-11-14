@@ -1,0 +1,497 @@
+/*
+ * 신청 목록 (담당자). officer.css의 각진 테두리와 색을 그대로 따른다.
+ *
+ * 높이를 미리 정해 둔 곳이 셋 있다 — 탭 줄, 검색 줄, 표의 행. 건수가 도착하거나
+ * 행을 골라 일괄 처리 버튼이 나타나도 그 아래가 밀리지 않게 하려는 것이다.
+ */
+
+.alist {
+  max-width: 1040px;
+}
+
+/* 화면에는 없고 읽어 주는 글자 */
+.alist__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---- 구분 탭 ---- */
+
+.alist__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid #ccc;
+}
+
+.alist__tabs {
+  display: flex;
+  gap: 2px;
+}
+
+/* 고른 탭과 아닌 탭의 글자 굵기가 같다. 굵기가 바뀌면 탭 폭이 달라져 옆 탭이 밀린다. */
+.alist__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  margin-bottom: -1px;
+  padding: 0 16px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: none;
+  color: #5a6472;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.alist__tab:hover {
+  background: #f5f8fd;
+  color: var(--brand);
+}
+
+.alist__tab--on {
+  border-bottom-color: var(--brand);
+  color: var(--brand);
+}
+
+.alist__tab:focus-visible {
+  outline: 2px solid #0b57d0;
+  outline-offset: -2px;
+}
+
+.alist__count {
+  min-width: 28px;
+  padding: 0 7px;
+  background: #eceef1;
+  color: #5a6472;
+  font-size: 13px;
+  line-height: 22px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 확인 필요 건수. 이 화면에서 가장 먼저 읽혀야 하는 숫자다. */
+.alist__count--loud {
+  background: #b45309;
+  color: #fff;
+  font-size: 14px;
+}
+
+/* ---- 관할 선택 ---- */
+
+.alist__scope {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 7px;
+  font-size: 13px;
+}
+
+.alist__scope label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.alist__scope select {
+  height: 30px;
+  padding: 0 6px;
+  border: 1px solid #aaa;
+  background: #fff;
+  font: inherit;
+}
+
+/* ---- 검색 줄 / 일괄 처리 ---- */
+
+.alist__bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 52px;
+}
+
+.alist__filters {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* 행을 고른 동안에는 검색 줄을 자리만 남기고 감춘다. 탭 키로도 닿지 않는다. */
+.alist__bar--selecting .alist__filters {
+  visibility: hidden;
+}
+
+.alist__search,
+.alist__period input {
+  height: 32px;
+  border: 1px solid #aaa;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+}
+
+.alist__search {
+  width: 260px;
+  padding: 0 10px;
+}
+
+.alist__period {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #444;
+  font-size: 13px;
+}
+
+.alist__period input {
+  padding: 0 6px;
+}
+
+.alist__search:focus-visible,
+.alist__period input:focus-visible,
+.alist__scope select:focus-visible {
+  outline: 2px solid #0b57d0;
+  outline-offset: 1px;
+}
+
+.alist__link {
+  padding: 4px 2px;
+  border: 0;
+  background: none;
+  color: #0b57d0;
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.alist__link:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.alist__link:focus-visible,
+.alist__open:focus-visible,
+.alist__toggle:focus-visible {
+  outline: 2px solid #0b57d0;
+  outline-offset: 2px;
+}
+
+.alist__selection {
+  position: absolute;
+  inset: 7px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid #c6d9f5;
+  background: var(--brand-tint);
+  font-size: 13px;
+}
+
+.alist__selection-count {
+  min-width: 78px;
+  font-variant-numeric: tabular-nums;
+}
+
+.alist__selection .btn {
+  padding: 3px 14px;
+  background-color: #fff;
+}
+
+.alist__selection .btn--primary {
+  background-color: var(--brand);
+}
+
+.alist__selection .alist__link {
+  margin-left: 6px;
+}
+
+.alist__notice {
+  margin-left: auto;
+  color: var(--success);
+  font-size: 13px;
+}
+
+/* ---- 표 ---- */
+
+.alist__table {
+  width: 100%;
+  border: 1px solid #ddd;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13.5px;
+}
+
+.alist__col-check { width: 48px; }
+.alist__col-no { width: 230px; }
+.alist__col-time { width: 200px; }
+.alist__col-status { width: 190px; }
+.alist__col-more { width: 96px; }
+
+.alist__table th {
+  height: 38px;
+  padding: 0 14px;
+  border-bottom: 1px solid #ccc;
+  background: #f2f2f2;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.alist__table td {
+  height: 48px;
+  padding: 0 14px;
+  border-bottom: 1px solid #e6e6e6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.alist__row {
+  cursor: pointer;
+}
+
+.alist__row--checked td {
+  background: var(--brand-tint);
+}
+
+.alist__row--open td {
+  border-bottom-color: transparent;
+  background: #f7f9fc;
+}
+
+.alist__row:hover td,
+.alist__row:focus-within td {
+  background: #f0f6ff;
+}
+
+/* 지금 가리키는 행. 색만으로 알리지 않도록 왼쪽에 띠를 함께 둔다. */
+.alist__row:hover td:first-child,
+.alist__row:focus-within td:first-child,
+.alist__row--open td:first-child {
+  box-shadow: inset 3px 0 0 var(--brand);
+}
+
+.alist__table .alist__check {
+  padding: 0;
+}
+
+.alist__check label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 47px;
+  cursor: pointer;
+}
+
+th.alist__check label {
+  height: 37px;
+}
+
+.alist__check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.alist__open {
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--brand);
+  font-family: Consolas, monospace;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.alist__open:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.alist__name {
+  font-weight: 700;
+}
+
+.alist__time {
+  color: #444;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 상태는 글자와 색을 함께 쓴다. */
+.alist__chip {
+  display: inline-block;
+  padding: 0 8px;
+  border: 1px solid currentColor;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.alist__chip--pass,
+.alist__chip--approve {
+  background: #f1faf4;
+  color: #177245;
+}
+
+.alist__chip--needs_review {
+  background: #fffbe8;
+  color: #805d00;
+}
+
+.alist__chip--fail,
+.alist__chip--reject {
+  background: #fff5f5;
+  color: #c00;
+}
+
+.alist__chip--hold,
+.alist__chip--none {
+  background: #f2f2f2;
+  color: #555;
+}
+
+/* ---- 사유 펼침 ---- */
+
+.alist__table .alist__more {
+  padding: 0 10px;
+  text-align: right;
+}
+
+.alist__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 9px;
+  border: 1px solid #cfd5de;
+  background: #fff;
+  color: #444;
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.alist__toggle:hover,
+.alist__toggle[aria-expanded='true'] {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.alist__chevron {
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.alist__toggle[aria-expanded='true'] .alist__chevron {
+  transform: translateY(2px) rotate(-135deg);
+}
+
+.alist__table .alist__reason-row td {
+  height: auto;
+  padding: 0;
+  border-bottom-color: #ccc;
+  background: #f7f9fc;
+  box-shadow: inset 3px 0 0 var(--brand);
+  white-space: normal;
+}
+
+.alist__reasons {
+  padding: 4px 20px 14px 62px;
+}
+
+.alist__reasons-loading {
+  display: grid;
+  gap: 12px;
+  padding: 8px 0 6px;
+}
+
+.alist__reason-list {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.alist__reason-list > li {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.alist__reason-list .alist__chip {
+  justify-self: start;
+}
+
+.alist__reason-list strong {
+  display: block;
+  line-height: 22px;
+}
+
+.alist__findings {
+  margin: 1px 0 0;
+  padding-left: 16px;
+  color: #333;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.alist__findings-none,
+.alist__reasons-note {
+  margin: 1px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.alist__reasons-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 8px;
+}
+
+/* ---- 빈 목록 ---- */
+
+.alist__table .alist__empty-row td {
+  height: 192px;
+  color: var(--muted);
+  text-align: center;
+  white-space: normal;
+}
+
+.alist__empty-row p {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+/* ---- 불러오는 중 ---- */
+
+.alist__bar-skeleton {
+  height: 32px;
+  border-radius: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .alist__chevron {
+    transition: transform var(--ease);
+  }
+}

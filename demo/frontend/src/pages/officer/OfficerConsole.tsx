@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import {
+  OFFICER_QUEUES,
   fetchOfficerList,
   fetchOfficerRoles,
   isOfficerMockActive,
@@ -20,22 +21,41 @@ import {
   type DecisionKey,
   type OfficerList,
   type OfficerListQuery,
+  type OfficerQueue,
   type OfficerRole,
 } from '../../api.ts'
-import ApplicationList from './ApplicationList.tsx'
+import ApplicationList, { ApplicationListSkeleton } from './ApplicationList.tsx'
 import ReviewDetail from './ReviewDetail.tsx'
 import CriteriaEditor from '../../components/CriteriaEditor.tsx'
-import { Skeleton, SkeletonBlock, SkeletonLine } from '../../components/Skeleton.tsx'
 import useDelayedFlag from '../../hooks/useDelayedFlag.ts'
 import { currentParams, routeUrl } from '../../navigation-url.ts'
 import { YOUTH_PROGRAM } from '../../officer-scope.ts'
 import { isMockId } from './mock-data.ts'
 import './officer.css'
 
-const DEFAULT_QUERY: OfficerListQuery = { role: 'province', program: YOUTH_PROGRAM, sort: 'submitted', page: 1, page_size: 20 }
-const QUERY_KEYS = [
-  'region', 'town', 'status', 'ai_status', 'submitted_from', 'submitted_to',
-] as const
+/** 처음 여는 구분은 확인 필요다 — 담당자가 지금 봐야 할 건부터 보인다. */
+const DEFAULT_QUERY: OfficerListQuery = {
+  role: 'province', program: YOUTH_PROGRAM, sort: 'submitted', queue: 'needs_check', page: 1, page_size: 20,
+}
+/** 주소에 그대로 싣는 목록 조건. 구분은 기본값이면 싣지 않으므로 따로 다룬다. */
+const QUERY_KEYS = ['region', 'town', 'submitted_from', 'submitted_to', 'q'] as const
+const SEARCH_MAX = 50
+
+/**
+ * 주소에서 읽은 구분.
+ *
+ * 예전 링크에는 구분 대신 처리상태(`status`)와 AI판정(`ai`)이 붙어 있다. 그 조합에
+ * 가장 가까운 구분을 연다: 판단한 건은 처리 완료, 미처리이면서 적합은 적합, 그 밖의
+ * 미처리는 확인 필요. 그 값들은 첫 주소 쓰기에서 지워진다.
+ */
+function savedQueue(params: URLSearchParams): OfficerQueue {
+  const queue = params.get('queue') as OfficerQueue
+  if (OFFICER_QUEUES.includes(queue)) return queue
+  const status = params.get('status') ?? params.get('o_status')
+  if (status === 'approve' || status === 'hold' || status === 'reject') return 'done'
+  const ai = params.get('ai') ?? params.get('o_ai_status')
+  return status === 'pending' && ai === 'PASS' ? 'pass' : 'needs_check'
+}
 
 function savedOfficerPage(basePath: string): {
   query: OfficerListQuery
@@ -51,16 +71,18 @@ function savedOfficerPage(basePath: string): {
   const rest = window.location.pathname.startsWith(basePath) ? window.location.pathname.slice(basePath.length) : null
   const detailRoute = rest === null ? null : /^(?:\/([^/]+))?(?:\/review\/([1-9]\d*))?\/?$/.exec(rest)
   const criteriaRoute = rest === null ? null : /^\/criteria\/([^/]+)\/?$/.exec(rest)
-  const legacy = [...QUERY_KEYS.map((key) => `o_${key}`), 'o_role', 'o_page', 'o_page_size', 'o_open', 'o_slot', 'o_criteria', 'o_criteria_program'].some((key) => params.has(key))
+  const legacy = [...QUERY_KEYS.map((key) => `o_${key}`), 'o_status', 'o_ai_status', 'o_role', 'o_page', 'o_page_size', 'o_open', 'o_slot', 'o_criteria', 'o_criteria_program'].some((key) => params.has(key))
   if (!detailRoute && !criteriaRoute && !legacy) return null
   const query: OfficerListQuery = {
     ...DEFAULT_QUERY,
     role: detailRoute?.[1] || params.get('role') || params.get('o_role') || DEFAULT_QUERY.role,
   }
   for (const key of QUERY_KEYS) {
-    const value = params.get(key === 'ai_status' ? 'ai' : key) ?? params.get(`o_${key}`)
+    const value = params.get(key) ?? params.get(`o_${key}`)
     if (value) query[key] = value
   }
+  query.q = query.q?.trim().slice(0, SEARCH_MAX) || undefined
+  query.queue = savedQueue(params)
   const page = Number(params.get('page') ?? params.get('o_page'))
   const pageSize = Number(params.get('page_size') ?? params.get('o_page_size'))
   if (Number.isSafeInteger(page) && page > 0) query.page = page
@@ -87,6 +109,10 @@ export default function OfficerConsole({ basePath }: { basePath: string }) {
   const [selected, setSelected] = useState<number[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  /** 일괄 처리 결과 한 줄. 행이 다른 구분으로 옮겨 가 사라진 이유를 알린다. */
+  const [notice, setNotice] = useState('')
+  /** 가장 최근에 보낸 목록 요청. 늦게 온 예전 응답이 새 목록을 덮지 않게 한다. */
+  const latestRequest = useRef(0)
   /** 목업으로 넘어갔는지는 목록을 한 번 읽어 봐야 안다 — 응답이 온 뒤에 다시 잰다. */
   const [mock, setMock] = useState(isOfficerMockActive())
   const [showCriteria, setShowCriteria] = useState(initialPage?.showCriteria ?? false)
@@ -99,16 +125,26 @@ export default function OfficerConsole({ basePath }: { basePath: string }) {
   }, [])
 
   const reload = useCallback(() => {
-    fetchOfficerList(query)
+    latestRequest.current += 1
+    const request = latestRequest.current
+    return fetchOfficerList(query)
       .then((body) => {
+        if (request !== latestRequest.current) return
+        // 처리한 건이 다른 구분으로 옮겨 가면 보고 있던 쪽이 없어질 수 있다. 마지막 쪽을 다시 읽는다.
+        if (body.page > body.page_count) {
+          setQuery((prev) => ({ ...prev, page: body.page_count }))
+          return
+        }
         setList(body)
         setMock(isOfficerMockActive())
         setError('')
       })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
+      .catch((e: unknown) => {
+        if (request === latestRequest.current) setError(e instanceof Error ? e.message : String(e))
+      })
   }, [query])
 
-  useEffect(reload, [reload])
+  useEffect(() => { void reload() }, [reload])
 
   useEffect(() => {
     const path = showCriteria
@@ -116,11 +152,12 @@ export default function OfficerConsole({ basePath }: { basePath: string }) {
       : open ? `${basePath}/${encodeURIComponent(query.role)}/review/${open.id}`
         : query.role === DEFAULT_QUERY.role ? basePath : `${basePath}/${encodeURIComponent(query.role)}`
     const params: Record<string, string | null> = {
+      queue: !query.queue || query.queue === DEFAULT_QUERY.queue ? null : query.queue,
       page: query.page === DEFAULT_QUERY.page ? null : String(query.page ?? 1),
       page_size: query.page_size === DEFAULT_QUERY.page_size ? null : String(query.page_size ?? 20),
       slot: open?.slot ?? null,
     }
-    for (const key of QUERY_KEYS) params[key === 'ai_status' ? 'ai' : key] = query[key] ?? null
+    for (const key of QUERY_KEYS) params[key] = query[key] ?? null
     routeUrl(path, params, initialUrlWrite.current)
     initialUrlWrite.current = false
   }, [query, open, showCriteria, basePath])
@@ -128,6 +165,7 @@ export default function OfficerConsole({ basePath }: { basePath: string }) {
   const patch = (next: Partial<OfficerListQuery>) => {
     setQuery((prev) => ({ ...prev, ...next, program: YOUTH_PROGRAM, sort: 'submitted' }))
     setSelected([])
+    setNotice('')
   }
 
   /** 역할을 바꾸면 관할 선택은 백엔드가 다시 정해준다 — 여기서는 비워 보낸다. */
@@ -136,20 +174,26 @@ export default function OfficerConsole({ basePath }: { basePath: string }) {
     setShowCriteria(false)
     setQuery({ ...DEFAULT_QUERY, role })
     setSelected([])
+    setNotice('')
   }
 
-  const bulk = (decision: DecisionKey) => {
-    if (!list || selected.length === 0) return
+  /** 고른 건을 한 번에 처리한다. 끝나면(성공이든 실패든) 돌아오는 약속을 낸다. */
+  const bulk = (decision: DecisionKey): Promise<void> => {
+    if (!list || selected.length === 0) return Promise.resolve()
     setBusy(true)
-    postBulkDecision({
+    setNotice('')
+    return postBulkDecision({
       role: list.role.key,
       decision,
       memo: `${list.role.name} 일괄 처리`,
       application_ids: selected,
     })
-      .then(() => {
+      .then(({ processed }) => {
         setSelected([])
-        reload()
+        setNotice(query.queue === 'done'
+          ? `${processed}건의 처리상태를 바꿨습니다.`
+          : `${processed}건을 처리 완료로 옮겼습니다.`)
+        return reload()
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setBusy(false))
@@ -221,19 +265,16 @@ export default function OfficerConsole({ basePath }: { basePath: string }) {
           onQuery={patch}
           onOpen={(id, slot) => setOpen({ id, slot: slot ?? null })}
           selected={selected}
-          onSelect={setSelected}
+          onSelect={(ids) => {
+            setSelected(ids)
+            setNotice('')
+          }}
           onBulk={bulk}
           busy={busy}
+          notice={notice}
         />
       ) : showListSkeleton ? (
-        <Skeleton className="officer__table-skeleton">
-          <div className="filters officer__filters-skeleton">{['처리상태', 'AI판정', '신청일', '정렬'].map((label) => <label key={label}>{label}<SkeletonBlock className="officer__filter-control" /></label>)}</div>
-          <div className="bulk officer__bulk-skeleton"><span>선택 0건</span><button type="button" className="btn" disabled aria-disabled="true">일괄 처리</button><button type="button" className="btn" disabled aria-disabled="true">일괄 확인</button></div>
-          <div className="grid-scroll"><div className="officer__table-skeleton-grid">
-            <div className="officer__table-skeleton-head">{['순번', '접수번호', '신청자', '지역', '신청 항목', 'AI 판정', '미비 서류', '접수일', '처리 상태'].map((label, index) => <span key={`${label}-${index}`}>{label}</span>)}</div>
-            {Array.from({ length: 8 }, (_, row) => <div className="officer__table-skeleton-row" key={row}>{Array.from({ length: 9 }, (_, col) => <SkeletonLine key={col} width={col === 2 ? '78%' : '64%'} />)}</div>)}
-          </div></div>
-        </Skeleton>
+        <ApplicationListSkeleton />
       ) : null}
     </div>
   )
