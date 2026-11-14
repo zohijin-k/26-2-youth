@@ -1,0 +1,12 @@
+{
+  "demo/frontend/src/pages/officer/ReviewDetail.tsx": "fb45d687461691e540c86ce559ed926a6c8f35c90e8a7fe3219e177a673465e8",
+  "demo/frontend/src/pages/officer/DocumentViewer.tsx": "743870919760fb66cb5da148809fe9273f316942041fb9f15e8ab0f3b99b04b3",
+  "demo/frontend/src/pages/officer/officer.css": "801eb938e3a60b706b536d83f621953c44f00e69375def15cb5d5127bedd2bb1",
+  "demo/frontend/src/components/StatusBadge.tsx": "4d96718ef598684c30544170b32da535a291f6f4032781575307d23cf0dec39f",
+  "demo/frontend/src/components/Skeleton.tsx": "87d7f4e43442cb972cda453549276b9f2f0485de70dcb84c9c3c20cc682b5520",
+  "demo/frontend/src/components/skeleton.css": "356bec49f8c493749603b6971c54c9ab84025a95112cf61022ae45c93753b31c",
+  "demo/frontend/src/components/FilePreview.tsx": "54bff71328622a32a24cb96ad3a9eee8b18fbcb5f673c279347bda8331091cd8",
+  "demo/frontend/src/components/file-preview.css": "22259eda1367855e6afd95775b59b12dca10fe44750f729dcbf88bfac69179c2",
+  "demo/frontend/src/hooks/useDelayedFlag.ts": "c235d25726f3e61ed41c6559b515ae06f6afc7f5f3a52183070af4ce64fec37d",
+  "demo/frontend/src/pages/officer/format.ts": "db73cf13aeafa77ca24232e3cc3499bcbb4f1a770c46c8421ae9c649b3e3a4d1"
+}

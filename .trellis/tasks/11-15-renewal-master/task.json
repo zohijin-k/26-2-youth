@@ -1,0 +1,35 @@
+{
+  "id": "renewal-master",
+  "name": "renewal-master",
+  "title": "Renewal master: generic program service",
+  "description": "Complete unattended stages 0–10 with regression gates, protected review detail and stage commits",
+  "status": "review",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "codex",
+  "assignee": "codex",
+  "createdAt": "2026-11-15",
+  "completedAt": null,
+  "branch": "feat/renewal-master",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "Implementation and synthetic verification complete; morning decisions in report.md. No push, PR or merge.",
+  "meta": {
+    "verification": {
+      "engine_passed": 1267,
+      "backend_passed": 1412,
+      "node_passed": 48,
+      "scenario_modules": 18,
+      "browser_assertions": 17,
+      "code_commit": "03c40e1"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "static_entries": [
+    "_useBeforeUnload-CrpDaKgl.js",
+    "index.html",
+    "src/pages/applicant/ApplicantApp.tsx"
+  ],
+  "files": [
+    "demo/frontend/dist/assets/useBeforeUnload-CrpDaKgl.js",
+    "demo/frontend/dist/assets/index-BtdWWe52.js",
+    "demo/frontend/dist/assets/ApplicantApp-DBNDg2-a.js"
+  ],
+  "checks": {
+    "DS-2026-": {
+      "matches": 0,
+      "rg_exit": 1
+    },
+    "전북대학교병원": {
+      "matches": 0,
+      "rg_exit": 1
+    },
+    "목업에 없는 취업지원패키지 신청입니다.": {
+      "matches": 0,
+      "rg_exit": 1
+    }
+  },
+  "officer_and_mock_static_imports": 0
+}

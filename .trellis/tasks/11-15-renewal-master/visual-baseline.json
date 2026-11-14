@@ -1,0 +1,32 @@
+{
+  "captures": [
+    {
+      "name": "programs",
+      "url": "http://127.0.0.1:5183/officer?mock=1",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-renewal-master/shots/baseline-programs.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "list",
+      "url": "http://127.0.0.1:5183/officer/programs/1?mock=1",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-renewal-master/shots/baseline-list.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "review",
+      "url": "http://127.0.0.1:5183/officer/programs/1/province/review/901609?mock=1",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-renewal-master/shots/baseline-review.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    }
+  ],
+  "errors": []
+}
