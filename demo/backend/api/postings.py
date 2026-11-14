@@ -501,6 +501,9 @@ def publish_posting(posting_id: int) -> dict[str, Any]:
         posting = _find(s, posting_id)
         if posting.status == POSTING_PUBLISHED:
             raise HTTPException(409, "이미 게시한 사업입니다.")
+        from .posting_workspace import managed, form_rows
+        if managed(posting) and (not form_rows(posting_id) or any(not row.confirmed_hash for row in form_rows(posting_id))):
+            raise HTTPException(409, "서식 틀을 확인하고 확정한 뒤 게시해 주세요.")
         if posting.rule_code is None:
             for kind, (_, _, label) in FILE_KINDS.items():
                 if _stored_file(posting, kind) is None:

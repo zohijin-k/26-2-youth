@@ -95,7 +95,12 @@ def initialize(s: Any, posting: ProgramPosting, required_docs: list[str],
     for index, (data, name) in enumerate(forms):
         relative = f'postings/{posting.id}/form-{uuid4().hex}.pdf'
         (postings.STORAGE / relative).write_bytes(data)
-        s.add(ProgramForm(posting_id=posting.id, file_name=name, file_path=relative))
+        from ..forms.draft import draft_layout
+        row = ProgramForm(posting_id=posting.id, file_name=name, file_path=relative)
+        s.add(row)
+        s.flush()
+        row.layout_json = draft_layout(data, form_no=f"form_{row.id}", title=name, template=relative)
+        s.add(row)
     s.add(posting)
 
 
