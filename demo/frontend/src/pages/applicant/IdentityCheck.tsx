@@ -62,14 +62,15 @@ const PLEDGE =
   '타인의 서류를 제출하거나 사실과 다른 내용을 제출한 경우 선정 취소 등 불이익을 받는 데 동의합니다.'
 
 interface Props {
-  appId: number
+  appId: number | null
+  ensureApplication?: () => Promise<number>
   /** 이미 인증을 마쳤으면 결과만 보여준다 */
   identity: Identity | null
-  onVerified: (identity: Identity, mobile: string) => void
+  onVerified: (identity: Identity, mobile: string, applicationId: number) => void
   onNext: () => void
 }
 
-export default function IdentityCheck({ appId, identity, onVerified, onNext }: Props) {
+export default function IdentityCheck({ appId, ensureApplication, identity, onVerified, onNext }: Props) {
   const [name, setName] = useState('')
   const [birth, setBirth] = useState<YMD>(EMPTY_YMD)
   const [phone, setPhone] = useState('')
@@ -106,7 +107,7 @@ export default function IdentityCheck({ appId, identity, onVerified, onNext }: P
     ? eligibilityResult.blockers : []
 
   useEffect(() => {
-    if (!identity) return
+    if (!identity || appId === null) return
     let active = true
     fetchApplication(appId).then((data) => {
       if (active) setEligibilityResult({ appId, birth: identity.birth, blockers: data.eligibility_blockers ?? [] })
@@ -225,7 +226,9 @@ export default function IdentityCheck({ appId, identity, onVerified, onNext }: P
     setBusy(true)
     setError('')
     try {
-      const result = await verifyIdentity(appId, {
+      const applicationId = appId ?? await ensureApplication?.()
+      if (applicationId === undefined) throw new Error('신청 정보를 준비하지 못했습니다. 다시 시도해 주세요.')
+      const result = await verifyIdentity(applicationId, {
         name,
         birth: birthISO,
         phone,
@@ -233,7 +236,7 @@ export default function IdentityCheck({ appId, identity, onVerified, onNext }: P
         signature_data_url: signature,
         signature_kind: signMode === '직접 서명' ? 'electronic' : 'uploaded',
       })
-      onVerified(result, phone)
+      onVerified(result, phone, applicationId)
     } catch (e) {
       setError(friendlyError(e, '본인인증을 완료하지 못했습니다. 다시 시도해 주세요.'))
     } finally {

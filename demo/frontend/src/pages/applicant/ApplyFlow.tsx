@@ -13,7 +13,6 @@ import {
   patchApplication,
   postConsents,
   postSelfCheck,
-  type ApplicationRow,
   type ConsentPayload,
   type Identity,
   type Program,
@@ -40,6 +39,7 @@ import useBeforeUnload from '../../hooks/useBeforeUnload.ts'
 import { friendlyError } from '../../lib/error-copy.ts'
 import { readReceiptSteps } from '../../lib/receipt-steps.ts'
 import { formatDateTime } from '../../lib/format.ts'
+import { ACTIVE_APPLICATION_KEY, createIdentitySession } from '../../lib/identity-session.ts'
 import './apply-flow.css'
 
 type Stage =
@@ -51,19 +51,7 @@ type Stage =
   | 'complete'
   | 'mypage'
 
-const ACTIVE_APPLICATION_KEY = 'applicant.activeApplicationId'
 const YOUTH_PROGRAM_CODE = 'job_package'
-// Share an in-flight draft across StrictMode replay and history remounts.
-let pendingDraft: Promise<ApplicationRow> | null = null
-function youthDraft(): Promise<ApplicationRow> {
-  if (!pendingDraft) {
-    pendingDraft = createApplication(YOUTH_PROGRAM_CODE).then((application) => {
-      try { window.sessionStorage.setItem(ACTIVE_APPLICATION_KEY, String(application.id)) } catch { /* In-memory flow still works. */ }
-      return application
-    }).catch((error: unknown) => { pendingDraft = null; throw error })
-  }
-  return pendingDraft.then((application) => fetchApplication(application.id))
-}
 
 function savedPage(): { appId: number; stage: Stage; previous: Stage } | null {
   const params = currentParams()
@@ -102,6 +90,10 @@ function lockIdentity(form: Form1Value, identity: Identity | null): Form1Value {
 
 export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | null }) {
   const [initialPage] = useState(savedPage)
+  const [applicationSession] = useState(() => createIdentitySession({
+    programCode: YOUTH_PROGRAM_CODE, storage: () => window.sessionStorage,
+    load: fetchApplication, create: createApplication,
+  }))
   const initialUrlWrite = useRef(true)
   const [restoring, setRestoring] = useState(true)
   const [startupAttempt, setStartupAttempt] = useState(0)
@@ -154,38 +146,19 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
         if (!active) return
         const picked = programs.find((item) => item.code === YOUTH_PROGRAM_CODE)
         if (!picked) throw new Error('청년 취업지원패키지 설정을 불러오지 못했습니다.')
-        let application: ApplicationRow | null = null
-        let restored = false
-        const pageToRestore = initialPage ?? savedPage()
-        if (pageToRestore) {
-          try {
-            const saved = await fetchApplication(pageToRestore.appId)
-            if (!active) return
-            if (saved.program_code === YOUTH_PROGRAM_CODE) {
-              application = saved
-              restored = true
-            } else {
-              pendingDraft = null
-              try { window.sessionStorage.removeItem(ACTIVE_APPLICATION_KEY) } catch { /* Storage may be disabled. */ }
-            }
-          } catch (error: unknown) {
-            if (!active) return
-            if (!(error instanceof Error) || !/실패 \(404\)/.test(error.message)) throw error
-            pendingDraft = null
-            try { window.sessionStorage.removeItem(ACTIVE_APPLICATION_KEY) } catch { /* Storage may be disabled. */ }
-          }
-        }
+        setProgram(picked)
+        const application = await applicationSession.restore()
         if (!active) return
-        if (!application) application = await youthDraft()
+        if (!application) {
+          setAppId(null)
+          setAppNo('')
+          return
+        }
+        const restored = true
         const [consents, status, subsidy] = await Promise.all([
           fetchApplicationConsents(application.id), fetchStatus(application.id), fetchSubsidyItems(application.id),
         ])
         if (!active) return
-        try {
-          window.sessionStorage.setItem(ACTIVE_APPLICATION_KEY, String(application.id))
-          pendingDraft = null
-        } catch { /* Retain the shared promise in memory when storage is disabled. */ }
-        setProgram(picked)
         setAppId(application.id)
         setAppNo(application.application_no)
         const savedIdentity = application.identity_json
@@ -216,7 +189,7 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
     }
     void restore()
     return () => { active = false }
-  }, [initialPage, startupAttempt])
+  }, [initialPage, startupAttempt, applicationSession])
 
   useEffect(() => {
     if (restoring) return
@@ -240,11 +213,11 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
     setUploadProgress({ completed, total })
   }, [])
 
-  const save = (body: { form1?: unknown; self_check?: unknown }): Promise<void> => {
-    if (appId === null) return Promise.resolve()
+  const save = (body: { form1?: unknown; self_check?: unknown }, targetId = appId): Promise<void> => {
+    if (targetId === null) return Promise.resolve()
     pendingSaves.current += 1
     setSaveState('saving')
-    const next = saveQueue.current.catch(() => undefined).then(() => patchApplication(appId, body)).then(() => {
+    const next = saveQueue.current.catch(() => undefined).then(() => patchApplication(targetId, body)).then(() => {
       pendingSaves.current -= 1
       if (pendingSaves.current === 0) setSaveState(saveFailed.current ? 'failed' : 'saved')
     })
@@ -408,15 +381,21 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
       </p>}
 
       {/* ── 본인인증 (데모) ── */}
-      {stage === 'identity' && appId !== null && (
+      {stage === 'identity' && (
         <IdentityCheck
           appId={appId}
+          ensureApplication={async () => {
+            const application = await applicationSession.ensure()
+            setAppId(application.id)
+            setAppNo(application.application_no)
+            return application.id
+          }}
           identity={identity}
-          onVerified={(verified, mobile) => {
+          onVerified={(verified, mobile, verifiedAppId) => {
             setIdentity(verified)
             const locked = lockIdentity({ ...form1, mobile }, verified)
             setForm1(locked)
-            save({ form1: locked })
+            save({ form1: locked }, verifiedAppId)
             setStage('forms')
             window.scrollTo({ top: 0 })
           }}
