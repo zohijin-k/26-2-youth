@@ -96,3 +96,5 @@ export const confirmProgramForm = (postingId: number, formId: number) =>
 
 export const unpublishProgram = (id: number) =>
   workspaceRequest<ManagedProgramData>(`/api/officer/postings/${id}/unpublish`, { method: 'POST' })
+
+export const draftProgramGuidance = (id: number) => workspaceRequest<{ text: string; source: string; basis: string }>(`/api/officer/postings/${id}/workspace/guidance-draft`, { method: 'POST' })

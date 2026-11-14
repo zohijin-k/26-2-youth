@@ -737,6 +737,7 @@ export interface OfficerList {
 
 /** 목록에서 행을 펼쳤을 때 보이는, 이 건을 확인해야 하는 사유. */
 export interface ApplicationReasons {
+  explanation?: { text: string; label: string; basis: string } | null
   application_id: number
   ai_status: DocStatus | null
   ai_status_label: string
@@ -1120,3 +1121,5 @@ export const closePosting = (id: number) =>
 /** 작성 중인 사업만 지울 수 있다. 올린 PDF도 함께 지워진다. */
 export const deletePosting = (id: number) =>
   writePosting<void>(`/api/officer/postings/${id}`, { method: 'DELETE' })
+
+export const fetchReasonExplanation = (id: number, role: string) => json<{ text: string; label: string; basis: string }>(`/api/officer/applications/${id}/reason-explanation?${query({ role })}`)

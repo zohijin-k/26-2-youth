@@ -166,3 +166,8 @@ Generic `posting_<id>` applications freeze confirmed layouts, selected document 
 Generic review is PASS only when all submitted documents and required slots are PASS and required form fields are complete. Otherwise use NEEDS_REVIEW; confirmed document FAIL still blocks submission through shared document checks. Always show the unconfigured-eligibility notice to officers. Recheck current posting state/period before draft submission; keep submitted snapshots readable after later posting edits or closure. Do not connect an incompatible score sheet by altering protected detail components.
 
 New browser job-package sessions and all actual bankbook uploads carry the strict flow marker. Require an existing matching document row and bytes, preserve the marker through context updates, clear stale filenames on delete, and store same-name replacements at unique paths. Legacy direct synthetic API contracts remain separate; never treat a filename as new-upload verification.
+
+
+## Optional text drafting
+
+Default provider is none. JBAI requires explicit provider/enabled settings plus environment credentials; tests inject fake transports and never call live services. Guidance accepts only server-owned public posting facts, selected canonical document labels and public notice text. Review explanations accept canonical codes only and reconstruct static field labels/rule wording; never pass stored messages, OCR values or applicant fields. Project inputs again immediately before transport, disable redirects, and do not log provider exceptions. Explanations are non-authoritative text displayed below rule results and cannot change decisions.

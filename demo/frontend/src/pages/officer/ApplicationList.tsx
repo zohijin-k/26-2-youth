@@ -10,6 +10,7 @@ import { Fragment, useEffect, useId, useRef, useState, type FormEvent, type Keyb
 import {
   OFFICER_QUEUES,
   fetchApplicationReasons,
+  fetchReasonExplanation,
   type ApplicationReasons,
   type DecisionKey,
   type OfficerList,
@@ -164,7 +165,10 @@ export default function ApplicationList({
   const loadReasons = (id: number) => {
     setReasons((prev) => ({ ...prev, [id]: { status: 'loading' } }))
     fetchApplicationReasons(id, list.role.key)
-      .then((data) => setReasons((prev) => ({ ...prev, [id]: { status: 'ready', data } })))
+      .then(async (data) => {
+        const explanation = await fetchReasonExplanation(id, list.role.key).catch(() => null)
+        setReasons((prev) => ({ ...prev, [id]: { status: 'ready', data: { ...data, explanation } } }))
+      })
       .catch(() => setReasons((prev) => ({ ...prev, [id]: { status: 'error' } })))
   }
 
@@ -548,6 +552,7 @@ function Reasons({ id, row, state, onRetry, onOpen, generic = false }: {
         </ul>
       )}
 
+      {data?.explanation && <section className="alist__reasons-note"><strong>{data.explanation.label}</strong><p>{data.explanation.text}</p><small>{data.explanation.basis}</small></section>}
       {generic && <p className="alist__reasons-note">이 사업의 건별 심사 화면 연결은 준비 중입니다.</p>}
 
       {!generic && state.status !== 'loading' && (

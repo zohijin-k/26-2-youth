@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 
 import { closePosting, publishPosting } from '../../api.ts'
 import {
-  fetchProgramWorkspace, replaceProgramFiles, saveProgramWorkspace, unpublishProgram,
+  draftProgramGuidance, fetchProgramWorkspace, replaceProgramFiles, saveProgramWorkspace, unpublishProgram,
   type ManagedProgramData, type ManagedProgramFields,
 } from '../../program-workspace-api.ts'
 import FilePreview from '../../components/FilePreview.tsx'
@@ -102,11 +102,16 @@ export default function ManagedProgramWorkspace({ postingId, onBack }: Props) {
       if (mounted.current) setError(problem instanceof Error ? problem.message : '사업 상태를 바꾸지 못했습니다.')
     } finally { if (mounted.current) setBusy(false) }
   }
-  const draftGuidance = () => {
-    const labels = data?.slot_options.filter((slot) => fields.required_docs.includes(slot.key)).map((slot) => slot.label) || []
-    setFields((previous) => ({ ...previous, guidance_text: `${fields.title} 신청 안내\n\n신청 기간: ${fields.apply_start} ~ ${fields.apply_end}\n본인인증 후 신청 서식을 작성하고 제출 서류를 올려 주세요.\n제출 서류: ${labels.length ? labels.join(', ') : '별도 제출 서류 없음'}\n최종 확인 화면에서 내용을 확인한 뒤 제출해 주세요.` }))
-    setSaved('사업 정보로 안내 초안을 만들었습니다. 내용을 확인하고 저장해 주세요.')
+  const draftGuidance = async () => {
+    setBusy(true); setError(''); setSaved('')
+    try {
+      await saveProgramWorkspace(postingId, fields)
+      const draft = await draftProgramGuidance(postingId)
+      if (mounted.current) { setFields((previous) => ({ ...previous, guidance_text: draft.text })); setSaved(draft.basis) }
+    } catch (problem: unknown) { if (mounted.current) setError(problem instanceof Error ? problem.message : '안내 초안을 만들지 못했습니다.') }
+    finally { if (mounted.current) setBusy(false) }
   }
+
   const edit = (next: Partial<ManagedProgramFields>) => { setFields((previous) => ({ ...previous, ...next })); setSaved('') }
   const readonly = busy || data?.posting.status !== 'draft' || !data?.managed
   const posting = data?.posting
@@ -143,7 +148,7 @@ export default function ManagedProgramWorkspace({ postingId, onBack }: Props) {
       <section hidden={step !== 2} className="managed-program__guidance">
         <h2>안내 메시지</h2><p className="pnew__note">신청자에게 보일 안내입니다. 사업 정보로 만든 초안을 확인하고 수정해 주세요.</p>
         <label className="pnew__label" htmlFor="pedit-guidance">안내 내용</label><textarea id="pedit-guidance" className="pnew__input" maxLength={20000} value={fields.guidance_text} disabled={readonly} onChange={(event) => edit({ guidance_text: event.target.value })} />
-        <div className="pnew__actions"><button type="button" className="btn" disabled={readonly || templateBusy} onClick={draftGuidance}>초안 만들기</button><button type="button" className="btn btn--primary" disabled={readonly || templateBusy} onClick={() => void saveBasics()}>안내 메시지 저장</button></div>
+        <div className="pnew__actions"><button type="button" className="btn" disabled={readonly || templateBusy} onClick={() => void draftGuidance()}>초안 만들기</button><button type="button" className="btn btn--primary" disabled={readonly || templateBusy} onClick={() => void saveBasics()}>안내 메시지 저장</button></div>
       </section>
       <section hidden={step !== 3} className="managed-program__publication">
         <h2>미리보기·게시</h2>
