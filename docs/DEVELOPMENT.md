@@ -130,7 +130,7 @@ python -m pytest engine_v2/tests -q -ra
 python -m pytest demo/backend/tests -q -ra
 ```
 
-`e449c55`의 WSL2 기준선은 엔진 1,264개 통과·합성 글꼴 누락 3개 건너뜀, 백엔드 1,227개 통과입니다. 건너뛴 3개는 `engine_v2/tests/test_own_format_integration.py`의 시험으로, own 모델을 설치한 상태에서 합성 글꼴을 `python -m engine_v2.tools.fetch_synth_fonts`로 `engine_v2/data/synth_fonts/`에 받아 두면 함께 실행되어 엔진 기준선은 1,267개 통과가 됩니다. 시나리오 18개는 확인 1,885개 통과·실패 0이며 P14의 원본 서식 8개 검증도 통과했습니다. Apple Vision 관련 시험 건너뜀은 없고 `ocrmac` 설치는 Darwin 조건에 따라 제외됩니다. 위 반복문은 한 시나리오가 실패해도 나머지를 계속 실행합니다. 사업 저장소를 넣은 뒤 백엔드는 시험 62개가 늘어 1,289개, 신청 목록의 탭·검색·확인 필요 사유를 넣은 뒤 17개가 더 늘어 1,306개 통과입니다(macOS에서 확인).
+`e449c55`의 WSL2 기준선은 엔진 1,264개 통과·합성 글꼴 누락 3개 건너뜀, 백엔드 1,227개 통과입니다. 건너뛴 3개는 `engine_v2/tests/test_own_format_integration.py`의 시험으로, own 모델을 설치한 상태에서 합성 글꼴을 `python -m engine_v2.tools.fetch_synth_fonts`로 `engine_v2/data/synth_fonts/`에 받아 두면 함께 실행되어 엔진 기준선은 1,267개 통과가 됩니다. 시나리오 18개는 확인 1,885개 통과·실패 0이며 P14의 원본 서식 8개 검증도 통과했습니다. Apple Vision 관련 시험 건너뜀은 없고 `ocrmac` 설치는 Darwin 조건에 따라 제외됩니다. 위 반복문은 한 시나리오가 실패해도 나머지를 계속 실행합니다. 사업 저장소를 넣은 뒤 백엔드는 시험 62개가 늘어 1,289개, 신청 목록의 탭·검색·확인 필요 사유와 일괄 승인 제한을 넣은 뒤 28개가 더 늘어 1,317개 통과입니다(macOS에서 확인).
 
 프론트엔드 타입 검사·린트·빌드와 단위 시험은 다음과 같습니다.
 
@@ -139,9 +139,10 @@ cd demo/frontend
 npm run lint
 npm run build
 node src/forms/phone.test.ts
+node src/pages/officer/bulk-actions.test.ts
 ```
 
-`npm run lint`는 종료 코드 0에 경고 없이 끝납니다. `npm run build`는 종료 코드 0이며, 신청자 화면과 담당자 화면을 따로 나눠 싣기 때문에 청크 크기 안내는 나오지 않습니다. `node src/forms/phone.test.ts`는 신청자 서식의 전화번호 형식 단위 시험으로, Node가 TypeScript 파일을 직접 실행하므로 Node 22.18 이상에서 실행합니다. 통과하면 오류 없이 종료 코드 0으로 끝납니다.
+`npm run lint`는 종료 코드 0에 경고 없이 끝납니다. `npm run build`는 종료 코드 0이며, 신청자 화면과 담당자 화면을 따로 나눠 싣기 때문에 청크 크기 안내는 나오지 않습니다. `node src/forms/phone.test.ts`는 신청자 서식의 전화번호 형식 단위 시험으로, Node가 TypeScript 파일을 직접 실행하므로 Node 22.18 이상에서 실행합니다. 통과하면 오류 없이 종료 코드 0으로 끝납니다. `node src/pages/officer/bulk-actions.test.ts`는 담당자 신청 목록의 구분과 일괄 처리 버튼 규칙 단위 시험입니다.
 
 하위 폴더별 기능과 추가 실행 방법은 [데모](../demo/README.md), [기존 엔진](../engine/README.md), [엔진 v2](../engine_v2/README.md), 대시보드 코드와 [대시보드 옛 안내](archive/dashboard-README.md)를 확인합니다.
 

@@ -1137,12 +1137,35 @@ def decide(application_id: int, body: DecisionRequest) -> dict[str, Any]:
     return _apply_decision(application_id, role, body.decision, body.memo)
 
 
+def _unchecked_numbers(application_ids: list[int]) -> list[str]:
+    """고른 건 가운데 확인 필요 구분(`queue_of`)에 있는 건의 신청번호."""
+    ids = sorted({i for i in application_ids if 0 < i < _ID_LIMIT})
+    if not ids:
+        return []
+    with get_session() as s:
+        apps = s.exec(select(Application).where(Application.id.in_(ids))).all()
+        reviews = {
+            r.application_id: r
+            for r in s.exec(select(Review).where(Review.application_id.in_(ids))).all()
+        }
+    return [
+        app.application_no or str(app.id)
+        for app in apps
+        if app.status != STATUS_DRAFT
+        and queue_of(Entry(app, reviews.get(app.id or 0))) == QUEUE_NEEDS_CHECK
+    ]
+
+
 @router.post("/applications/decisions")
 def decide_bulk(body: BulkDecisionRequest) -> dict[str, Any]:
     """목록에서 체크한 건을 한 번에 처리.
 
     읍·면·동은 구비서류를 건별로 확인하는 단계라 일괄 처리를 제공하지 않는다.
     권한 차이를 화면에서 바로 보이게 하려는 의도다 (R4.5).
+
+    확인 필요 건(판단 없음 + 자동 판정이 적합이 아님)은 일괄 승인할 수 없다. 서류를
+    보지 않은 통과를 막기 위해서다. 보류·반려는 일괄로 할 수 있다. 고른 건 중 하나라도
+    걸리면 아무것도 처리하지 않고 409로 답한다.
     """
     try:
         role = get_role(body.role)
@@ -1153,6 +1176,16 @@ def decide_bulk(body: BulkDecisionRequest) -> dict[str, Any]:
             403, f"'{role.name}' 역할은 건별 확인이 원칙이라 일괄 처리를 할 수 없습니다."
         )
     _check_action(role, body.decision)
+    if body.decision == DECISION_APPROVE:
+        unchecked = _unchecked_numbers(body.application_ids)
+        if unchecked:
+            action = action_of(role, DECISION_APPROVE)
+            label = action.result_label if action else body.decision
+            raise HTTPException(
+                409,
+                f"확인 필요 건은 일괄로 {label}할 수 없습니다. 심사 화면에서 서류를 확인한 뒤 "
+                f"건별로 처리해 주세요: {', '.join(unchecked)}",
+            )
     results = [
         _apply_decision(app_id, role, body.decision, body.memo)
         for app_id in body.application_ids

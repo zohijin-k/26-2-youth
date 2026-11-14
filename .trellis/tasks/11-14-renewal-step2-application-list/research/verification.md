@@ -32,3 +32,13 @@ Real backend with 7 synthetic submitted applications (3 needs-check incl. one no
 - Reasons role handling matches the review detail (role validated; no region 403 in either).
 - The first-come progress block is removed from the list; the supplement deadline notice the officer needs stays in the review detail.
 - Fixed during review: the mock reasons function threw synchronously, which would have left a row in the loading state; `fetchApplicationReasons` is now `async` so the error state shows.
+
+## Follow-up before merge: no bulk approve from 확인 필요 (owner request, 2026-11-14)
+
+Owner rule: in the 확인 필요 tab, bulk actions are 보류·반려 only (no pass without looking at the documents).
+
+- Backend: `POST /api/officer/applications/decisions` with `approve` returns 409 and processes nothing when any selected case is in the needs-check queue (`queue_of`); hold/reject stay allowed; approve of pass or decided cases and single approve from the review screen are unchanged.
+- Frontend: the selection bar uses `bulkActionsFor(queue, actions)` (`pages/officer/bulk-actions.ts`); mock mode refuses the same way.
+- Baselines: main after the step-1 merge (`106be0b`) = 1,289 backend tests (measured again in a worktree); step 2 = 1,306 (+17); with this guard = 1,317 (+11). 18 scenario modules exit 0. Lint 0, build without chunk notice, `phone.test.ts` and new `bulk-actions.test.ts` exit 0.
+- Browser (real and mock): selection bar shows 보류·반려 in 확인 필요, 최종 선정·보류·반려 in 적합 and 처리 완료; no console errors.
+- Role tabs (읍·면·동 / 시군 / 도) and their rendering are unchanged from main; `demo/backend/rules` has no diff.

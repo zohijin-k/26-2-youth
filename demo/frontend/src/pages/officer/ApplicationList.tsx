@@ -20,6 +20,7 @@ import {
 import { Skeleton, SkeletonLine } from '../../components/Skeleton.tsx'
 import useDelayedFlag from '../../hooks/useDelayedFlag.ts'
 import { formatDayTime } from '../../posting-format.ts'
+import { bulkActionsFor, queueOf } from './bulk-actions.ts'
 import './application-list.css'
 
 const QUEUE_COPY: Record<OfficerQueue, { label: string; empty: string }> = {
@@ -39,7 +40,7 @@ type ReasonState =
   | { status: 'ready'; data: ApplicationReasons }
 
 /** 담당자 판단이 없고 자동 판정이 적합이 아닌 건. 이 건에만 사유 펼침이 있다. */
-const needsCheck = (row: OfficerRow) => !row.decision && row.ai_status !== 'PASS'
+const needsCheck = (row: OfficerRow) => queueOf(row) === 'needs_check'
 
 /** 처리상태 표기. 판단한 건은 담당자 판단을, 아닌 건은 자동 판정을 보여준다. */
 function StatusChip({ row }: { row: OfficerRow }) {
@@ -306,7 +307,8 @@ export default function ApplicationList({
         {selecting && (
           <div className="alist__selection" role="group" aria-label="선택한 신청 일괄 처리">
             <strong className="alist__selection-count">{selected.length.toLocaleString('ko-KR')}건 선택</strong>
-            {list.role.actions.map((action) => (
+            {/* 확인 필요 탭에서는 승인을 일괄로 할 수 없다 — 보류·반려만 보인다. */}
+            {bulkActionsFor(shownQueue, list.role.actions).map((action) => (
               <button
                 key={action.key}
                 type="button"

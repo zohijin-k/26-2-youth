@@ -90,15 +90,16 @@ cd demo/frontend
 npm run lint
 npm run build
 node src/forms/phone.test.ts
+node src/pages/officer/bulk-actions.test.ts
 ```
 
 기대 결과는 다음과 같습니다.
 
 - 엔진: own 모델을 설치한 상태에서, 합성 글꼴을 `python -m engine_v2.tools.fetch_synth_fonts`로 받아 두었으면 1,267개 통과, 받지 않았으면 1,264개 통과·3개 건너뜀입니다. 글꼴은 `engine_v2/data/synth_fonts/`에 받으며 커밋하지 않습니다.
-- 백엔드: 1,306개 통과입니다(사업 저장소 시험 62개, 신청 목록 탭·검색·사유 시험 17개 포함).
+- 백엔드: 1,317개 통과입니다(사업 저장소 시험 62개, 신청 목록 탭·검색·사유·일괄 승인 제한 시험 28개 포함).
 - `npm run lint`: 종료 코드 0, 경고 없음입니다.
 - `npm run build`: 종료 코드 0입니다. 두 화면을 나눠 싣기 때문에 청크 크기 안내는 나오지 않습니다.
-- `node src/forms/phone.test.ts`: 신청자 서식의 전화번호 형식 단위 시험입니다. Node가 TypeScript 파일을 직접 실행하므로 이 명령은 Node 22.18 이상에서 실행합니다. 통과하면 오류 없이 종료 코드 0으로 끝납니다.
+- `node src/forms/phone.test.ts`: 신청자 서식의 전화번호 형식 단위 시험입니다. Node가 TypeScript 파일을 직접 실행하므로 이 명령은 Node 22.18 이상에서 실행합니다. 통과하면 오류 없이 종료 코드 0으로 끝납니다. `node src/pages/officer/bulk-actions.test.ts`는 담당자 신청 목록의 구분과 일괄 처리 버튼 규칙 단위 시험입니다.
 
 시나리오 18개 모듈의 실행 방법은 [데모 안내](demo/README.md#5-검증-스크립트)에 있습니다. 시험은 합성 데이터와 임시 DB·저장소를 사용합니다.
 

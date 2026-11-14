@@ -5,6 +5,7 @@ import {
   MOCK_ROLES,
   isMockId,
   mockApplicationReasons,
+  mockBulkRefusal,
   mockDecide,
   mockOfficerList,
   mockReviewDetail,
@@ -932,6 +933,8 @@ export const postBulkDecision = (body: {
   application_ids: number[]
 }) => {
   if (!mockMode().blocked && body.application_ids.every(isMockId)) {
+    const refusal = mockBulkRefusal(body.application_ids, body.role, body.decision)
+    if (refusal) return Promise.reject(new Error(refusal))
     return Promise.resolve({ processed: mockDecide(body.application_ids, body.role, body.decision, body.memo) })
   }
   return json<{ processed: number }>('/api/officer/applications/decisions', {

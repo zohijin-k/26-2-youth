@@ -269,6 +269,63 @@ def test_a_decision_moves_the_case_to_done_in_both_places(client):
     assert card["needs_check_count"] == 2
 
 
+# ---------------------------------------------------------------- bulk approve guard
+
+
+def bulk_decide(client, decision, application_ids, role="province"):
+    return client.post("/api/officer/applications/decisions",
+                       json={"role": role, "decision": decision, "memo": "FAKE 일괄",
+                             "application_ids": application_ids})
+
+
+@pytest.mark.parametrize("case", ["needs_review", "fail", "unreviewed"])
+@pytest.mark.parametrize("role", ["province", "city"])
+def test_bulk_approve_is_refused_for_needs_check_cases(client, case, role):
+    made = seed_queues()
+    before = listing(client)["queues"]
+    response = bulk_decide(client, "approve", [made[case]], role=role)
+    assert response.status_code == 409, response.text
+    assert "확인 필요" in response.json()["detail"]
+    assert "FAKE-QUEUE-" in response.json()["detail"]
+    assert listing(client)["queues"] == before
+
+
+def test_bulk_approve_with_one_needs_check_case_processes_nothing(client):
+    made = seed_queues()
+    response = bulk_decide(client, "approve", [made["pass_a"], made["needs_review"], made["pass_b"]])
+    assert response.status_code == 409, response.text
+    detail = response.json()["detail"]
+    assert "FAKE-QUEUE-003" in detail and "FAKE-QUEUE-005" not in detail
+    assert listing(client)["queues"] == {"needs_check": 3, "pass": 2, "done": 3}
+    assert ids(listing(client, queue="pass")) == [made["pass_a"], made["pass_b"]]
+
+
+@pytest.mark.parametrize("decision", ["hold", "reject"])
+def test_bulk_hold_and_reject_are_allowed_for_needs_check_cases(client, decision):
+    made = seed_queues()
+    response = bulk_decide(client, decision, [made["needs_review"], made["fail"]])
+    assert response.status_code == 200, response.text
+    assert response.json()["processed"] == 2
+    done = listing(client, queue="done")
+    assert {made["needs_review"], made["fail"]} <= set(ids(done))
+    assert listing(client)["queues"] == {"needs_check": 1, "pass": 2, "done": 5}
+
+
+def test_bulk_approve_is_still_allowed_for_pass_and_decided_cases(client):
+    made = seed_queues()
+    response = bulk_decide(client, "approve", [made["pass_a"], made["held"], made["rejected"]])
+    assert response.status_code == 200, response.text
+    assert response.json()["processed"] == 3
+
+
+def test_single_approve_from_the_review_screen_is_not_affected(client):
+    made = seed_queues()
+    response = client.post(f"/api/officer/applications/{made['needs_review']}/decision",
+                           json={"role": "province", "decision": "approve", "memo": "FAKE 건별"})
+    assert response.status_code == 200, response.text
+    assert made["needs_review"] in ids(listing(client, queue="done"))
+
+
 # ---------------------------------------------------------------- reasons
 
 

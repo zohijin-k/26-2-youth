@@ -6,11 +6,11 @@ import type {
   OfficerDocument,
   OfficerList,
   OfficerListQuery,
-  OfficerQueue,
   OfficerRole,
   OfficerRow,
   ReviewDetailData,
 } from '../../api.ts'
+import { blockedBulkApprove, bulkApproveRefusal, queueOf } from './bulk-actions.ts'
 
 /** 목업 신청 건의 id 시작점. 실제 DB id(1부터)와 절대 겹치지 않게 띄워 둔다. */
 export const MOCK_ID_BASE = 900_000
@@ -1190,10 +1190,6 @@ function firstComeSummary(programCode: string | undefined): OfficerList['first_c
   }
 }
 
-/** 신청 건의 구분. 백엔드 `api/officer.py`의 `queue_of`와 같은 규칙이다. */
-const queueOf = (row: OfficerRow): OfficerQueue =>
-  row.decision ? 'done' : row.ai_status === 'PASS' ? 'pass' : 'needs_check'
-
 export function mockOfficerList(query: OfficerListQuery): OfficerList {
   const role = roleOf(query.role)
   let rows = ENTRIES
@@ -1532,6 +1528,19 @@ export function mockApplicationReasons(applicationId: number): ApplicationReason
  * 새로고침하면 초기 상태로 돌아간다 — 목업은 브라우저 메모리에만 있다. 시연을
  * 다시 처음부터 돌리기에는 오히려 이 편이 편하다.
  */
+/**
+ * 목업 일괄 처리 전 검사. 백엔드와 같이 확인 필요 건은 일괄 승인할 수 없다.
+ * 걸리면 거절 문장을, 아니면 null을 낸다.
+ */
+export function mockBulkRefusal(applicationIds: number[], roleKey: string, decision: DecisionKey): string | null {
+  const rows = applicationIds.flatMap((id) => {
+    const row = byId.get(id)?.row
+    return row ? [row] : []
+  })
+  const blocked = blockedBulkApprove(decision, rows)
+  return blocked.length > 0 ? bulkApproveRefusal(decisionLabel(roleKey, decision), blocked) : null
+}
+
 export function mockDecide(
   applicationIds: number[],
   roleKey: string,
