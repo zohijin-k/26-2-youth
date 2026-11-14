@@ -10,7 +10,7 @@
  *      — "70,000원 결제했는데 왜 50,000원인가"를 묻지 않게 하는 것이 전부다.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Skeleton, SkeletonBlock, SkeletonLine } from '../../components/Skeleton.tsx'
 import useDelayedFlag from '../../hooks/useDelayedFlag.ts'
 
@@ -21,6 +21,9 @@ import {
   type SubsidySelection,
   type SubsidyState,
 } from '../../api.ts'
+import useBeforeUnload from '../../hooks/useBeforeUnload.ts'
+import { friendlyError } from '../../lib/error-copy.ts'
+import Notice from '../../components/Notice.tsx'
 import './subsidy-items.css'
 
 const won = (value: number) => `${value.toLocaleString('ko-KR')}원`
@@ -167,34 +170,47 @@ export default function SubsidyItems({
   const [draft, setDraft] = useState<Draft>({})
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [edited, setEdited] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+  const pendingSaves = useRef(0)
+  useBeforeUnload(busy || (edited && !!error))
   const showSkeleton = useDelayedFlag(!state && !error)
 
   useEffect(() => {
+    let active = true
     fetchSubsidyItems(applicationId)
       .then((s) => {
+        if (!active) return
         setState(s)
         setDraft(toDraft(s.catalog, s.selections))
       })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
-  }, [applicationId])
+      .catch((e: unknown) => { if (active) setError(friendlyError(e, '지원 항목을 불러오지 못했습니다. 다시 시도해 주세요.')) })
+    return () => { active = false }
+  }, [applicationId, attempt])
 
   /** 입력이 바뀔 때마다 서버에 저장한다. 지급액 계산은 서버가 단일 소스다. */
   const save = (next: Draft) => {
     setDraft(next)
+    setEdited(true)
+    setError('')
+    pendingSaves.current += 1
     setBusy(true)
     saveSubsidyItems(applicationId, toSelections(next))
       .then((s) => {
         setState(s)
         onChanged?.(s)
       })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
-      .finally(() => setBusy(false))
+      .catch((e: unknown) => setError(friendlyError(e, '지원 항목을 저장하지 못했습니다. 다시 시도해 주세요.')))
+      .finally(() => {
+        pendingSaves.current -= 1
+        if (pendingSaves.current === 0) setBusy(false)
+      })
   }
 
-  if (error && !state) return <p className="flow-error">{error}</p>
+  if (error && !state) return <Notice tone="danger" role="alert">{error}<button type="button" className="btn" onClick={() => { setError(''); setAttempt((value) => value + 1) }}>다시 시도하기</button></Notice>
   if (!state) return showSkeleton ? (
     <Skeleton className="subsidy subsidy__skeleton">
-      <section className="subsidy__intro"><h3>지원받을 항목을 고르세요 (복수 선택 가능)</h3><SkeletonLine width="82%" /></section>
+      <section className="subsidy__intro"><h3>지원받을 항목을 선택해 주세요 (복수 선택 가능)</h3><SkeletonLine width="82%" /></section>
       <ul className="sitems subsidy__skeleton-grid">
         {[0, 1, 2, 3].map((item) => <li className="sitem" key={item}>
           <div className="sitem__head"><SkeletonBlock className="subsidy__check" /><SkeletonLine width="42%" /><SkeletonLine width="24%" /></div>
@@ -202,16 +218,17 @@ export default function SubsidyItems({
           <div className="sitem__body"><span>신청 회차</span><SkeletonBlock className="subsidy__input" /><p className="sitem__docs">추가서류: <SkeletonLine width="48%" /></p></div>
         </li>)}
       </ul>
-      <section className="subsidy__sum"><h3>예상 지원금</h3><table className="subsidy__table"><thead><tr><th>항목</th><th>영수증 금액</th><th>지급 예정액</th><th>계산 근거</th></tr></thead><tbody>{[0, 1].map((row) => <tr key={row}>{[0, 1, 2, 3].map((col) => <td key={col}><SkeletonLine width={col === 3 ? '84%' : '62%'} /></td>)}</tr>)}</tbody><tfoot><tr><th colSpan={2}>합계</th><td><SkeletonLine width="64%" /></td><td /></tr></tfoot></table></section>
+      <section className="subsidy__sum"><h3>예상 지원금</h3><table className="subsidy__table"><thead><tr><th>항목</th><th>영수증 금액</th><th>지급 예정액</th><th>계산 근거</th></tr></thead><tbody>{[0, 1].map((row) => <tr key={row}>{[0, 1, 2, 3].map((col) => <td data-label="항목" key={col}><SkeletonLine width={col === 3 ? '84%' : '62%'} /></td>)}</tr>)}</tbody><tfoot><tr><th colSpan={2}>합계</th><td data-label="지급 예정액"><SkeletonLine width="64%" /></td><td data-label="계산 근거" /></tr></tfoot></table></section>
     </Skeleton>
   ) : null
 
   const estimate = state.estimate
 
   return (
-    <div className="subsidy">
+    <div className="subsidy" id="subsidy-items">
+      <p className="field__hint" role="status" aria-live="polite">{busy ? '저장 중…' : error ? '저장하지 못했습니다' : edited ? '저장했습니다' : '항목을 선택하면 자동으로 저장합니다.'}</p>
       <section className="subsidy__intro">
-        <h3>지원받을 항목을 고르세요 (복수 선택 가능)</h3>
+        <h2>지원받을 항목을 선택해 주세요 (복수 선택 가능)</h2>
         <p>{state.notice}</p>
       </section>
 
@@ -269,28 +286,28 @@ export default function SubsidyItems({
                     key={`${line.item_type}-${line.index}`}
                     className={line.pending ? 'is-pending' : undefined}
                   >
-                    <td>{line.label}</td>
-                    <td className="subsidy__num">
+                    <td data-label="항목">{line.label}</td>
+                    <td data-label="영수증 금액" className="subsidy__num">
                       {line.actual_cost
                         ? line.receipt_amount === null
                           ? '미입력'
                           : won(line.receipt_amount)
                         : '불요'}
                     </td>
-                    <td className="subsidy__num subsidy__granted">
+                    <td data-label="지급 예정액" className="subsidy__num subsidy__granted">
                       {won(line.granted_amount)}
                     </td>
-                    <td className="subsidy__basis">{line.calculation}</td>
+                    <td data-label="계산 근거" className="subsidy__basis">{line.calculation}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr>
                   <th colSpan={2}>합계</th>
-                  <td className="subsidy__num subsidy__total">
+                  <td data-label="지급 예정액" className="subsidy__num subsidy__total">
                     {won(estimate.total_granted)}
                   </td>
-                  <td />
+                  <td data-label="계산 근거" />
                 </tr>
               </tfoot>
             </table>
@@ -309,7 +326,7 @@ export default function SubsidyItems({
         )}
       </section>
 
-      {error && <p className="subsidy__error">{error}</p>}
+      {error && <p className="subsidy__error" role="alert">{error} <button type="button" className="btn btn--small" onClick={() => save(draft)}>다시 저장하기</button></p>}
     </div>
   )
 }

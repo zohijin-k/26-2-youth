@@ -16,7 +16,7 @@ Every applicant screen follows the owner's public-service design: one token file
 | --- | --- |
 | 사업명 | 사업마다 다르다. 지금 신청할 수 있는 사업은 「전북청년 취업지원패키지」. 사업 찾기·사업 안내는 여러 사업을 다룬다. |
 | 운영기관 | 전북청년허브센터 (로고와 사업 규칙의 신청 방법 문구가 근거) |
-| 로고 파일 | 저장소 루트 `logo.png` (432×112, 불투명, 가로형). `demo/frontend/src/assets/brand/`로 복사해 쓴다. 정사각 심볼은 없다. |
+| 로고 파일 | 저장소 루트 `logo.png` (844×226, 불투명, 가로형). `demo/frontend/src/assets/brand/`로 복사해 쓴다. 정사각 심볼은 없다. 소유자가 교체한 최신 이미지이며 네 가장자리는 흰색이다. |
 | 문의 전화 | 없음 (`rules/programs.py`의 취업지원패키지 `call_center`가 비어 있다). 문의 줄은 생략한다. |
 | 신청 단계 | 본인인증 → 서식 작성 → 서류 업로드 → 확인 및 제출 (`ApplyFlow.tsx`의 `APPLY_STEPS`; 지원 항목 선택은 서식 작성 뒤에 이어지는 화면) |
 | 대상 화면 | `demo/frontend/src`의 신청자 쪽 전부: 신청자 셸(`App.tsx`의 신청자 머리·바닥), `pages/applicant/**`, `forms/**`의 화면 틀, 신청자 쪽에서 쓰는 공용 컴포넌트 |
@@ -52,3 +52,13 @@ The report required by section 11.5: files changed, the contrast table, what was
 - [ ] Officer screens: 0 differing pixels before/after on the five screens in R2.
 - [ ] `npm run lint` 0 warnings, `npm run build` without a chunk-size notice, existing unit test and new unit tests for new pure logic pass; backend suite and 18 scenarios unchanged.
 - [ ] A full applicant walk-through in a browser against the real backend: find → information → identity → forms → subsidy items → upload (including a slowed response) → final check → submit → receipt → my page.
+
+## Implementation status
+
+Applicant code and automated verification are implemented. See `verification.md` for commands, results, contrast pairs, replacement-logo sampling and changed files. Frontend tests: 32; backend: 1317; engine: 1267; scenario modules: 18, all pass. Officer CSS declaration histories: 374 unchanged. Browser capture, real-backend walkthrough and pixel comparison remain pending because browser/computer-use access is unavailable. Keep this task in progress until these acceptance checks are completed.
+
+## Continuation approval — 2026-11-15
+
+The owner approved the two proposed commits including existing preparation files and requested continuation of interrupted work. When asked to clarify scope, the owner selected completion of the current applicant design task; later renewal phases 3–5 are outside this continuation. Browser and native Chrome access were retried and remain unavailable. Final review fixes stay within applicant feedback and validation: measured transport percentages, date help linkage, initial-list retry, truthful pending-save state and valid PNG signature preparation.
+
+Implementation commit: `258e88c1dbdc54bff635c90e1ede6d33a7aafe50`. The approved documentation commit records the final review and remaining browser acceptance.

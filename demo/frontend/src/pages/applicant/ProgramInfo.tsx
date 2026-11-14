@@ -7,12 +7,14 @@
 import { useEffect, useState } from 'react'
 
 import { fetchPosting, isNotFound, type PublicPostingDetail } from '../../api.ts'
-import FilePreview from '../../components/FilePreview.tsx'
+import FilePreview from '../../components/ApplicantFilePreview.tsx'
 import PdfPages from '../../components/PdfPages.tsx'
 import { Skeleton, SkeletonBlock, SkeletonLine } from '../../components/Skeleton.tsx'
 import useDelayedFlag from '../../hooks/useDelayedFlag.ts'
 import { isPlainClick, routeHref } from '../../navigation-url.ts'
-import { formatDay, formatPeriod } from '../../posting-format.ts'
+import { formatDate } from '../../lib/format.ts'
+import useDocumentTitle from '../../hooks/useDocumentTitle.ts'
+import Icon from '../../components/Icon.tsx'
 import './program-info.css'
 
 interface Props {
@@ -24,7 +26,7 @@ interface Props {
 /** 버튼 아래 한 줄. 신청할 수 없을 때는 그 이유다. */
 function applyNote(posting: PublicPostingDetail): string {
   if (posting.can_apply) return '본인인증부터 시작합니다.'
-  if (posting.phase === 'upcoming') return `${formatDay(posting.apply_start)}부터 신청할 수 있습니다.`
+  if (posting.phase === 'upcoming') return `${formatDate(posting.apply_start.slice(0, 10))}부터 신청할 수 있습니다.`
   if (posting.phase === 'closed') return '신청 기간이 끝났습니다.'
   return '이 사업의 온라인 신청은 준비 중입니다.'
 }
@@ -54,6 +56,9 @@ export default function ProgramInfo({ postingId, onBack, onApply }: Props) {
   const [noticeBox, noticeWidth] = useBoxWidth()
   const showSkeleton = useDelayedFlag(posting === null && !problem)
 
+  useDocumentTitle(`${posting?.title ?? '사업 안내'} | 전북청년허브센터`)
+  useEffect(() => { document.querySelector<HTMLElement>('#main h1')?.focus() }, [posting])
+
   useEffect(() => {
     let active = true
     fetchPosting(postingId)
@@ -78,14 +83,14 @@ export default function ProgramInfo({ postingId, onBack, onApply }: Props) {
 
   if (problem) {
     return (
-      <main className="pinfo">
+      <div className="pinfo">
         {back}
         <div className="pinfo__notice" role="alert">
           {problem === 'missing' ? (
             <>
               <strong>사업을 찾을 수 없습니다.</strong>
               <p>게시가 끝났거나 주소가 바뀌었을 수 있습니다.</p>
-              <button type="button" className="pinfo__button" onClick={onBack}>사업 찾기로</button>
+              <button type="button" className="btn" onClick={onBack}>사업 찾기로</button>
             </>
           ) : (
             <>
@@ -93,21 +98,21 @@ export default function ProgramInfo({ postingId, onBack, onApply }: Props) {
               <p>잠시 후 다시 시도해 주세요.</p>
               <button
                 type="button"
-                className="pinfo__button"
+                className="btn"
                 onClick={() => { setProblem(''); setAttempt((value) => value + 1) }}
               >
-                다시 시도
+                다시 시도하기
               </button>
             </>
           )}
         </div>
-      </main>
+      </div>
     )
   }
 
   if (posting === null) {
     return (
-      <main className="pinfo">
+      <div className="pinfo">
         {back}
         {showSkeleton && (
           <Skeleton label="사업 안내를 불러오는 중">
@@ -122,7 +127,7 @@ export default function ProgramInfo({ postingId, onBack, onApply }: Props) {
             </div>
           </Skeleton>
         )}
-      </main>
+      </div>
     )
   }
 
@@ -132,25 +137,24 @@ export default function ProgramInfo({ postingId, onBack, onApply }: Props) {
   const pageWidth = Math.max(220, Math.min(860, noticeWidth - (noticeWidth < 480 ? 36 : 48)))
 
   return (
-    <main className="pinfo">
-      {back}
-
-      <header className="pinfo__head">
-        <span className={`pinfo__status pinfo__status--${posting.phase}`}>{posting.phase_label}</span>
-        <h1 className="pinfo__title">{posting.title}</h1>
+    <>
+      <div className="headband"><header className="pinfo__head pinfo__heading">
+        {back}
+        <span className={`pinfo__status pinfo__status--${posting.phase}`}><Icon name="calendar" size={16} />{posting.phase_label}</span>
+        <h1 tabIndex={-1} className="pinfo__title">{posting.title}</h1>
         <p className="pinfo__period">
           <span className="pinfo__period-label">신청 기간</span>
-          {formatPeriod(posting.apply_start, posting.apply_end)}
+          {formatDate(posting.apply_start.slice(0, 10))} ~ {formatDate(posting.apply_end.slice(0, 10))}
         </p>
-      </header>
-
+      </header></div>
+      <div className="pinfo">
       <div className="pinfo__layout">
         <aside className="pinfo__aside" aria-label="온라인 신청">
           <div className="pinfo__card pinfo__apply-card">
             <h2 className="pinfo__card-title">온라인 신청</h2>
             <button
               type="button"
-              className="pinfo__apply"
+              className="btn btn--primary btn--lg"
               disabled={!posting.can_apply}
               aria-describedby="pinfo-apply-note"
               onClick={() => onApply(posting.apply_path ?? '/apply/identity')}
@@ -179,7 +183,7 @@ export default function ProgramInfo({ postingId, onBack, onApply }: Props) {
             <section className="pinfo__card" aria-labelledby="pinfo-notice-title">
               <div className="pinfo__card-head">
                 <h2 className="pinfo__card-title" id="pinfo-notice-title">공고문</h2>
-                <button type="button" className="pinfo__button pinfo__button--small" onClick={() => setEnlarged(true)}>
+                <button type="button" className="btn btn--small" onClick={() => setEnlarged(true)}>
                   크게 보기
                 </button>
               </div>
@@ -201,6 +205,7 @@ export default function ProgramInfo({ postingId, onBack, onApply }: Props) {
           onClose={() => setEnlarged(false)}
         />
       )}
-    </main>
+      </div>
+    </>
   )
 }

@@ -27,7 +27,6 @@ export default function App() {
   const [mode] = useState<Mode>(currentMode)
   /** 값이 바뀌면 현재 화면이 새로 마운트돼 주소에서 상태를 다시 읽는다. */
   const [screenKey, setScreenKey] = useState(0)
-  const [headerHost, setHeaderHost] = useState<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const onHistoryChange = () => {
@@ -75,19 +74,8 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell app-shell--applicant">
-      <nav className="shell" aria-label="신청 서비스">
-        <div className="shell__inner">
-          <span className="shell__title">
-            <button className="shell__mark" type="button" onClick={goHome} aria-label="사업 찾기로 이동">전북</button>
-            <span><strong>전북 청년정책 신청</strong></span>
-          </span>
-          <div ref={setHeaderHost} className="shell__application" />
-        </div>
-      </nav>
-      <Suspense fallback={null}>
-        <ApplicantApp key={screenKey} headerHost={headerHost} />
-      </Suspense>
-    </div>
+    <Suspense fallback={null}>
+      <ApplicantApp key={screenKey} />
+    </Suspense>
   )
 }

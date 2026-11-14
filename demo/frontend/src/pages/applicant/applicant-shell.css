@@ -1,0 +1,208 @@
+/*
+ * 신청자 화면 틀: 건너뛰기 링크 · 머리글(강조 띠, 로고, 신청번호·마이페이지 자리) · 머리 띠 · 본문 · 바닥글.
+ * 변수는 styles/tokens.css에서만 가져온다. 담당자 화면 틀은 src/app-shell.css에 따로 있다.
+ */
+
+.app-shell--applicant {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: var(--color-bg);
+}
+
+/* ── 머리글 ───────────────────────────────────────────────────────────── */
+.shell {
+  flex: none;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+/* 맨 위 장식 띠. 로고의 남색 · 빨강 · 노랑 · 초록을 로고에 쓰인 비율(약 59 : 17 : 14 : 10)로 둔다. 뜻을 전하는 색이 아니다. */
+.shell::before {
+  content: '';
+  display: block;
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--brand-60) 0 59%,
+    var(--brand-accent-1) 59% 76%,
+    var(--brand-accent-2) 76% 90%,
+    var(--brand-accent-3) 90% 100%
+  );
+}
+
+.shell__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  max-width: var(--shell-max);
+  min-height: var(--shell-h);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+/* 교체된 로고는 네 가장자리가 모두 흰색이므로 흰 머리글 위에 원본 그대로 놓는다. */
+.shell__home {
+  display: block;
+  flex: none;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-8);
+  background: var(--color-surface);
+  line-height: 0;
+  padding: 0;
+  transition: box-shadow var(--ease);
+}
+
+.shell__home:hover {
+  box-shadow: var(--shadow-1);
+}
+
+.shell__logo {
+  display: block;
+  width: auto;
+  height: 48px;
+}
+
+/* ApplyFlow가 신청번호와 마이페이지 버튼을 그려 넣는 자리. */
+.shell__tools {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.shell__tools:empty { display: none; }
+
+.shell__application-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.shell__application-number {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  color: var(--color-text-subtle);
+  font-size: var(--fs-13);
+  line-height: var(--lh-tight);
+  white-space: nowrap;
+}
+
+.shell__application-number strong {
+  color: var(--color-text);
+  font-size: var(--fs-15);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 머리 띠 ──────────────────────────────────────────────────────────── */
+/* 흰 바탕을 화면 폭 전체로 깔고, 안쪽은 본문과 같은 폭으로 맞춘다. */
+.headband {
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.headband__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-5);
+  max-width: calc(var(--content-max) + var(--gutter) * 2);
+  margin: 0 auto;
+  padding: var(--sp-6) var(--gutter) var(--sp-5);
+}
+
+.headband--wide .headband__inner { max-width: var(--shell-max); }
+
+.headband__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2) var(--sp-4);
+}
+
+.headband__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  min-width: 0;
+}
+
+.headband h1 {
+  font-size: var(--fs-24);
+  text-wrap: balance;
+}
+
+.headband__lead {
+  margin: 0;
+  color: var(--color-text-subtle);
+}
+
+/* ── 본문 ─────────────────────────────────────────────────────────────── */
+.shell-main {
+  flex: 1 0 auto;
+  min-width: 0;
+}
+
+.page {
+  width: 100%;
+  max-width: calc(var(--content-max) + var(--gutter) * 2);
+  margin: 0 auto;
+  padding: var(--sp-8) var(--gutter) var(--sp-16);
+}
+
+.page--wide { max-width: calc(var(--shell-max)); }
+
+/* ── 바닥글 ───────────────────────────────────────────────────────────── */
+.site-footer {
+  flex: none;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-subtle);
+  font-size: var(--fs-15);
+}
+
+.site-footer__inner {
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  padding: var(--sp-6) var(--gutter);
+}
+
+.site-footer__service {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-1) var(--sp-3);
+  margin: 0;
+}
+
+.site-footer__service strong {
+  color: var(--color-text);
+  font-weight: var(--fw-bold);
+}
+
+@media (max-width: 600px) {
+  /* 좁은 화면에서 로고 옆에 다 들어가지 않으면 신청번호·마이페이지 줄이 로고 아래 오른쪽으로 내려간다. */
+  .shell__inner { flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); padding-block: var(--sp-3); }
+  .shell__tools { margin-left: auto; }
+  .shell__logo { height: 40px; }
+  .shell__application-controls { gap: var(--sp-3); }
+  .shell__application-number strong { font-size: var(--fs-13); }
+
+  .headband__inner {
+    gap: var(--sp-4);
+    padding: var(--sp-5) var(--gutter) var(--sp-4);
+  }
+
+
+  .page { padding-top: var(--sp-5); padding-bottom: var(--sp-12); }
+}
+
+@media print {
+  .skip-link,
+  .shell__tools { display: none; }
+}

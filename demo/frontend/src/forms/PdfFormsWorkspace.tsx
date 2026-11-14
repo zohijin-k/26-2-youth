@@ -13,13 +13,18 @@ import {
   type SelfCheckResult,
   type SubsidyState,
 } from '../api.ts'
-import Modal from '../components/Modal.tsx'
+import Modal from '../components/ApplicantModal.tsx'
 import SignaturePad from '../components/SignaturePad.tsx'
 import type { ConsentValue } from './consent-model.ts'
 import { isValidEmail, normalizeEmail } from './email.ts'
 import { formatPhone, isValidPhone, phoneCursorPosition } from './phone.ts'
 import { EMPTY_FORM1, type Form1Value } from './form1-model.ts'
 import { JOB_PACKAGE_SELF_CHECK_ITEMS, type SelfCheckAnswers } from './form2-model.ts'
+import ConfirmDialog from '../components/ConfirmDialog.tsx'
+import Notice from '../components/Notice.tsx'
+import Icon from '../components/Icon.tsx'
+import Spinner from '../components/Spinner.tsx'
+import { friendlyError } from '../lib/error-copy.ts'
 import './pdf-forms-workspace.css'
 
 type ActiveForm = { formNo: string; mode: 'edit' | 'preview' }
@@ -139,6 +144,8 @@ export default function PdfFormsWorkspace({
   const [page, setPage] = useState(0)
   const [localError, setLocalError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [resetTarget, setResetTarget] = useState<string | null>(null)
+  const [attempted, setAttempted] = useState(false)
   const [signatureTarget, setSignatureTarget] = useState<string | null>(null)
   const [previewKey, setPreviewKey] = useState(0)
   const [thumbnailVersion, setThumbnailVersion] = useState(0)
@@ -164,7 +171,7 @@ export default function PdfFormsWorkspace({
         setAvailableFormCount(availableForms.length)
       })
       .catch((e: unknown) => {
-        if (alive) setLocalError(e instanceof Error ? e.message : String(e))
+        if (alive) setLocalError(friendlyError(e, '서식을 저장하지 못했습니다. 다시 시도해 주세요.'))
       })
     {
       fetchSubsidyItems(applicationId).then((state) => {
@@ -189,7 +196,7 @@ export default function PdfFormsWorkspace({
       await action(isCurrent)
       if (isCurrent()) setThumbnailVersion((key) => key + 1)
     } catch (e: unknown) {
-      if (isCurrent()) setLocalError(e instanceof Error ? e.message : String(e))
+      if (isCurrent()) setLocalError(friendlyError(e, '서식을 저장하지 못했습니다. 다시 시도해 주세요.'))
     } finally {
       if (isCurrent()) {
         pendingOperation.current = null
@@ -206,7 +213,7 @@ export default function PdfFormsWorkspace({
       if (epoch !== sessionEpoch.current) return
       setThumbnailVersion((version) => version + 1)
     }).catch((e: unknown) => {
-      if (epoch === sessionEpoch.current) setLocalError(e instanceof Error ? e.message : String(e))
+      if (epoch === sessionEpoch.current) setLocalError(friendlyError(e, '서식을 저장하지 못했습니다. 다시 시도해 주세요.'))
     }).finally(() => {
       if (epoch === sessionEpoch.current) { pendingOperation.current = null; setSaving(false) }
     })
@@ -345,7 +352,7 @@ export default function PdfFormsWorkspace({
         setSelectedItems(saved.selections.map((item) => item.item_type))
         setSubsidySelections(saved.selections)
         onChangedSubsidy?.(saved)
-      })().catch((e: unknown) => setLocalError(e instanceof Error ? e.message : String(e)))
+      })().catch((e: unknown) => setLocalError(friendlyError(e, '서식을 저장하지 못했습니다. 다시 시도해 주세요.')))
       return
     }
     const value = readForm(form1, group)
@@ -365,7 +372,7 @@ export default function PdfFormsWorkspace({
 
   const resetForm = async (formNo: string) => {
     if (readOnly || pendingOperation.current !== null || continuing) return
-    if (!window.confirm('작성한 내용과 서명이 모두 지워집니다. 다시 작성할까요?')) return
+    setResetTarget(null)
     const epoch = sessionEpoch.current
     pendingOperation.current = epoch
     setSaving(true)
@@ -391,7 +398,7 @@ export default function PdfFormsWorkspace({
       resetPending.current = null
       pendingOperation.current = null
       setSaving(false)
-      setLocalError(e instanceof Error ? e.message : String(e))
+      setLocalError(friendlyError(e, '서식을 저장하지 못했습니다. 다시 시도해 주세요.'))
     }
   }
 
@@ -414,6 +421,7 @@ export default function PdfFormsWorkspace({
 
   const submitWorkspace = () => {
     if (readOnly || pendingOperation.current !== null || continuing) return
+    setAttempted(true)
     if (!allReady) {
       setLocalError('필수 칸과 자가진단 문항을 모두 작성해 주세요.')
       return
@@ -564,7 +572,7 @@ export default function PdfFormsWorkspace({
         }}
         onBlur={key === 'email' ? () => setText(key, normalizeEmail(value)) : undefined}
         />
-        {invalidEmail && <span className="pdf-form__email-hint" role="alert" style={{ left: x0 * scale, top: y1 * scale + 2, width: Math.max(150, 190 * scale), fontSize: Math.max(10, 10 * scale) }}>이메일 형식으로 입력해 주세요.</span>}
+        {invalidEmail && <span className="pdf-form__email-hint" role="alert" style={{ left: x0 * scale, top: y1 * scale + 2, width: Math.max(150, 190 * scale) }}>이메일 형식으로 입력해 주세요.</span>}
       </Fragment>
     )
   }
@@ -591,11 +599,11 @@ export default function PdfFormsWorkspace({
   }
 
   const viewerContent = active && currentLayout ? (
-    <fieldset className="pdf-form__contents" disabled={saving || continuing}>
+    <fieldset className={`pdf-form__contents${attempted ? ' is-attempted' : ''}`} disabled={saving || continuing}>
       <div className="pdf-form__toolbar">
-        <button type="button" className="btn" aria-label="이전 쪽" disabled={page <= 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>◀</button>
+        <button type="button" className="btn" aria-label="이전 쪽" disabled={page <= 0} onClick={() => setPage((p) => Math.max(0, p - 1))}><Icon name="chevronLeft" /></button>
         <span>{page + 1} / {currentLayout.page_sizes.length}쪽</span>
-        <button type="button" className="btn" aria-label="다음 쪽" disabled={page >= currentLayout.page_sizes.length - 1} onClick={() => setPage((p) => Math.min(currentLayout.page_sizes.length - 1, p + 1))}>▶</button>
+        <button type="button" className="btn" aria-label="다음 쪽" disabled={page >= currentLayout.page_sizes.length - 1} onClick={() => setPage((p) => Math.min(currentLayout.page_sizes.length - 1, p + 1))}><Icon name="chevronRight" /></button>
       </div>
       <div className="pdf-form__scroll" ref={scrollRef} data-form-scroll>
         <div
@@ -637,16 +645,16 @@ export default function PdfFormsWorkspace({
       </div>
       {active.mode === 'edit' && !readOnly && signatureTarget && (
         <div className="pdf-form__sign-pad">
-          <h4>서명 입력 <button type="button" className="btn" onClick={() => setSignatureTarget(null)}>완료</button></h4>
-          <SignaturePad value={signatureValue(active.formNo)} onChange={(value) => setSignature(active.formNo, value)} width={260} height={90} />
-          <button type="button" className="btn" onClick={() => setSignature(active.formNo, '')}>서명 다시 하기</button>
+          <h4>서명 입력 <button type="button" className="btn" onClick={() => setSignatureTarget(null)}>서명 입력 마치기</button></h4>
+          <SignaturePad allowImage key={signatureTarget} value={signatureValue(active.formNo)} onChange={(value) => setSignature(active.formNo, value)} width={260} height={90} />
+
         </div>
       )}
     </fieldset>
   ) : null
 
   return (
-    <section className="pdf-forms">
+    <section className={attempted ? 'pdf-forms pdf-forms--attempted' : 'pdf-forms'}>
       <header className="pdf-forms__intro">
         <div>
           <h2>신청 서식 작성</h2>
@@ -667,11 +675,11 @@ export default function PdfFormsWorkspace({
                 <span>{state.label}</span>
               </div>
               <div className="pdf-form-row__actions">
-                {!readOnly && <button type="button" className="btn btn--primary" disabled={!layouts[formNo]} onClick={() => { setPage(0); setSignatureTarget(null); setActive({ formNo, mode: 'edit' }) }}>
+                {!readOnly && <button type="button" className="btn" disabled={!layouts[formNo]} onClick={() => { setPage(0); setSignatureTarget(null); setActive({ formNo, mode: 'edit' }) }}>
                   {state.state === 'done' ? '수정' : '작성하기'}
                 </button>}
                 <button type="button" className="btn" disabled={!layouts[formNo] || saving} onClick={() => void startPreview(formNo)}>미리보기</button>
-                {!readOnly && <button type="button" className="btn" disabled={!layouts[formNo] || state.state === 'empty'} onClick={() => resetForm(formNo)}>다시 작성</button>}
+                {!readOnly && <button type="button" className="btn btn--quiet" disabled={!layouts[formNo] || state.state === 'empty'} onClick={() => setResetTarget(formNo)}>다시 작성</button>}
               </div>
             </li>
           )
@@ -679,7 +687,7 @@ export default function PdfFormsWorkspace({
       </ul>
 
       {(
-        <section className="pdf-forms__selfcheck">
+        <section className="pdf-forms__selfcheck" id="workspace-selfcheck">
           <h3>지원 자격 확인</h3>
           {selfCheckItems.map((item) => (
             <fieldset key={item.no}>
@@ -699,10 +707,14 @@ export default function PdfFormsWorkspace({
         <p className="pdf-forms__error" role="alert">{checkResult.failed_item}번 문항: {checkResult.reason}</p>
       )}
       {(localError || error) && <p className="pdf-forms__error" role="alert">{localError || error}</p>}
+      {attempted && !allReady && <Notice tone="warning" role="alert" title="남은 항목을 작성해 주세요.">
+        <ul>{formNos.filter((formNo) => missing(formNo).length > 0).map((formNo) => <li key={formNo}><button type="button" className="btn btn--quiet btn--small" onClick={() => { setPage(0); setActive({ formNo, mode: 'edit' }) }}>{formLabel(formNo)} · 남은 {missing(formNo).length}개 작성하기</button></li>)}</ul>
+        {selfCheckItems.some((item) => !answers[item.no]) && <a href="#workspace-selfcheck">지원 자격 확인 문항 작성하기</a>}
+      </Notice>}
       <div className="flow__actions">
         <button type="button" className="btn" onClick={() => window.scrollTo({ top: 0 })}>서식 목록</button>
-        {!readOnly && <button type="button" className="btn btn--primary" disabled={!allReady || continuing || saving} onClick={submitWorkspace}>
-          {continuing ? '저장 중…' : '지원 항목 단계로'}
+        {!readOnly && <button type="button" className="btn btn--primary" disabled={continuing || saving} onClick={submitWorkspace}>
+          {continuing && <Spinner />}{continuing ? '저장하는 중' : '지원 항목 선택하기'}
         </button>}
       </div>
 
@@ -724,6 +736,7 @@ export default function PdfFormsWorkspace({
           {viewerContent}
         </Modal>
       )}
+      {resetTarget && <ConfirmDialog title="이 서식을 다시 작성하시겠습니까?" description="선택한 서식의 작성 내용과 서명이 지워집니다. 본인인증 정보는 유지됩니다." confirmLabel="내용 지우고 다시 작성하기" tone="danger" onCancel={() => setResetTarget(null)} onConfirm={() => void resetForm(resetTarget)}><p>{formLabel(resetTarget)}</p></ConfirmDialog>}
     </section>
   )
 }

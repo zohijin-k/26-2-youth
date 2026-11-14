@@ -11,9 +11,15 @@
 import { useEffect, useState } from 'react'
 
 import { routeUrl } from '../../navigation-url.ts'
+import logo from '../../assets/brand/jbyouthhub-logo.png'
 import ApplyFlow from './ApplyFlow.tsx'
 import ProgramFinder from './ProgramFinder.tsx'
 import ProgramInfo from './ProgramInfo.tsx'
+import '../../styles/tokens.css'
+import '../../styles/base.css'
+import '../../styles/components.css'
+import './applicant-shell.css'
+
 
 type Route = { screen: 'finder' } | { screen: 'info'; id: number } | { screen: 'flow' }
 
@@ -25,7 +31,8 @@ function readRoute(): Route {
   return { screen: 'finder' }
 }
 
-export default function ApplicantApp({ headerHost }: { headerHost: HTMLElement | null }) {
+export default function ApplicantApp() {
+  const [headerHost, setHeaderHost] = useState<HTMLDivElement | null>(null)
   const [route, setRoute] = useState<Route>(readRoute)
 
   // 알 수 없는 주소는 사업 찾기로 보고 주소도 맞춘다.
@@ -39,10 +46,7 @@ export default function ApplicantApp({ headerHost }: { headerHost: HTMLElement |
     window.scrollTo({ top: 0 })
   }
 
-  if (route.screen === 'flow') return <ApplyFlow headerHost={headerHost} />
-
-  if (route.screen === 'info') {
-    return (
+  const content = route.screen === 'flow' ? <ApplyFlow headerHost={headerHost} /> : route.screen === 'info' ? (
       <ProgramInfo
         key={route.id}
         postingId={route.id}
@@ -53,8 +57,24 @@ export default function ApplicantApp({ headerHost }: { headerHost: HTMLElement |
           else window.location.assign(path)
         }}
       />
-    )
-  }
+  ) : <ProgramFinder onOpen={(id) => go({ screen: 'info', id }, `/programs/${id}`)} />
 
-  return <ProgramFinder onOpen={(id) => go({ screen: 'info', id }, `/programs/${id}`)} />
+  return (
+    <div className="app-shell app-shell--applicant">
+      <a className="skip-link" href="#main">본문으로 건너뛰기</a>
+      <header className="shell">
+        <div className="shell__inner">
+          <button type="button" className="shell__home" onClick={() => go({ screen: 'finder' }, '/')} aria-label="사업 찾기로 이동">
+            <img className="shell__logo" src={logo} alt="전북지역거점 청년지원센터 전북청년허브센터" />
+          </button>
+          <div className="shell__tools" ref={setHeaderHost} />
+        </div>
+      </header>
+      <main id="main" className="shell-main" tabIndex={-1}>{content}</main>
+      <footer className="site-footer"><div className="site-footer__inner"><p className="site-footer__service">
+        {route.screen === 'flow' && <strong>「전북청년 취업지원패키지」 신청</strong>}
+        <span>전북청년허브센터</span>
+      </p></div></footer>
+    </div>
+  )
 }

@@ -46,7 +46,7 @@ In savings step 2, the progress area spans the right-hand PDF toolbar's width, e
 
 Applicant visual polish is scoped to the applicant shell and workspace chrome: keep its light top bar and bounded inner alignment coordinated with the main flow, use separate application accent/surface styles, and preserve the officer interface. Do not change global `--brand`, document fonts, PDF field colors/coordinates or assets to restyle navigation. Keep primary save/continue actions distinguishable from secondary preview/download and quiet reset actions. Preserve the download menu's positioned header stacking context and right-edge anchoring when changing panel spacing or corners.
 
-The application title keeps the original `.flow__head h1` typography (22px and original tracking/inherited color/line height). Compact layout should not reintroduce separate 16px desktop/mobile title overrides.
+The earlier savings-specific compact application title keeps its original `.flow__head h1` typography (22px and original tracking/inherited color/line height). The job-package applicant design system uses its 24px h1 token instead. Compact layout should not reintroduce separate 16px desktop/mobile title overrides.
 
 Balance-wrap the unchanged savings title within its left overview column. Stage 2 copy is left-aligned from its circle's left edge and stage 3 copy right-aligned to its circle's right edge; align only copy blocks/caption justification, never buttons/nodes. Narrow screens may use the full local text cell for safe wrapping, preserving alignment direction and all counts.
 
