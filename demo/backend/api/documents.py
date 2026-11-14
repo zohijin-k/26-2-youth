@@ -8,6 +8,7 @@
 """
 
 import re
+import pymupdf
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
@@ -302,6 +303,8 @@ async def upload_document(
         return await _upload_merged(app, checklist, file)
 
     req = find_slot(checklist, target_slot)
+    if req is not None and target_slot == "bank_account":
+        return await _upload_bankbook(app, file)
     if req is None or not req.upload:
         raise HTTPException(400, f"업로드 대상이 아닌 슬롯입니다: {target_slot}")
 
@@ -352,6 +355,61 @@ async def upload_document(
         _refresh_nhis_identity(application_id, app, checklist)
         row = next((d for d in _list_documents(application_id) if d.id == row.id), row)
     return _document_dict(row)
+
+
+async def _upload_bankbook(app: Application, file: UploadFile) -> dict[str, Any]:
+    """Bankbook copy uses the document store and inline viewer, without OCR claims."""
+    from ..models import STATUS_DRAFT
+
+    if app.status != STATUS_DRAFT:
+        raise HTTPException(409, "제출한 신청서는 수정할 수 없습니다.")
+    data = await file.read(20 * 1024 * 1024 + 1)
+    if not data:
+        raise HTTPException(400, "파일 내용이 비어 있습니다. 통장 사본을 다시 선택해 주세요.")
+    if len(data) > 20 * 1024 * 1024:
+        raise HTTPException(400, "통장 사본은 20MB 이하로 올려 주세요.")
+    suffix = Path(file.filename or "").suffix.lstrip(".").lower()
+    actual = ("pdf" if data.startswith(b"%PDF-") else "png" if data.startswith(b"\x89PNG\r\n\x1a\n")
+              else "jpg" if data.startswith(b"\xff\xd8\xff") else None)
+    if actual is None or (suffix if suffix != "jpeg" else "jpg") != actual:
+        raise HTTPException(400, "통장 사본은 정상적인 PDF·JPG·PNG 파일만 올릴 수 있습니다.")
+    try:
+        with pymupdf.open(stream=data, filetype=actual) as document:
+            if document.needs_pass:
+                raise HTTPException(400, "암호가 걸린 PDF입니다. 암호를 해제한 통장 사본을 올려 주세요.")
+            if document.page_count < 1:
+                raise ValueError("empty")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(400, "통장 사본 파일을 열 수 없습니다. 다시 저장한 파일을 올려 주세요.") from None
+    dest_dir = DOCUMENTS / app.application_no / "bank_account"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    path = dest_dir / _safe_name(file.filename or f"bankbook.{actual}")
+    path.write_bytes(data)
+    with get_session() as session:
+        saved = session.get(Application, app.id)
+        if saved is None:
+            raise HTTPException(404, "신청 건을 찾을 수 없습니다.")
+        if saved.status != STATUS_DRAFT:
+            raise HTTPException(409, "제출한 신청서는 수정할 수 없습니다.")
+        for previous in session.exec(select(Document).where(
+                Document.application_id == app.id, Document.slot_key == "bank_account")).all():
+            session.delete(previous)
+        row = Document(application_id=app.id or 0, slot_key="bank_account", doc_type="통장사본",
+                       file_path=str(path.relative_to(STORAGE.parent)), file_format=suffix,
+                       stage1_status="NEEDS_REVIEW", ocr_json={}, findings_json=[{
+                           "code": "ACCOUNT_COPY_REVIEW", "severity": "NEEDS_REVIEW",
+                           "message": "예금주와 계좌번호는 담당자가 통장 사본 원본으로 확인합니다.",
+                           "how_to_fix": "예금주와 계좌번호가 보이는 본인 명의 통장 사본을 첨부해 주세요.",
+                           "link": ""}])
+        saved.form1_json = {**(saved.form1_json or {}), "bankbookFileName": path.name}
+        saved.updated_at = datetime.now()
+        session.add(saved)
+        session.add(row)
+        session.commit()
+        session.refresh(row)
+        return _document_dict(row)
 
 
 async def _upload_merged(

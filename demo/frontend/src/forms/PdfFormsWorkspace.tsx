@@ -15,6 +15,7 @@ import {
 } from '../api.ts'
 import Modal from '../components/ApplicantModal.tsx'
 import SignaturePad from '../components/SignaturePad.tsx'
+import AccountInputs from './AccountInputs.tsx'
 import type { ConsentValue } from './consent-model.ts'
 import { isValidEmail, normalizeEmail } from './email.ts'
 import { formatPhone, isValidPhone, phoneCursorPosition } from './phone.ts'
@@ -85,7 +86,7 @@ function readForm(form1: Form1Value, key: string): unknown {
 
 function requiredKeys(formNo: string): string[] {
   if (formNo === 'job_application') return [
-    'name', 'birth', 'address', 'mobile', 'email', 'bankName', 'accountNo', 'job.signature',
+    'name', 'birth', 'address', 'mobile', 'email', 'bankName', 'accountNo', 'accountHolder', 'bankbookFileName', 'job.signature',
   ]
   if (formNo === 'job_consent') return ['consent.privacy', 'consent.thirdParty', 'consent.job.signature']
   return ['self_check.1', 'self_check.2']
@@ -144,6 +145,7 @@ export default function PdfFormsWorkspace({
   const [page, setPage] = useState(0)
   const [localError, setLocalError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [accountBusy, setAccountBusy] = useState(false)
   const [resetTarget, setResetTarget] = useState<string | null>(null)
   const [attempted, setAttempted] = useState(false)
   const [signatureTarget, setSignatureTarget] = useState<string | null>(null)
@@ -287,6 +289,7 @@ export default function PdfFormsWorkspace({
     if (key === 'consent.privacy') return !!consent.privacy
     if (key === 'consent.thirdParty') return !!consent.thirdParty
     if (key === 'ecContact') return isValidPhone(String(readForm(form1, key) || ''))
+    if (key === 'accountHolder' && identity) return !!form1.accountHolder.trim() && form1.accountHolder.replace(/\s/g, '') === identity.name.replace(/\s/g, '')
     if (key === 'email') return isValidEmail(normalizeEmail(String(readForm(form1, key) || '')))
     if (key.endsWith('.signature')) return !!readForm(form1, key)
     return truthy(readForm(form1, key))
@@ -384,7 +387,7 @@ export default function PdfFormsWorkspace({
         onConsent({ ...consent, privacy: '', thirdParty: '' })
         onForm1({ ...(form1 as unknown as Record<string, unknown>), 'consent.job.signature': '' } as unknown as Form1Value)
       } else {
-        const reset = { ...EMPTY_FORM1 }
+        const reset = { ...EMPTY_FORM1, bankbookFileName: form1.bankbookFileName }
         if (identity) {
           reset.name = identity.name
           const [y, m, d] = identity.birth.split('-')
@@ -420,7 +423,7 @@ export default function PdfFormsWorkspace({
   }
 
   const submitWorkspace = () => {
-    if (readOnly || pendingOperation.current !== null || continuing) return
+    if (readOnly || pendingOperation.current !== null || continuing || accountBusy) return
     setAttempted(true)
     if (!allReady) {
       setLocalError('필수 칸과 자가진단 문항을 모두 작성해 주세요.')
@@ -703,17 +706,20 @@ export default function PdfFormsWorkspace({
         </section>
       )}
 
+      <AccountInputs applicationId={applicationId} identity={identity} value={form1} onChange={onForm1} onFlush={onFlush} readOnly={readOnly || saving || continuing} onBusyChange={setAccountBusy} />
+
       {checkResult && !checkResult.eligible && checkResult.failed_item && (
         <p className="pdf-forms__error" role="alert">{checkResult.failed_item}번 문항: {checkResult.reason}</p>
       )}
       {(localError || error) && <p className="pdf-forms__error" role="alert">{localError || error}</p>}
       {attempted && !allReady && <Notice tone="warning" role="alert" title="남은 항목을 작성해 주세요.">
         <ul>{formNos.filter((formNo) => missing(formNo).length > 0).map((formNo) => <li key={formNo}><button type="button" className="btn btn--quiet btn--small" onClick={() => { setPage(0); setActive({ formNo, mode: 'edit' }) }}>{formLabel(formNo)} · 남은 {missing(formNo).length}개 작성하기</button></li>)}</ul>
+        {(!form1.accountHolder || !form1.bankbookFileName) && <a href="#workspace-account">예금주와 통장 사본 첨부하기</a>}
         {selfCheckItems.some((item) => !answers[item.no]) && <a href="#workspace-selfcheck">지원 자격 확인 문항 작성하기</a>}
       </Notice>}
       <div className="flow__actions">
         <button type="button" className="btn" onClick={() => window.scrollTo({ top: 0 })}>서식 목록</button>
-        {!readOnly && <button type="button" className="btn btn--primary" disabled={continuing || saving} onClick={submitWorkspace}>
+        {!readOnly && <button type="button" className="btn btn--primary" disabled={continuing || saving || accountBusy} onClick={submitWorkspace}>
           {continuing && <Spinner />}{continuing ? '저장하는 중' : '지원 항목 선택하기'}
         </button>}
       </div>

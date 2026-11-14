@@ -97,7 +97,7 @@ const APPLY_STEPS: Step[] = [
 function lockIdentity(form: Form1Value, identity: Identity | null): Form1Value {
   if (!identity) return form
   const [y, m, d] = identity.birth.split('-')
-  return { ...form, name: identity.name, birth: { y, m: String(Number(m)), d: String(Number(d)) } }
+  return { ...form, accountHolder: form.accountHolder || identity.name, name: identity.name, birth: { y, m: String(Number(m)), d: String(Number(d)) } }
 }
 
 export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | null }) {
@@ -190,7 +190,7 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
         setAppNo(application.application_no)
         const savedIdentity = application.identity_json
         setIdentity(savedIdentity?.name && savedIdentity.birth ? savedIdentity as Identity : null)
-        setForm1({ ...EMPTY_FORM1, ...application.form1_json } as Form1Value)
+        setForm1(lockIdentity({ ...EMPTY_FORM1, ...application.form1_json } as Form1Value, savedIdentity?.name && savedIdentity.birth ? savedIdentity as Identity : null))
         setAnswers(application.self_check_json as SelfCheckAnswers)
         setSelectedSubsidyTypes(subsidy.selections.length)
         const consentValue = (type: string) => {

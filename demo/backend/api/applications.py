@@ -16,7 +16,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 from sqlmodel import select
 
-from ..models import STATUS_DRAFT, Application, Consent, get_session
+from ..models import STATUS_DRAFT, Application, Consent, Document, get_session
 from ..forms.signature_scan import signature_scan_paths
 from ..forms.email import is_valid_email, normalize_email
 from ..rules.criteria import latest as latest_criteria
@@ -231,7 +231,12 @@ def patch(application_id: int, body: PatchRequest) -> dict[str, Any]:
         _require_draft(app)
         if body.form1 is not None:
             _validate_period_dates(body.form1)
-            app.form1_json = _lock_identity(_normalize_form_values(body.form1), app.identity_json or {})
+            values = _normalize_form_values(body.form1)
+            bankbook = s.exec(select(Document).where(
+                Document.application_id == application_id, Document.slot_key == "bank_account")).first()
+            if bankbook is not None:
+                values["bankbookFileName"] = Path(bankbook.file_path).name
+            app.form1_json = _lock_identity(values, app.identity_json or {})
         if body.self_check is not None:
             app.self_check_json = body.self_check
         if body.form5 is not None:

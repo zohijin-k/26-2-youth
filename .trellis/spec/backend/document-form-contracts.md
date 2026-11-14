@@ -147,3 +147,8 @@ Associate an isolated ordinal with a law-change annotation only when adjacency i
 ## 12. Independent file quality
 
 Reading/identity/history uncertainty does not downgrade a separately measured original-resolution defect. The demo upload boundary treats LOW_IMAGE_QUALITY as FAIL while keeping LOW_OCR_CONFIDENCE review-only. Scalable text pages and unknown measurements cannot establish that defect. Preserve additional-page form scope and all other certain findings; see failure-filtering.md sections10–11 for daily selected-history completeness, quality provenance and full blocker-message contracts. This does not modify engine/ rules or income/age/work thresholds.
+
+
+## Account attachment boundary
+
+The applicant account section stores bankbook bytes through the existing document store and inline preview route. Validate content and size before persistence; retain `bankbookFileName` across delayed autosaves. An uploaded bankbook is `NEEDS_REVIEW` until an officer compares the printed account, and its review status participates in review aggregation without changing engine rules. Compare account holder against verified identity at final-check and submit. Historical filename-only fixtures retain compatibility; filenames alone are not document verification.
