@@ -1,0 +1,164 @@
+{
+  "forms": [
+    {
+      "form_id": 7,
+      "auto_fields": 16,
+      "kinds": {
+        "check": 16
+      },
+      "all_need_review": true,
+      "confirmed": false
+    },
+    {
+      "form_id": 8,
+      "auto_fields": 8,
+      "kinds": {
+        "check": 2,
+        "date": 3,
+        "text": 2,
+        "signature": 1
+      },
+      "all_need_review": true,
+      "confirmed": false
+    }
+  ],
+  "snap": {
+    "point": {
+      "x": 150,
+      "y": 156
+    },
+    "box": [
+      59.61,
+      151.27,
+      240.95,
+      160.72
+    ],
+    "field_type": "text",
+    "editor_label": "입력칸"
+  },
+  "security": [
+    {
+      "method": "POST",
+      "path": "/api/officer/postings/{id}/workspace/forms/{form_id}/snap",
+      "no_cookie": 401,
+      "officer": 200
+    }
+  ],
+  "assertions": [
+    {
+      "name": "uploaded templates drafted with every field needing review",
+      "detail": [
+        16,
+        8
+      ]
+    },
+    {
+      "name": "snap route: no cookie 401, officer 200",
+      "detail": [
+        401,
+        200
+      ]
+    },
+    {
+      "name": "add-field click snapped to a nearby cell/blank",
+      "detail": {
+        "point": {
+          "x": 150,
+          "y": 156
+        },
+        "box": [
+          59.61,
+          151.27,
+          240.95,
+          160.72
+        ],
+        "field_type": "text",
+        "editor_label": "입력칸"
+      }
+    },
+    {
+      "name": "form 1 reviewed and confirmed",
+      "detail": 17
+    },
+    {
+      "name": "form 2 reviewed and confirmed",
+      "detail": 8
+    },
+    {
+      "name": "notice items confirmed",
+      "detail": 5
+    },
+    {
+      "name": "program published",
+      "detail": "O"
+    },
+    {
+      "name": "applicant filled form 1",
+      "detail": {
+        "check_fields": 16,
+        "checks_ticked": 8,
+        "signatures": 0
+      }
+    },
+    {
+      "name": "applicant filled form 2",
+      "detail": {
+        "check_fields": 2,
+        "checks_ticked": 1,
+        "signatures": 1
+      }
+    },
+    {
+      "name": "applicant submitted",
+      "detail": "O"
+    }
+  ],
+  "shots": [
+    {
+      "name": "01-officer-upload",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-form-draft-detection/shots/01-officer-upload.png"
+    },
+    {
+      "name": "02-officer-auto-fields-form2",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-form-draft-detection/shots/02-officer-auto-fields-form2.png"
+    },
+    {
+      "name": "03-officer-snapped-field",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-form-draft-detection/shots/03-officer-snapped-field.png"
+    },
+    {
+      "name": "04-officer-form5-confirmed",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-form-draft-detection/shots/04-officer-form5-confirmed.png"
+    },
+    {
+      "name": "05-officer-published",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-form-draft-detection/shots/05-officer-published.png"
+    },
+    {
+      "name": "06-applicant-form-1",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-form-draft-detection/shots/06-applicant-form-1.png"
+    },
+    {
+      "name": "07-applicant-form-2",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-form-draft-detection/shots/07-applicant-form-2.png"
+    },
+    {
+      "name": "08-applicant-final",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-form-draft-detection/shots/08-applicant-final.png"
+    },
+    {
+      "name": "09-applicant-receipt",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-form-draft-detection/shots/09-applicant-receipt.png"
+    }
+  ],
+  "page_errors": [],
+  "request_failures": [
+    "/src/assets/fonts/PretendardGOV/PretendardGOV-Medium.subset.woff2",
+    "/api/officer/session",
+    "/api/officer/session",
+    "/api/officer/session",
+    "/api/officer/session"
+  ],
+  "stage": "09-applicant-receipt",
+  "result": "passed"
+}

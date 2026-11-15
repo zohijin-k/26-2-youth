@@ -1,0 +1,983 @@
+[
+  {
+    "template": "job_application.pdf",
+    "reference_fields": 41,
+    "draft_fields": 30,
+    "iou_matches": 29,
+    "iou_match_rate": 0.7073,
+    "kind_matches": 29,
+    "kind_match_rate": 1.0,
+    "precision": 0.9667,
+    "false_fields": 1,
+    "oversized": 0,
+    "missed": [
+      {
+        "name": "bankName",
+        "type": "text",
+        "page": 0,
+        "box": [
+          178.2,
+          197.7,
+          215.6,
+          210.1
+        ]
+      },
+      {
+        "name": "accountNo",
+        "type": "text",
+        "page": 0,
+        "box": [
+          247.9,
+          197.7,
+          535.3,
+          210.1
+        ]
+      },
+      {
+        "name": "job.interview.1.location",
+        "type": "text",
+        "page": 0,
+        "box": [
+          480.9,
+          295.8,
+          535.3,
+          312.6
+        ]
+      },
+      {
+        "name": "job.interview.2.location",
+        "type": "text",
+        "page": 0,
+        "box": [
+          480.9,
+          343.4,
+          535.3,
+          360.1
+        ]
+      },
+      {
+        "name": "job.suit.1.location",
+        "type": "text",
+        "page": 0,
+        "box": [
+          480.9,
+          390.8,
+          535.3,
+          407.5
+        ]
+      },
+      {
+        "name": "job.suit.2.location",
+        "type": "text",
+        "page": 0,
+        "box": [
+          480.9,
+          438.4,
+          535.3,
+          455.1
+        ]
+      },
+      {
+        "name": "job.certificate.1.organizer",
+        "type": "text",
+        "page": 0,
+        "box": [
+          417.4,
+          485.9,
+          535.3,
+          502.6
+        ]
+      },
+      {
+        "name": "job.certificate.2.organizer",
+        "type": "text",
+        "page": 0,
+        "box": [
+          417.4,
+          533.3,
+          535.3,
+          550.2
+        ]
+      },
+      {
+        "name": "job.applicationMonth",
+        "type": "text",
+        "page": 0,
+        "box": [
+          266.9,
+          632.1,
+          301.7,
+          649.0
+        ]
+      },
+      {
+        "name": "job.applicationDay",
+        "type": "text",
+        "page": 0,
+        "box": [
+          318.7,
+          632.1,
+          360.0,
+          649.0
+        ]
+      },
+      {
+        "name": "job.signature",
+        "type": "image",
+        "page": 0,
+        "box": [
+          488.4,
+          674.1,
+          512.3,
+          690.1
+        ]
+      },
+      {
+        "name": "job.applicantName",
+        "type": "text",
+        "page": 0,
+        "box": [
+          415.2,
+          675.6,
+          486.4,
+          688.6
+        ]
+      }
+    ],
+    "extra": [
+      {
+        "type": "image",
+        "field_type": "signature",
+        "page": 0,
+        "box": [
+          60.0,
+          571.9,
+          536.3,
+          726.0
+        ],
+        "label": "위와 같이 전북 청년 취업지원패키지를"
+      }
+    ]
+  },
+  {
+    "template": "job_consent.pdf",
+    "reference_fields": 8,
+    "draft_fields": 8,
+    "iou_matches": 4,
+    "iou_match_rate": 0.5,
+    "kind_matches": 4,
+    "kind_match_rate": 1.0,
+    "precision": 0.5,
+    "false_fields": 4,
+    "oversized": 0,
+    "missed": [
+      {
+        "name": "consent.job.month",
+        "type": "text",
+        "page": 0,
+        "box": [
+          266.1,
+          651.6,
+          301.0,
+          668.5
+        ]
+      },
+      {
+        "name": "consent.job.day",
+        "type": "text",
+        "page": 0,
+        "box": [
+          317.9,
+          651.6,
+          359.3,
+          668.5
+        ]
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "page": 0,
+        "box": [
+          397.3,
+          695.1,
+          445.0,
+          708.0
+        ]
+      },
+      {
+        "name": "consent.job.signature",
+        "type": "image",
+        "page": 0,
+        "box": [
+          515.8,
+          693.6,
+          539.8,
+          709.5
+        ]
+      }
+    ],
+    "extra": [
+      {
+        "type": "text",
+        "field_type": "date",
+        "page": 0,
+        "box": [
+          121.7,
+          238.6,
+          535.7,
+          253.1
+        ],
+        "label": "성명, 생년월일, 휴대전화번호, 이메"
+      },
+      {
+        "type": "check",
+        "field_type": "check",
+        "page": 0,
+        "box": [
+          56.6,
+          216.6,
+          68.6,
+          228.6
+        ],
+        "label": "수집하는 개인정보의"
+      },
+      {
+        "type": "check",
+        "field_type": "check",
+        "page": 0,
+        "box": [
+          56.6,
+          326.6,
+          68.6,
+          338.6
+        ],
+        "label": "제3자 제공 동의"
+      },
+      {
+        "type": "check",
+        "field_type": "check",
+        "page": 0,
+        "box": [
+          56.6,
+          467.2,
+          68.6,
+          479.2
+        ],
+        "label": "동의를 거부할 권리"
+      }
+    ]
+  },
+  {
+    "template": "job_interview_confirmation.pdf",
+    "reference_fields": 5,
+    "draft_fields": 12,
+    "iou_matches": 5,
+    "iou_match_rate": 1.0,
+    "kind_matches": 5,
+    "kind_match_rate": 1.0,
+    "precision": 0.4167,
+    "false_fields": 7,
+    "oversized": 0,
+    "missed": [],
+    "extra": [
+      {
+        "type": "text",
+        "field_type": "text",
+        "page": 0,
+        "box": [
+          170.2,
+          249.8,
+          536.3,
+          277.9
+        ],
+        "label": "회사명"
+      },
+      {
+        "type": "text",
+        "field_type": "text",
+        "page": 0,
+        "box": [
+          170.2,
+          281.9,
+          536.3,
+          310.1
+        ],
+        "label": "소재지"
+      },
+      {
+        "type": "text",
+        "field_type": "text",
+        "page": 0,
+        "box": [
+          170.2,
+          314.1,
+          536.3,
+          342.3
+        ],
+        "label": "업태/업종"
+      },
+      {
+        "type": "text",
+        "field_type": "text",
+        "page": 0,
+        "box": [
+          170.2,
+          346.3,
+          323.1,
+          374.5
+        ],
+        "label": "담당자"
+      },
+      {
+        "type": "text",
+        "field_type": "text",
+        "page": 0,
+        "box": [
+          387.4,
+          346.3,
+          536.3,
+          374.5
+        ],
+        "label": "연락처"
+      },
+      {
+        "type": "text",
+        "field_type": "text",
+        "page": 0,
+        "box": [
+          170.2,
+          410.6,
+          536.3,
+          438.9
+        ],
+        "label": "면접장소"
+      },
+      {
+        "type": "text",
+        "field_type": "text",
+        "page": 0,
+        "box": [
+          170.2,
+          442.9,
+          536.3,
+          471.0
+        ],
+        "label": "응시직군"
+      }
+    ]
+  },
+  {
+    "template": "서식1.pdf",
+    "reference_fields": 69,
+    "draft_fields": 59,
+    "iou_matches": 56,
+    "iou_match_rate": 0.8116,
+    "kind_matches": 56,
+    "kind_match_rate": 1.0,
+    "precision": 0.9492,
+    "false_fields": 3,
+    "oversized": 0,
+    "missed": [
+      {
+        "name": "priorName",
+        "type": "text",
+        "page": 0,
+        "box": [
+          344.5,
+          237.9,
+          372.2,
+          249.4
+        ]
+      },
+      {
+        "name": "priorPeriod",
+        "type": "text",
+        "page": 0,
+        "box": [
+          409.3,
+          237.9,
+          437.0,
+          249.4
+        ]
+      },
+      {
+        "name": "priorAmount",
+        "type": "text",
+        "page": 0,
+        "box": [
+          483.4,
+          237.9,
+          524.9,
+          249.4
+        ]
+      },
+      {
+        "name": "workplaceName",
+        "type": "text",
+        "page": 0,
+        "box": [
+          212.4,
+          691.5,
+          531.0,
+          703.0
+        ]
+      },
+      {
+        "name": "workplaceAddress",
+        "type": "text",
+        "page": 0,
+        "box": [
+          234.3,
+          734.4,
+          531.0,
+          745.9
+        ]
+      },
+      {
+        "name": "workplaceContact",
+        "type": "text",
+        "page": 0,
+        "box": [
+          234.3,
+          748.6,
+          531.0,
+          760.2
+        ]
+      },
+      {
+        "name": "priorJoined.미참여",
+        "type": "check",
+        "page": 0,
+        "box": [
+          212.9,
+          238.4,
+          223.9,
+          249.4
+        ]
+      },
+      {
+        "name": "householdSizeCount",
+        "type": "text",
+        "page": 0,
+        "box": [
+          373.3,
+          531.5,
+          384.0,
+          543.0
+        ]
+      },
+      {
+        "name": "bankName",
+        "type": "text",
+        "page": 1,
+        "box": [
+          190.9,
+          134.4,
+          236.6,
+          146.0
+        ]
+      },
+      {
+        "name": "accountNo",
+        "type": "text",
+        "page": 1,
+        "box": [
+          296.6,
+          134.4,
+          417.2,
+          146.0
+        ]
+      },
+      {
+        "name": "accountHolder",
+        "type": "text",
+        "page": 1,
+        "box": [
+          467.4,
+          134.4,
+          498.1,
+          146.0
+        ]
+      },
+      {
+        "name": "writtenMonth",
+        "type": "text",
+        "page": 1,
+        "box": [
+          286.6,
+          404.9,
+          304.5,
+          420.4
+        ]
+      },
+      {
+        "name": "writtenDay",
+        "type": "text",
+        "page": 1,
+        "box": [
+          311.4,
+          404.9,
+          329.4,
+          420.4
+        ]
+      }
+    ],
+    "extra": [
+      {
+        "type": "text",
+        "field_type": "date",
+        "page": 0,
+        "box": [
+          142.4,
+          573.4,
+          532.0,
+          621.3
+        ],
+        "label": "□ 상용직(노동계약기간 1년 이상) "
+      },
+      {
+        "type": "check",
+        "field_type": "check",
+        "page": 0,
+        "box": [
+          163.6,
+          128.8,
+          173.5,
+          138.8
+        ],
+        "label": "✓(체크)표 하세요(온라인"
+      },
+      {
+        "type": "check",
+        "field_type": "check",
+        "page": 0,
+        "box": [
+          183.6,
+          238.4,
+          194.7,
+          249.4
+        ],
+        "label": "미참여 / □ 참여"
+      }
+    ]
+  },
+  {
+    "template": "서식2.pdf",
+    "reference_fields": 16,
+    "draft_fields": 0,
+    "iou_matches": 0,
+    "iou_match_rate": 0.0,
+    "kind_matches": 0,
+    "kind_match_rate": 0.0,
+    "precision": 0.0,
+    "false_fields": 0,
+    "oversized": 0,
+    "missed": [
+      {
+        "name": "self_check.1.예",
+        "type": "check",
+        "page": 0,
+        "box": [
+          489.6,
+          184.1,
+          499.3,
+          193.9
+        ]
+      },
+      {
+        "name": "self_check.1.아니오",
+        "type": "check",
+        "page": 0,
+        "box": [
+          503.9,
+          184.1,
+          531.8,
+          193.9
+        ]
+      },
+      {
+        "name": "self_check.2.예",
+        "type": "check",
+        "page": 0,
+        "box": [
+          489.6,
+          211.9,
+          499.3,
+          221.7
+        ]
+      },
+      {
+        "name": "self_check.2.아니오",
+        "type": "check",
+        "page": 0,
+        "box": [
+          503.9,
+          211.9,
+          531.8,
+          221.7
+        ]
+      },
+      {
+        "name": "self_check.3.예",
+        "type": "check",
+        "page": 0,
+        "box": [
+          489.6,
+          247.1,
+          499.3,
+          256.9
+        ]
+      },
+      {
+        "name": "self_check.3.아니오",
+        "type": "check",
+        "page": 0,
+        "box": [
+          503.9,
+          247.1,
+          531.8,
+          256.9
+        ]
+      },
+      {
+        "name": "self_check.4.예",
+        "type": "check",
+        "page": 0,
+        "box": [
+          489.6,
+          282.5,
+          499.3,
+          292.3
+        ]
+      },
+      {
+        "name": "self_check.4.아니오",
+        "type": "check",
+        "page": 0,
+        "box": [
+          503.9,
+          282.5,
+          531.8,
+          292.3
+        ]
+      },
+      {
+        "name": "self_check.5.예",
+        "type": "check",
+        "page": 0,
+        "box": [
+          489.6,
+          310.2,
+          499.3,
+          320.0
+        ]
+      },
+      {
+        "name": "self_check.5.아니오",
+        "type": "check",
+        "page": 0,
+        "box": [
+          503.9,
+          310.2,
+          531.8,
+          320.0
+        ]
+      },
+      {
+        "name": "self_check.6.예",
+        "type": "check",
+        "page": 0,
+        "box": [
+          489.6,
+          470.3,
+          499.3,
+          480.1
+        ]
+      },
+      {
+        "name": "self_check.6.아니오",
+        "type": "check",
+        "page": 0,
+        "box": [
+          503.9,
+          470.3,
+          531.8,
+          480.1
+        ]
+      },
+      {
+        "name": "self_check.7.예",
+        "type": "check",
+        "page": 0,
+        "box": [
+          489.6,
+          630.3,
+          499.3,
+          640.1
+        ]
+      },
+      {
+        "name": "self_check.7.아니오",
+        "type": "check",
+        "page": 0,
+        "box": [
+          503.9,
+          630.3,
+          531.8,
+          640.1
+        ]
+      },
+      {
+        "name": "self_check.8.예",
+        "type": "check",
+        "page": 0,
+        "box": [
+          489.6,
+          682.1,
+          499.3,
+          691.9
+        ]
+      },
+      {
+        "name": "self_check.8.아니오",
+        "type": "check",
+        "page": 0,
+        "box": [
+          503.9,
+          682.1,
+          531.8,
+          691.9
+        ]
+      }
+    ],
+    "extra": []
+  },
+  {
+    "template": "서식3.pdf",
+    "reference_fields": 7,
+    "draft_fields": 5,
+    "iou_matches": 4,
+    "iou_match_rate": 0.5714,
+    "kind_matches": 4,
+    "kind_match_rate": 1.0,
+    "precision": 0.8,
+    "false_fields": 1,
+    "oversized": 1,
+    "missed": [
+      {
+        "name": "consent.form3.year",
+        "type": "text",
+        "page": 0,
+        "box": [
+          397.9,
+          728.1,
+          407.7,
+          743.6
+        ]
+      },
+      {
+        "name": "consent.form3.month",
+        "type": "text",
+        "page": 0,
+        "box": [
+          422.3,
+          728.1,
+          441.3,
+          743.6
+        ]
+      },
+      {
+        "name": "consent.form3.day",
+        "type": "text",
+        "page": 0,
+        "box": [
+          455.9,
+          728.1,
+          474.9,
+          743.6
+        ]
+      }
+    ],
+    "extra": [
+      {
+        "type": "text",
+        "field_type": "date",
+        "page": 0,
+        "box": [
+          58.6,
+          603.7,
+          536.3,
+          778.7
+        ],
+        "label": "개인정보보호법에명기된법률상의개인정보처"
+      }
+    ]
+  },
+  {
+    "template": "서식4.pdf",
+    "reference_fields": 5,
+    "draft_fields": 4,
+    "iou_matches": 2,
+    "iou_match_rate": 0.4,
+    "kind_matches": 2,
+    "kind_match_rate": 1.0,
+    "precision": 0.5,
+    "false_fields": 2,
+    "oversized": 2,
+    "missed": [
+      {
+        "name": "consent.form4.year",
+        "type": "text",
+        "page": 0,
+        "box": [
+          253.3,
+          589.6,
+          265.7,
+          606.2
+        ]
+      },
+      {
+        "name": "consent.form4.month",
+        "type": "text",
+        "page": 0,
+        "box": [
+          282.0,
+          589.6,
+          305.4,
+          606.2
+        ]
+      },
+      {
+        "name": "consent.form4.day",
+        "type": "text",
+        "page": 0,
+        "box": [
+          321.7,
+          589.6,
+          345.1,
+          606.2
+        ]
+      }
+    ],
+    "extra": [
+      {
+        "type": "text",
+        "field_type": "date",
+        "page": 0,
+        "box": [
+          58.6,
+          236.6,
+          536.3,
+          516.9
+        ],
+        "label": "❑ 제공받는 자 : NH농협은행 ❑ "
+      },
+      {
+        "type": "text",
+        "field_type": "date",
+        "page": 0,
+        "box": [
+          58.6,
+          563.0,
+          536.3,
+          738.1
+        ],
+        "label": "20 년 월 일 전북특별자치도지사․○"
+      }
+    ]
+  },
+  {
+    "template": "서식5.pdf",
+    "reference_fields": 8,
+    "draft_fields": 3,
+    "iou_matches": 2,
+    "iou_match_rate": 0.25,
+    "kind_matches": 2,
+    "kind_match_rate": 1.0,
+    "precision": 0.6667,
+    "false_fields": 1,
+    "oversized": 1,
+    "missed": [
+      {
+        "name": "writtenMonth",
+        "type": "text",
+        "page": 0,
+        "box": [
+          405.9,
+          550.5,
+          434.4,
+          570.0
+        ]
+      },
+      {
+        "name": "writtenDay",
+        "type": "text",
+        "page": 0,
+        "box": [
+          451.3,
+          550.5,
+          475.1,
+          570.0
+        ]
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "page": 0,
+        "box": [
+          329.8,
+          604.5,
+          401.0,
+          620.0
+        ]
+      },
+      {
+        "name": "birth",
+        "type": "text",
+        "page": 0,
+        "box": [
+          331.4,
+          652.5,
+          533.7,
+          668.0
+        ]
+      },
+      {
+        "name": "phone",
+        "type": "text",
+        "page": 0,
+        "box": [
+          331.4,
+          678.3,
+          533.7,
+          693.9
+        ]
+      },
+      {
+        "name": "signature",
+        "type": "image",
+        "page": 0,
+        "box": [
+          403.0,
+          603.0,
+          493.4,
+          621.5
+        ]
+      }
+    ],
+    "extra": [
+      {
+        "type": "image",
+        "field_type": "signature",
+        "page": 0,
+        "box": [
+          60.0,
+          457.6,
+          534.7,
+          737.1
+        ],
+        "label": "※ 만일, 본인이 위 행정정보 이용에"
+      }
+    ]
+  }
+]

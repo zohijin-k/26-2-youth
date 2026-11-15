@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 
 import {
-  confirmProgramForm, draftProgramForm, saveProgramForm,
+  confirmProgramForm, draftProgramForm, saveProgramForm, snapProgramFormField,
   type AutofillSource, type FieldKind, type ManagedFormField, type ManagedFormLayout,
   type ManagedProgramData, type ManagedProgramForm,
 } from '../../program-workspace-api.ts'
 import { OfficerConfirm, OfficerMenu } from './OfficerModern.tsx'
 import { boundedBox, boxPercent, movedBox, type PdfBox } from '../../lib/form-box.ts'
+import { snappedField } from '../../lib/form-snap.ts'
 
 const KIND_LABELS: Record<FieldKind, string> = { text: '문자', number: '숫자·금액', date: '날짜', check: '체크', radio: '하나 선택', signature: '서명' }
 const SOURCE_LABELS: Record<AutofillSource, string> = { name: '본인인증 성명', birth: '본인인증 생년월일', mobile: '본인인증 연락처', phone: '본인인증 연락처', address: '주소', email: '이메일' }
@@ -44,6 +45,8 @@ export default function ProgramTemplateEditor({ modern = false, postingId, forms
   const counter = useRef(0)
   const mounted = useRef(true)
   useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
+  const activeForm = useRef<number | undefined>(undefined)
+  useEffect(() => { activeForm.current = form?.id })
   const revision = JSON.stringify(form?.layout || {})
   const revisionKey = `${form?.id}:${revision}`
   const [seenRevision, setSeenRevision] = useState(revisionKey)
@@ -119,11 +122,27 @@ export default function ProgramTemplateEditor({ modern = false, postingId, forms
         replace({ ...layout, fields: { ...fields, [key]: { type: 'text', field_type: 'text', label: '새 입력칸', page, box, confidence: 1, required: false, needs_review: true, autofill_source: null } } })
         setSelected(key)
         setTool('select')
-      }
+      } else if (entries.length < 500) void addSnapped({ x: gesture.x, y: gesture.y })
     }
     drag.current = null
     setDrawing(null)
     if (canvas.current?.hasPointerCapture(event.pointerId)) canvas.current.releasePointerCapture(event.pointerId)
+  }
+
+  // A click (not a drag) in add mode asks the server for a fitting cell or blank.
+  const addSnapped = async (at: { x: number; y: number }) => {
+    if (!form || !dimensions) return
+    const target = { formId: form.id, page, size: dimensions }
+    const suggestion = await snapProgramFormField(postingId, target.formId, target.page, at.x, at.y).catch(() => null)
+    if (!mounted.current || activeForm.current !== target.formId) return
+    const snapped = snappedField(suggestion, at, target.size)
+    let key = `field_${target.formId}_snap${++counter.current}`
+    while (fields[key]) key = `field_${target.formId}_snap${++counter.current}`
+    setLayout((latest) => ({ ...latest, fields: { ...latest.fields, [key]: { ...snapped, page: target.page, confidence: 1, required: false, needs_review: true, autofill_source: null } } }))
+    setDirty(true)
+    setError('')
+    setSelected(key)
+    setTool('select')
   }
 
   const run = async (action: 'draft' | 'save' | 'confirm') => {

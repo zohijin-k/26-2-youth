@@ -1,0 +1,375 @@
+{
+  "engine": {
+    "exit": 0,
+    "summary": [
+      "=============================== warnings summary ===============================",
+      "    warnings.warn(",
+      "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
+      "1267 passed, 7 warnings in 29.77s"
+    ],
+    "log": "/tmp/form-draft-detection-stage1-engine.log",
+    "enospc": false
+  },
+  "backend": {
+    "exit": 0,
+    "summary": [
+      "=============================== warnings summary ===============================",
+      "    warnings.warn(",
+      "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
+      "1650 passed, 9 warnings in 77.34s (0:01:17)"
+    ],
+    "log": "/tmp/form-draft-detection-stage1-backend.log",
+    "enospc": false
+  },
+  "scenarios": {
+    "run_p11_criteria_scenarios": {
+      "exit": 0,
+      "summary": [
+        "통과 38 / 실패 0"
+      ],
+      "log": "/tmp/form-draft-detection-stage1-run_p11_criteria_scenarios.log",
+      "enospc": false
+    },
+    "run_p12_subsidy_criteria_scenarios": {
+      "exit": 0,
+      "summary": [
+        "통과 29 / 실패 0"
+      ],
+      "log": "/tmp/form-draft-detection-stage1-run_p12_subsidy_criteria_scenarios.log",
+      "enospc": false
+    },
+    "run_p13_household_scenarios": {
+      "exit": 0,
+      "summary": [
+        "통과 26 / 실패 0"
+      ],
+      "log": "/tmp/form-draft-detection-stage1-run_p13_household_scenarios.log",
+      "enospc": false
+    },
+    "run_p14_pdf_forms_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/form-draft-detection-stage1-run_p14_pdf_forms_scenarios.log",
+      "enospc": false
+    },
+    "run_p15_jbai_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 129 / 실패 0"
+      ],
+      "log": "/tmp/form-draft-detection-stage1-run_p15_jbai_scenarios.log",
+      "enospc": false
+    },
+    "run_p16_job_docs_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 96 / 실패 0"
+      ],
+      "log": "/tmp/form-draft-detection-stage1-run_p16_job_docs_scenarios.log",
+      "enospc": false
+    },
+    "run_p17_own_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 75 / 실패 0 / SKIP 0"
+      ],
+      "log": "/tmp/form-draft-detection-stage1-run_p17_own_scenarios.log",
+      "enospc": false
+    },
+    "run_p18_applicant_precheck_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 180 / 실패 0"
+      ],
+      "log": "/tmp/form-draft-detection-stage1-run_p18_applicant_precheck_scenarios.log",
+      "enospc": false
+    },
+    "run_p19_nhis_history_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 24 / 실패 0"
+      ],
+      "log": "/tmp/form-draft-detection-stage1-run_p19_nhis_history_scenarios.log",
+      "enospc": false
+    },
+    "run_p20_nhis_continuation_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 7 / 실패 0"
+      ],
+      "log": "/tmp/form-draft-detection-stage1-run_p20_nhis_continuation_scenarios.log",
+      "enospc": false
+    },
+    "run_p2_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 53 / 실패 0"
+      ],
+      "log": "/tmp/form-draft-detection-stage1-run_p2_scenarios.log",
+      "enospc": false
+    },
+    "run_p3_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 186 / 실패 0"
+      ],
+      "log": "/tmp/form-draft-detection-stage1-run_p3_scenarios.log",
+      "enospc": false
+    },
+    "run_p4_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 189 / 실패 0"
+      ],
+      "log": "/tmp/form-draft-detection-stage1-run_p4_scenarios.log",
+      "enospc": false
+    },
+    "run_p5_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 152 / 실패 0"
+      ],
+      "log": "/tmp/form-draft-detection-stage1-run_p5_scenarios.log",
+      "enospc": false
+    },
+    "run_p6_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "  [OK]   supplement_warning: '서류 미비 시 7일 내 보완 안내가 발송됩니다.'",
+        "  [OK]   supplement_warning: '서류 미비 시 7일 내 보완 안내가 발송됩니다.'",
+        "통과 261 / 실패 0"
+      ],
+      "log": "/tmp/form-draft-detection-stage1-run_p6_scenarios.log",
+      "enospc": false
+    },
+    "run_p7_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 253 / 실패 0"
+      ],
+      "log": "/tmp/form-draft-detection-stage1-run_p7_scenarios.log",
+      "enospc": false
+    },
+    "run_p8_localocr_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 89 / 실패 0"
+      ],
+      "log": "/tmp/form-draft-detection-stage1-run_p8_localocr_scenarios.log",
+      "enospc": false
+    },
+    "run_p9_identity_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 98 / 실패 0"
+      ],
+      "log": "/tmp/form-draft-detection-stage1-run_p9_identity_scenarios.log",
+      "enospc": false
+    }
+  },
+  "frontend": {
+    "exit": 0,
+    "summary": [
+      "✓ built in 178ms",
+      "✔ photos pass without a probe (0.223792ms)",
+      "✔ missing or malformed fresh blockers fail closed (0.123541ms)",
+      "✔ fail keeps the file and message; retry queues the same file again at the end of the line (0.168125ms)",
+      "ℹ tests 69",
+      "ℹ pass 69",
+      "ℹ fail 0"
+    ],
+    "log": "/tmp/form-draft-detection-stage1-frontend.log",
+    "enospc": false
+  },
+  "disk": [
+    {
+      "suite": "gate-start",
+      "free_bytes": 34116530176
+    },
+    {
+      "suite": "engine-before",
+      "free_bytes": 34116521984
+    },
+    {
+      "suite": "engine-after",
+      "free_bytes": 34116378624
+    },
+    {
+      "suite": "backend-before",
+      "free_bytes": 34116362240
+    },
+    {
+      "suite": "backend-after",
+      "free_bytes": 34115588096
+    },
+    {
+      "suite": "run_p11_criteria_scenarios-before",
+      "free_bytes": 34115584000
+    },
+    {
+      "suite": "run_p11_criteria_scenarios-after",
+      "free_bytes": 34115543040
+    },
+    {
+      "suite": "run_p12_subsidy_criteria_scenarios-before",
+      "free_bytes": 34115543040
+    },
+    {
+      "suite": "run_p12_subsidy_criteria_scenarios-after",
+      "free_bytes": 34114424832
+    },
+    {
+      "suite": "run_p13_household_scenarios-before",
+      "free_bytes": 34114424832
+    },
+    {
+      "suite": "run_p13_household_scenarios-after",
+      "free_bytes": 34114392064
+    },
+    {
+      "suite": "run_p14_pdf_forms_scenarios-before",
+      "free_bytes": 34114392064
+    },
+    {
+      "suite": "run_p14_pdf_forms_scenarios-after",
+      "free_bytes": 34114383872
+    },
+    {
+      "suite": "run_p15_jbai_scenarios-before",
+      "free_bytes": 34114383872
+    },
+    {
+      "suite": "run_p15_jbai_scenarios-after",
+      "free_bytes": 34114351104
+    },
+    {
+      "suite": "run_p16_job_docs_scenarios-before",
+      "free_bytes": 34114347008
+    },
+    {
+      "suite": "run_p16_job_docs_scenarios-after",
+      "free_bytes": 34114240512
+    },
+    {
+      "suite": "run_p17_own_scenarios-before",
+      "free_bytes": 34114240512
+    },
+    {
+      "suite": "run_p17_own_scenarios-after",
+      "free_bytes": 34114215936
+    },
+    {
+      "suite": "run_p18_applicant_precheck_scenarios-before",
+      "free_bytes": 34114211840
+    },
+    {
+      "suite": "run_p18_applicant_precheck_scenarios-after",
+      "free_bytes": 34114383872
+    },
+    {
+      "suite": "run_p19_nhis_history_scenarios-before",
+      "free_bytes": 34114379776
+    },
+    {
+      "suite": "run_p19_nhis_history_scenarios-after",
+      "free_bytes": 34114326528
+    },
+    {
+      "suite": "run_p20_nhis_continuation_scenarios-before",
+      "free_bytes": 34114322432
+    },
+    {
+      "suite": "run_p20_nhis_continuation_scenarios-after",
+      "free_bytes": 34114289664
+    },
+    {
+      "suite": "run_p2_scenarios-before",
+      "free_bytes": 34114289664
+    },
+    {
+      "suite": "run_p2_scenarios-after",
+      "free_bytes": 34114260992
+    },
+    {
+      "suite": "run_p3_scenarios-before",
+      "free_bytes": 34114260992
+    },
+    {
+      "suite": "run_p3_scenarios-after",
+      "free_bytes": 34113069056
+    },
+    {
+      "suite": "run_p4_scenarios-before",
+      "free_bytes": 34113069056
+    },
+    {
+      "suite": "run_p4_scenarios-after",
+      "free_bytes": 34113273856
+    },
+    {
+      "suite": "run_p5_scenarios-before",
+      "free_bytes": 34113269760
+    },
+    {
+      "suite": "run_p5_scenarios-after",
+      "free_bytes": 34112937984
+    },
+    {
+      "suite": "run_p6_scenarios-before",
+      "free_bytes": 34112937984
+    },
+    {
+      "suite": "run_p6_scenarios-after",
+      "free_bytes": 34112954368
+    },
+    {
+      "suite": "run_p7_scenarios-before",
+      "free_bytes": 34112950272
+    },
+    {
+      "suite": "run_p7_scenarios-after",
+      "free_bytes": 34125934592
+    },
+    {
+      "suite": "run_p8_localocr_scenarios-before",
+      "free_bytes": 34125922304
+    },
+    {
+      "suite": "run_p8_localocr_scenarios-after",
+      "free_bytes": 34129137664
+    },
+    {
+      "suite": "run_p9_identity_scenarios-before",
+      "free_bytes": 34129133568
+    },
+    {
+      "suite": "run_p9_identity_scenarios-after",
+      "free_bytes": 34128871424
+    },
+    {
+      "suite": "frontend-before",
+      "free_bytes": 34128838656
+    },
+    {
+      "suite": "frontend-after",
+      "free_bytes": 34128584704
+    }
+  ],
+  "result": "passed"
+}
