@@ -14,13 +14,18 @@ Keep the shared navy shell, authenticated session bar, built-in job-package
 workspace, ApplicationList, ReviewDetail and DocumentViewer outside `.om`.
 Do not change original PDF geometry or inherit modern UI typography into the
 viewer. Generic detail gives its header and findings panel separate `.om` roots.
-An existing entry screen can retain legacy classes until it is migrated.
+Upload, login and program-list entry screens also use scoped modern styles.
+OfficerDrawer registers its mounted presence through OfficerNavigationContext.
+Modern screens use drawer logout and suppress the redundant session bar; the last
+drawer cleanup restores the original bar. This context controls presentation only,
+never authentication or roles. Keep mock bypass behavior and legacy bar JSX intact.
 
 ## Actions and keyboard interaction
 
 Keep one dark primary action in a viewport. Other actions use outlined buttons,
 text actions or pill chips. Preview progress chips replace a persistent review
-sidebar. The template confirmation action saves and confirms together; its
+sidebar. Render a completed pending count as a static status chip, while keeping
+the active pending-items menu and every individual confirmation visible. The template confirmation action saves and confirms together; its
 outline treatment avoids competing with sticky publication.
 
 Use OfficerDrawer for business navigation and OfficerMenu for secondary row or
@@ -36,6 +41,23 @@ and restore focus, close with Escape, and prevent overlay pointerdown from
 moving focus or dismissing the dialog. Destructive actions need confirmation.
 When settings navigation replaces the chip tablist, focus the loaded preview
 heading instead of leaving focus on a removed tab.
+
+### Modern navigation lifecycle
+
+```ts
+type ModernNavigationRegistration = () => () => void
+declare function createModernNavigationRegistration(onCountChanged: (count: number) => void): ModernNavigationRegistration
+```
+
+OfficerSession creates one stable registration function; each mounted
+OfficerDrawer registers in an effect and returns its cleanup. A count of zero
+renders the original legacy bar. A positive count leaves logout in the drawer.
+Cleanup is idempotent so StrictMode or overlapping drawer lifetimes cannot leave
+negative counts or restore the bar too early. The unit assertion sequence is
+`[1, 2, 1, 0]` for two mounts, repeated first cleanup and final cleanup. Browser
+checks must retain exact legacy pixels in both authenticated and mock sessions.
+Do not inspect ancestor DOM classes or change authentication state to decide
+whether to show the bar.
 
 ## Publication and evidence contracts
 
@@ -68,7 +90,9 @@ committed search changes. A reset only on input events misses selections made
 during the search debounce. Disable stale-row bulk actions while fetching.
 Retain bulkActionsFor and server role/approval gates. Hold/reject need a reason.
 
-Document and criterion cards share a status/reason shape. Keep individual
+Document and criterion cards share a status/reason shape. Original document tabs
+are the navigation controls; right-hand card names are static headings to avoid
+duplicating those buttons. Keep individual
 original/checklist confirmations visible, bind saves to the server fingerprint,
 and enable final selection only through can_approve. Put processing controls
 below the scrollable findings in a sticky panel; verify all controls fit at a

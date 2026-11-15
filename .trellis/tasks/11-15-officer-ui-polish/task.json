@@ -24,12 +24,13 @@
   "notes": "",
   "meta": {},
   "completion_date": "2026-11-15",
-  "outcome": "partial_with_requested_stage_rollback",
-  "skipped_stages": [
-    3
-  ],
+  "outcome": "stage3_rerun_completed",
+  "skipped_stages": [],
   "remaining_requirements": [
-    "Stage3 upload/login/program-list polish remains in failed-stage3.patch",
-    "Total visible button count reduction is not achieved"
-  ]
+    "Program list visible buttons4 vs pre-rerun3; preview12 vs original baseline11; optional further simplification",
+    "Protected legacy1024px overflow remains unchanged"
+  ],
+  "rerun_base": "ffbaab7",
+  "rerun_code_commit": "d035ee2",
+  "rerun_completion_date": "2026-11-15"
 }

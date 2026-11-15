@@ -1,0 +1,375 @@
+{
+  "engine": {
+    "exit": 0,
+    "summary": [
+      "=============================== warnings summary ===============================",
+      "    warnings.warn(",
+      "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
+      "1267 passed, 7 warnings in 30.39s"
+    ],
+    "log": "/tmp/officer-stage3-rerun-docs-engine.log",
+    "enospc": false
+  },
+  "backend": {
+    "exit": 0,
+    "summary": [
+      "=============================== warnings summary ===============================",
+      "    warnings.warn(",
+      "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
+      "1645 passed, 9 warnings in 82.13s (0:01:22)"
+    ],
+    "log": "/tmp/officer-stage3-rerun-docs-backend.log",
+    "enospc": false
+  },
+  "scenarios": {
+    "run_p11_criteria_scenarios": {
+      "exit": 0,
+      "summary": [
+        "통과 38 / 실패 0"
+      ],
+      "log": "/tmp/officer-stage3-rerun-docs-run_p11_criteria_scenarios.log",
+      "enospc": false
+    },
+    "run_p12_subsidy_criteria_scenarios": {
+      "exit": 0,
+      "summary": [
+        "통과 29 / 실패 0"
+      ],
+      "log": "/tmp/officer-stage3-rerun-docs-run_p12_subsidy_criteria_scenarios.log",
+      "enospc": false
+    },
+    "run_p13_household_scenarios": {
+      "exit": 0,
+      "summary": [
+        "통과 26 / 실패 0"
+      ],
+      "log": "/tmp/officer-stage3-rerun-docs-run_p13_household_scenarios.log",
+      "enospc": false
+    },
+    "run_p14_pdf_forms_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/officer-stage3-rerun-docs-run_p14_pdf_forms_scenarios.log",
+      "enospc": false
+    },
+    "run_p15_jbai_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 129 / 실패 0"
+      ],
+      "log": "/tmp/officer-stage3-rerun-docs-run_p15_jbai_scenarios.log",
+      "enospc": false
+    },
+    "run_p16_job_docs_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 96 / 실패 0"
+      ],
+      "log": "/tmp/officer-stage3-rerun-docs-run_p16_job_docs_scenarios.log",
+      "enospc": false
+    },
+    "run_p17_own_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 75 / 실패 0 / SKIP 0"
+      ],
+      "log": "/tmp/officer-stage3-rerun-docs-run_p17_own_scenarios.log",
+      "enospc": false
+    },
+    "run_p18_applicant_precheck_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 180 / 실패 0"
+      ],
+      "log": "/tmp/officer-stage3-rerun-docs-run_p18_applicant_precheck_scenarios.log",
+      "enospc": false
+    },
+    "run_p19_nhis_history_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 24 / 실패 0"
+      ],
+      "log": "/tmp/officer-stage3-rerun-docs-run_p19_nhis_history_scenarios.log",
+      "enospc": false
+    },
+    "run_p20_nhis_continuation_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 7 / 실패 0"
+      ],
+      "log": "/tmp/officer-stage3-rerun-docs-run_p20_nhis_continuation_scenarios.log",
+      "enospc": false
+    },
+    "run_p2_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 53 / 실패 0"
+      ],
+      "log": "/tmp/officer-stage3-rerun-docs-run_p2_scenarios.log",
+      "enospc": false
+    },
+    "run_p3_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 186 / 실패 0"
+      ],
+      "log": "/tmp/officer-stage3-rerun-docs-run_p3_scenarios.log",
+      "enospc": false
+    },
+    "run_p4_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 189 / 실패 0"
+      ],
+      "log": "/tmp/officer-stage3-rerun-docs-run_p4_scenarios.log",
+      "enospc": false
+    },
+    "run_p5_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 152 / 실패 0"
+      ],
+      "log": "/tmp/officer-stage3-rerun-docs-run_p5_scenarios.log",
+      "enospc": false
+    },
+    "run_p6_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "  [OK]   supplement_warning: '서류 미비 시 7일 내 보완 안내가 발송됩니다.'",
+        "  [OK]   supplement_warning: '서류 미비 시 7일 내 보완 안내가 발송됩니다.'",
+        "통과 261 / 실패 0"
+      ],
+      "log": "/tmp/officer-stage3-rerun-docs-run_p6_scenarios.log",
+      "enospc": false
+    },
+    "run_p7_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 253 / 실패 0"
+      ],
+      "log": "/tmp/officer-stage3-rerun-docs-run_p7_scenarios.log",
+      "enospc": false
+    },
+    "run_p8_localocr_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 89 / 실패 0"
+      ],
+      "log": "/tmp/officer-stage3-rerun-docs-run_p8_localocr_scenarios.log",
+      "enospc": false
+    },
+    "run_p9_identity_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "통과 98 / 실패 0"
+      ],
+      "log": "/tmp/officer-stage3-rerun-docs-run_p9_identity_scenarios.log",
+      "enospc": false
+    }
+  },
+  "frontend": {
+    "exit": 0,
+    "summary": [
+      "✓ built in 181ms",
+      "✔ photos pass without a probe (0.236375ms)",
+      "✔ missing or malformed fresh blockers fail closed (0.360583ms)",
+      "✔ fail keeps the file and message; retry queues the same file again at the end of the line (0.192667ms)",
+      "ℹ tests 67",
+      "ℹ pass 67",
+      "ℹ fail 0"
+    ],
+    "log": "/tmp/officer-stage3-rerun-docs-frontend.log",
+    "enospc": false
+  },
+  "disk": [
+    {
+      "suite": "gate-start",
+      "free_bytes": 32690458624
+    },
+    {
+      "suite": "engine-before",
+      "free_bytes": 32690454528
+    },
+    {
+      "suite": "engine-after",
+      "free_bytes": 32690245632
+    },
+    {
+      "suite": "backend-before",
+      "free_bytes": 32690237440
+    },
+    {
+      "suite": "backend-after",
+      "free_bytes": 32701702144
+    },
+    {
+      "suite": "run_p11_criteria_scenarios-before",
+      "free_bytes": 32701702144
+    },
+    {
+      "suite": "run_p11_criteria_scenarios-after",
+      "free_bytes": 32701652992
+    },
+    {
+      "suite": "run_p12_subsidy_criteria_scenarios-before",
+      "free_bytes": 32701652992
+    },
+    {
+      "suite": "run_p12_subsidy_criteria_scenarios-after",
+      "free_bytes": 32701493248
+    },
+    {
+      "suite": "run_p13_household_scenarios-before",
+      "free_bytes": 32701493248
+    },
+    {
+      "suite": "run_p13_household_scenarios-after",
+      "free_bytes": 32701460480
+    },
+    {
+      "suite": "run_p14_pdf_forms_scenarios-before",
+      "free_bytes": 32701460480
+    },
+    {
+      "suite": "run_p14_pdf_forms_scenarios-after",
+      "free_bytes": 32701530112
+    },
+    {
+      "suite": "run_p15_jbai_scenarios-before",
+      "free_bytes": 32701530112
+    },
+    {
+      "suite": "run_p15_jbai_scenarios-after",
+      "free_bytes": 32700375040
+    },
+    {
+      "suite": "run_p16_job_docs_scenarios-before",
+      "free_bytes": 32700370944
+    },
+    {
+      "suite": "run_p16_job_docs_scenarios-after",
+      "free_bytes": 32700481536
+    },
+    {
+      "suite": "run_p17_own_scenarios-before",
+      "free_bytes": 32700481536
+    },
+    {
+      "suite": "run_p17_own_scenarios-after",
+      "free_bytes": 32700076032
+    },
+    {
+      "suite": "run_p18_applicant_precheck_scenarios-before",
+      "free_bytes": 32700071936
+    },
+    {
+      "suite": "run_p18_applicant_precheck_scenarios-after",
+      "free_bytes": 32700280832
+    },
+    {
+      "suite": "run_p19_nhis_history_scenarios-before",
+      "free_bytes": 32700276736
+    },
+    {
+      "suite": "run_p19_nhis_history_scenarios-after",
+      "free_bytes": 32700239872
+    },
+    {
+      "suite": "run_p20_nhis_continuation_scenarios-before",
+      "free_bytes": 32700235776
+    },
+    {
+      "suite": "run_p20_nhis_continuation_scenarios-after",
+      "free_bytes": 32700211200
+    },
+    {
+      "suite": "run_p2_scenarios-before",
+      "free_bytes": 32700211200
+    },
+    {
+      "suite": "run_p2_scenarios-after",
+      "free_bytes": 32700198912
+    },
+    {
+      "suite": "run_p3_scenarios-before",
+      "free_bytes": 32700198912
+    },
+    {
+      "suite": "run_p3_scenarios-after",
+      "free_bytes": 32700059648
+    },
+    {
+      "suite": "run_p4_scenarios-before",
+      "free_bytes": 32700059648
+    },
+    {
+      "suite": "run_p4_scenarios-after",
+      "free_bytes": 32699555840
+    },
+    {
+      "suite": "run_p5_scenarios-before",
+      "free_bytes": 32699555840
+    },
+    {
+      "suite": "run_p5_scenarios-after",
+      "free_bytes": 32699654144
+    },
+    {
+      "suite": "run_p6_scenarios-before",
+      "free_bytes": 32699654144
+    },
+    {
+      "suite": "run_p6_scenarios-after",
+      "free_bytes": 32699465728
+    },
+    {
+      "suite": "run_p7_scenarios-before",
+      "free_bytes": 32699453440
+    },
+    {
+      "suite": "run_p7_scenarios-after",
+      "free_bytes": 32697638912
+    },
+    {
+      "suite": "run_p8_localocr_scenarios-before",
+      "free_bytes": 32697634816
+    },
+    {
+      "suite": "run_p8_localocr_scenarios-after",
+      "free_bytes": 32699359232
+    },
+    {
+      "suite": "run_p9_identity_scenarios-before",
+      "free_bytes": 32699359232
+    },
+    {
+      "suite": "run_p9_identity_scenarios-after",
+      "free_bytes": 32699502592
+    },
+    {
+      "suite": "frontend-before",
+      "free_bytes": 32699498496
+    },
+    {
+      "suite": "frontend-after",
+      "free_bytes": 32675270656
+    }
+  ],
+  "result": "passed"
+}

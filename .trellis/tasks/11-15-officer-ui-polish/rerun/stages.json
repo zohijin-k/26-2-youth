@@ -1,0 +1,21 @@
+[
+  {
+    "stage": "preflight",
+    "result": "passed",
+    "disk_initial_gib": 27,
+    "base": "ffbaab7",
+    "patch_applied_cleanly": true
+  },
+  {
+    "stage": "code",
+    "result": "passed",
+    "commit": "d035ee2",
+    "new_tests": 1
+  },
+  {
+    "stage": "docs",
+    "result": "passed",
+    "commit": "report commit (HEAD)",
+    "new_tests": 0
+  }
+]

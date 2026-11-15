@@ -1,0 +1,13 @@
+{
+  "mock_chunk_separate": true,
+  "static_graphs": {
+    "ApplicantApp-": {
+      "chunks": 2,
+      "contains_mock_data": false
+    },
+    "OfficerApp-": {
+      "chunks": 3,
+      "contains_mock_data": false
+    }
+  }
+}

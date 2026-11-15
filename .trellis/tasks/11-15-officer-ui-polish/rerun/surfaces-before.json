@@ -1,0 +1,350 @@
+{
+  "phase": "before",
+  "surfaces": [
+    {
+      "name": "login",
+      "path": "/officer/login",
+      "buttons": 2,
+      "min_font": 13,
+      "native_file_buttons": 0,
+      "visible_disclosures": 0,
+      "primary_buttons": 1,
+      "button_labels": [
+        "사업 목록으로 이동",
+        "로그인"
+      ],
+      "overflow": false,
+      "widths": [
+        {
+          "width": 1280,
+          "overflow": false
+        },
+        {
+          "width": 1024,
+          "overflow": false
+        }
+      ]
+    },
+    {
+      "name": "upload",
+      "path": "/officer/programs/new?mock=0",
+      "buttons": 5,
+      "min_font": 12.5,
+      "native_file_buttons": 2,
+      "visible_disclosures": 0,
+      "primary_buttons": 1,
+      "button_labels": [
+        "사업 목록으로 이동",
+        "로그아웃",
+        "사업 목록",
+        "취소",
+        "분석하기"
+      ],
+      "overflow": false,
+      "widths": [
+        {
+          "width": 1280,
+          "overflow": false
+        },
+        {
+          "width": 1024,
+          "overflow": false
+        }
+      ]
+    },
+    {
+      "name": "program-list",
+      "path": "/officer?mock=0",
+      "buttons": 3,
+      "min_font": 12,
+      "native_file_buttons": 0,
+      "visible_disclosures": 0,
+      "primary_buttons": 1,
+      "button_labels": [
+        "사업 목록으로 이동",
+        "로그아웃",
+        "새 사업 올리기"
+      ],
+      "overflow": false,
+      "widths": [
+        {
+          "width": 1280,
+          "overflow": false
+        },
+        {
+          "width": 1024,
+          "overflow": false
+        }
+      ]
+    },
+    {
+      "name": "preview",
+      "path": "/officer/programs/2?mock=0&tab=settings",
+      "buttons": 14,
+      "min_font": 14,
+      "native_file_buttons": 0,
+      "visible_disclosures": 0,
+      "primary_buttons": 1,
+      "button_labels": [
+        "사업 목록으로 이동",
+        "로그아웃",
+        "메뉴 열기",
+        "올리기(게시)",
+        "사업 더보기",
+        "① 제목·기간 ✓",
+        "② 안내문 ✓",
+        "③ 서식 ✓",
+        "④ 서류·기준 ✓",
+        "남은 확인 0개 보기",
+        "근거",
+        "사업 제목 확인",
+        "근거",
+        "신청 기간 확인"
+      ],
+      "overflow": false,
+      "widths": [
+        {
+          "width": 1280,
+          "overflow": false
+        },
+        {
+          "width": 1024,
+          "overflow": false
+        }
+      ]
+    },
+    {
+      "name": "workspace",
+      "path": "/officer/programs/2?mock=0",
+      "buttons": 10,
+      "min_font": 14,
+      "native_file_buttons": 0,
+      "visible_disclosures": 0,
+      "primary_buttons": 0,
+      "button_labels": [
+        "사업 목록으로 이동",
+        "로그아웃",
+        "메뉴 열기",
+        "신청 목록",
+        "사업 설정",
+        "사업 정보",
+        "확인 필요 0",
+        "충족 0",
+        "처리 완료 1",
+        "다시 불러오기"
+      ],
+      "overflow": false,
+      "widths": [
+        {
+          "width": 1280,
+          "overflow": false
+        },
+        {
+          "width": 1024,
+          "overflow": false
+        }
+      ]
+    },
+    {
+      "name": "generic-review",
+      "path": "/officer/programs/2/applications/1?mock=0",
+      "buttons": 13,
+      "min_font": 14,
+      "native_file_buttons": 0,
+      "visible_disclosures": 2,
+      "primary_buttons": 1,
+      "button_labels": [
+        "사업 목록으로 이동",
+        "로그아웃",
+        "메뉴 열기",
+        "면접용 사진사본 — 면접사진비",
+        "작성한 서식",
+        "축소",
+        "확대",
+        "회전",
+        "면접용 사진사본 — 면접사진비",
+        "작성한 서식",
+        "최종 선정",
+        "보류",
+        "반려"
+      ],
+      "overflow": false,
+      "widths": [
+        {
+          "width": 1280,
+          "overflow": false
+        },
+        {
+          "width": 1024,
+          "overflow": false
+        }
+      ]
+    },
+    {
+      "name": "job-list",
+      "path": "/officer/province?mock=1",
+      "buttons": 26,
+      "min_font": 12,
+      "native_file_buttons": 0,
+      "visible_disclosures": 0,
+      "primary_buttons": 0,
+      "button_labels": [
+        "사업 목록으로 이동",
+        "사업 목록",
+        "신청 목록",
+        "사업 설정",
+        "사업 정보",
+        "읍·면·동",
+        "시군",
+        "도·청년허브센터",
+        "심사 기준",
+        "확인 필요117건",
+        "적합192건",
+        "처리 완료121건",
+        "JP-2026-001610 전은우 심사 화면 열기",
+        "JP-2026-001610 확인 필요 사유 보기",
+        "JP-2026-001851 고경민 심사 화면 열기",
+        "JP-2026-001851 확인 필요 사유 보기",
+        "JP-2026-001775 오은우 심사 화면 열기",
+        "JP-2026-001775 확인 필요 사유 보기",
+        "JP-2026-001624 손슬기 심사 화면 열기",
+        "JP-2026-001624 확인 필요 사유 보기",
+        "JP-2026-001929 남도윤 심사 화면 열기",
+        "JP-2026-001929 확인 필요 사유 보기",
+        "JP-2026-001900 유지호 심사 화면 열기",
+        "JP-2026-001900 확인 필요 사유 보기",
+        "JP-2026-001761 윤채원 심사 화면 열기",
+        "JP-2026-001761 확인 필요 사유 보기"
+      ],
+      "overflow": false,
+      "widths": [
+        {
+          "width": 1280,
+          "overflow": false
+        },
+        {
+          "width": 1024,
+          "overflow": true
+        }
+      ]
+    },
+    {
+      "name": "job-review",
+      "path": "/officer/programs/1/province/review/901609?mock=1",
+      "buttons": 17,
+      "min_font": 11.5,
+      "native_file_buttons": 0,
+      "visible_disclosures": 0,
+      "primary_buttons": 0,
+      "button_labels": [
+        "사업 목록으로 이동",
+        "사업 목록",
+        "신청 목록",
+        "사업 설정",
+        "사업 정보",
+        "읍·면·동",
+        "시군",
+        "도·청년허브센터",
+        "심사 기준",
+        "← 접수 목록",
+        "청년 취업지원패키지 신청서 (작성본)",
+        "주민등록초본",
+        "응시확인서 또는 성적표 — 자격증 응시료 1회차",
+        "결제영수증 — 자격증 응시료 1회차",
+        "축소",
+        "확대",
+        "회전"
+      ],
+      "overflow": false,
+      "widths": [
+        {
+          "width": 1280,
+          "overflow": false
+        },
+        {
+          "width": 1024,
+          "overflow": true
+        }
+      ]
+    },
+    {
+      "name": "job-auth-list",
+      "path": "/officer/programs/1/province?mock=0",
+      "buttons": 15,
+      "min_font": 12,
+      "native_file_buttons": 0,
+      "visible_disclosures": 0,
+      "primary_buttons": 0,
+      "button_labels": [
+        "사업 목록으로 이동",
+        "로그아웃",
+        "사업 목록",
+        "신청 목록",
+        "사업 설정",
+        "사업 정보",
+        "읍·면·동",
+        "시군",
+        "도·청년허브센터",
+        "심사 기준",
+        "확인 필요1건",
+        "적합0건",
+        "처리 완료0건",
+        "JP-2026-000002 합성취업 심사 화면 열기",
+        "JP-2026-000002 확인 필요 사유 보기"
+      ],
+      "overflow": false,
+      "widths": [
+        {
+          "width": 1280,
+          "overflow": false
+        },
+        {
+          "width": 1024,
+          "overflow": true
+        }
+      ]
+    },
+    {
+      "name": "job-auth-review",
+      "path": "/officer/programs/1/province/review/2?mock=0",
+      "buttons": 19,
+      "min_font": 11,
+      "native_file_buttons": 0,
+      "visible_disclosures": 0,
+      "primary_buttons": 0,
+      "button_labels": [
+        "사업 목록으로 이동",
+        "로그아웃",
+        "사업 목록",
+        "신청 목록",
+        "사업 설정",
+        "사업 정보",
+        "읍·면·동",
+        "시군",
+        "도·청년허브센터",
+        "심사 기준",
+        "← 접수 목록",
+        "통장 사본 (본인 명의)",
+        "주민등록초본",
+        "면접확인서 — 면접비 1회차",
+        "✎2026 전북 청년 취업지원패키지 신청서 작성본",
+        "✎개인정보 수집·이용·제공 동의서 작성본",
+        "축소",
+        "확대",
+        "회전"
+      ],
+      "overflow": false,
+      "widths": [
+        {
+          "width": 1280,
+          "overflow": false
+        },
+        {
+          "width": 1024,
+          "overflow": true
+        }
+      ]
+    }
+  ],
+  "errors": []
+}
