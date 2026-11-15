@@ -50,6 +50,7 @@
 .om.om-dialog .modal{color:var(--color-text);font-family:var(--font-ui);font-size:var(--fs-16);line-height:var(--lh-base)}
 .om.om-dialog .modal__head h3{font-size:var(--fs-19)}
 .om.om-dialog .modal__body{font-size:var(--fs-16);line-height:var(--lh-base)}
-.om.om-dialog .modal__close{width:var(--control-sm);height:var(--control-sm);color:var(--color-text-muted);background:var(--color-surface-subtle)}
+.om.om-dialog .modal__close{width:var(--control-sm);height:var(--control-sm);font-size:var(--fs-16);color:var(--color-text-muted);background:var(--color-surface-subtle)}
 .om.om-dialog .modal__foot{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:var(--sp-2)}
 @media(max-width:1024px){.om .om-head{flex-wrap:wrap}.om .om-card{padding:var(--sp-5)}}
+.om.om-dialog .modal{background:var(--color-surface);border-radius:var(--radius-12);box-shadow:var(--shadow-3)}

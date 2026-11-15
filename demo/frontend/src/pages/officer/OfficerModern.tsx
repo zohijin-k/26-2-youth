@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { flushSync } from 'react-dom'
 import Modal from '../../components/Modal.tsx'
 import { menuKeyResult, officerDestination, restorePanelFocus } from './officer-modern-model.ts'
 import './officer-modern-tokens.css'
@@ -72,7 +73,10 @@ export function OfficerMenu({ actions, label = '더보기', disabled = false, ch
       }}>{children || '⋮'}</button>
     {open && <div ref={panel} id={id} className="om-menu__panel" role="menu" aria-label={label} tabIndex={-1}>
       {actions.map((action) => <button key={action.label} type="button" role="menuitem" disabled={action.disabled}
-        className={action.danger ? 'om-menu__danger' : undefined} onClick={() => { setOpen(false); action.onSelect() }}>{action.label}</button>)}
+        className={action.danger ? 'om-menu__danger' : undefined} onClick={() => {
+          // Complete focus restoration before an action mounts a dialog.
+          flushSync(() => setOpen(false)); action.onSelect()
+        }}>{action.label}</button>)}
     </div>}
   </div>
 }
@@ -123,7 +127,10 @@ export function OfficerDialog({ title, onClose, children, footer, variant }: {
 }) {
   const root = useRef<HTMLDivElement>(null)
   useFocusPanel(true, root, undefined, false)
-  return <div className="om om-dialog" ref={root} onClickCapture={(event) => {
+  return <div className="om om-dialog" ref={root} onPointerDownCapture={(event) => {
+    // Outside pointer presses must not blur the dialog's focused control.
+    if (event.target instanceof Element && event.target.classList.contains('modal-overlay')) { event.preventDefault(); event.stopPropagation() }
+  }} onClickCapture={(event) => {
     if (event.target instanceof Element && event.target.classList.contains('modal-overlay')) event.stopPropagation()
   }}><Modal title={title} onClose={onClose} footer={footer} variant={variant}>{children}</Modal></div>
 }
