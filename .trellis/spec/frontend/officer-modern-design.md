@@ -10,14 +10,27 @@ Typography rules are scoped separately: body 16px, supporting text 15px, minimum
 14px, line height 1.55, headings 22px/19px. Use the applicant spacing, color,
 radius and 40px/48px control tokens. Text/background pairs need 4.5:1 contrast.
 
-Keep the shared navy shell, authenticated session bar, built-in job-package
-workspace, ApplicationList, ReviewDetail and DocumentViewer outside `.om`.
+The shared officer shell (App.tsx, app-shell.css) is a white header with the
+hub logo, brand stripe and a "담당자" label; the session bar portals into its
+right-hand slot. Wider than 1540px, the whole officer app sits in a centered
+1440px box on a #e8ecf1 page. The built-in job-package workspace uses the modern
+`.om` head (title, status chip, chip tabs); its OfficerConsole,
+ApplicationList, ReviewDetail and DocumentViewer stay outside `.om` and get
+their visual polish only from scoped rules in program-officer-workspace.css.
+Never restyle officer.css or application-list.css directly, and never put
+overflow/radius rules on review `.panel` elements (that clips the findings).
+
+Program workspace heads (built-in and managed) use `.om-head--grid`: title |
+status chip, then chip tabs on their own row. Switching job-package roles must not move the
+list: ApplicationList always renders the check column (an empty cell when the
+role cannot bulk-act), role notes stay on one fixed-height line, and the queue
+tab row has a fixed height whether or not region selects are shown.
 Do not change original PDF geometry or inherit modern UI typography into the
 viewer. Generic detail gives its header and findings panel separate `.om` roots.
 Upload, login and program-list entry screens also use scoped modern styles.
-OfficerDrawer registers its mounted presence through OfficerNavigationContext.
-Modern screens use drawer logout and suppress the redundant session bar; the last
-drawer cleanup restores the original bar. This context controls presentation only,
+OfficerShell registers its mounted presence through OfficerNavigationContext.
+Authenticated screens use sidebar logout and suppress the redundant session bar; the
+shell cleanup restores the original bar. This context controls presentation only,
 never authentication or roles. Keep mock bypass behavior and legacy bar JSX intact.
 
 ## Actions and keyboard interaction
@@ -28,7 +41,7 @@ sidebar. Render a completed pending count as a static status chip, while keeping
 the active pending-items menu and every individual confirmation visible. The template confirmation action saves and confirms together; its
 outline treatment avoids competing with sticky publication.
 
-Use OfficerDrawer for business navigation and OfficerMenu for secondary row or
+Use OfficerShell (sidebar) for business navigation and OfficerMenu for secondary row or
 item actions. Preserve mock query parameters via routeHref. Menus and drawers
 support Escape, arrow/Home/End movement, contained Tab navigation, outside
 click dismissal and opener focus restoration. Disabled and CSS-hidden controls
@@ -50,8 +63,8 @@ declare function createModernNavigationRegistration(onCountChanged: (count: numb
 ```
 
 OfficerSession creates one stable registration function; each mounted
-OfficerDrawer registers in an effect and returns its cleanup. A count of zero
-renders the original legacy bar. A positive count leaves logout in the drawer.
+OfficerShell registers in an effect and returns its cleanup. A count of zero
+renders the original legacy bar. A positive count leaves logout in the sidebar.
 Cleanup is idempotent so StrictMode or overlapping drawer lifetimes cannot leave
 negative counts or restore the bar too early. The unit assertion sequence is
 `[1, 2, 1, 0]` for two mounts, repeated first cleanup and final cleanup. Browser
@@ -113,3 +126,47 @@ Exercise actual menu/dialog focus, settings navigation, search selection reset,
 save-before-publication and per-item approval in a browser. Keep officer mock
 data dynamically imported and verify the generated static entry graphs exclude
 its separate chunk. Existing behavior assertions must not be weakened.
+
+## Sidebar shell and new-application badges
+
+OfficerApp wraps every authenticated screen in OfficerShell: a 248px sticky
+left sidebar (program list, new program, one entry per posting with the current
+posting's 신청 목록/사업 설정/사업 정보, logout) and the main column. The pill
+"메뉴" button lives in the white header's right slot (portal into headerHost)
+and collapses/expands the sidebar; at 1279px and below the sidebar is an
+overlay closed by Escape or the shade, returning focus to the button. Keep the
+1280px pinned threshold: the legacy job-package review overflows a narrower
+main column.
+
+Screens still render `<OfficerDrawer …/>`, but it draws nothing. It publishes
+postingId, current location, `disabled` and the onList/onTab handlers through
+`useOfficerShellNav`. When `disabled` is true every sidebar link is blocked,
+so unsaved-edit guards keep working. Sidebar tab navigation without a screen
+handler remounts the workspace (route nonce) so the URL tab is re-read.
+
+Badges need no backend change. OfficerShell polls `fetchOfficerPostings` every
+30s while visible and on each screen change. `officer-badges.ts` compares
+application_count with per-browser seen counts (localStorage). First sight sets
+the baseline to the current count, and viewing a posting's application list
+marks it seen. Totals show on the menu button, the 사업 목록 link and the
+document title; labels cap at 99+.
+
+## Officer font and optical centering
+
+OfficerSession imports `officer-fonts.css`, which declares the same Pretendard
+GOV files as `styles/base.css`. Without it, every `.om` font stack silently
+falls back to the system font (Apple SD Gothic Neo on macOS), and Korean text
+rides 1-2px high inside buttons. Use the font only on `.om`, the officer header,
+the sidebar and the job-package list/head. ReviewDetail and DocumentViewer keep
+their original stack.
+
+Even with Pretendard, Hangul ink sits about 0.05em above line-box center.
+Pill chips and `.om .btn` shift their vertical padding by 1px (top +1, bottom
+-1). Bottom-border tabs need a matching transparent top border. `text-box-trim`
+does not affect inline-flex buttons, so do not rely on it. Verify centering by
+measuring ink rows in 2x screenshots; keep every control within ±0.5px.
+
+Truncated sidebar program names use a custom fixed-position tooltip (portal to
+body). It appears on hover and keyboard focus, only when the name is actually
+clipped. Do not rely on `title`: it is delayed and is not shown in every
+environment.

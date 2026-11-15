@@ -25,7 +25,9 @@
 .om.om-entry-login .btn--primary{width:100%}
 .om.om-entry-list .plist__head{min-height:var(--control-md);margin-bottom:var(--sp-6)}
 .om.om-entry-list .plist__new{margin-left:var(--sp-3)}
-.om.om-entry-list .plist__grid{grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:var(--sp-5)}
+/* 한 줄에 2개로 고정한다. 본문이 좁으면(겹친 사이드바 폭 이하) 1개. */
+.om.om-entry-list .plist__grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-5)}
+@media(max-width:760px){.om.om-entry-list .plist__grid{grid-template-columns:minmax(0,1fr)}}
 .om.om-entry-list .om-program-card{min-width:0;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-12)}
 .om.om-entry-list .om-program-top{padding:var(--sp-4) var(--sp-5) 0}
 .om.om-entry-list .om-program-top .om-menu{margin-left:auto}

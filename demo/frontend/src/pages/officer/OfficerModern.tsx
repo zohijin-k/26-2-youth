@@ -1,8 +1,8 @@
-import { useContext, useEffect, useId, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { flushSync } from 'react-dom'
 import Modal from '../../components/Modal.tsx'
-import { OfficerNavigationContext } from './officer-navigation-context.ts'
-import { menuKeyResult, officerDestination, restorePanelFocus } from './officer-modern-model.ts'
+import { useOfficerShellNav } from './officer-shell-nav.ts'
+import { menuKeyResult, restorePanelFocus } from './officer-modern-model.ts'
 import './officer-modern-tokens.css'
 import './officer-modern.css'
 
@@ -83,45 +83,16 @@ export function OfficerMenu({ actions, label = '더보기', disabled = false, ch
 }
 
 export type OfficerLocation = 'list' | 'new' | 'applications' | 'settings' | 'info'
+/**
+ * 화면의 위치와 이동 함수를 담당자 사이드바(OfficerShell)에 알린다. 화면에는 아무것도 그리지 않는다.
+ * disabled면 사이드바 이동이 막힌다(저장 안 한 수정, 처리 중).
+ */
 export function OfficerDrawer({ postingId, current, disabled = false, onList, onTab }: {
   postingId?: number; current?: OfficerLocation; disabled?: boolean; onList?: () => void
   onTab?: (tab: 'applications' | 'settings' | 'info') => void
 }) {
-  const registerNavigation = useContext(OfficerNavigationContext)
-  useEffect(() => registerNavigation?.(), [registerNavigation])
-  const [open, setOpen] = useState(false)
-  const id = useId()
-  const panel = useRef<HTMLDivElement>(null)
-  useFocusPanel(open, panel, () => setOpen(false))
-  const link = (label: string, location: OfficerLocation, path: string, tab?: 'applications' | 'settings' | 'info') => <a
-    href={officerDestination(path, tab)} aria-current={current === location ? 'page' : undefined}
-    onClick={(event) => {
-      if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return
-      if (location === 'list' && onList) { event.preventDefault(); onList() }
-      else if (tab && onTab) { event.preventDefault(); onTab(tab) }
-      setOpen(false)
-    }}>{label}</a>
-  return <div className="om-drawer">
-    <button type="button" className="om-icon" disabled={disabled} aria-label="메뉴 열기" aria-expanded={open} aria-controls={id}
-      aria-haspopup="dialog" onClick={() => setOpen(true)}>≡</button>
-    {open && <div className="om-drawer__shade" onPointerDown={(event) => { if (event.target === event.currentTarget) setOpen(false) }}>
-      <div id={id} ref={panel} className="om-drawer__panel" role="dialog" aria-modal="true" aria-label="담당자 메뉴" tabIndex={-1}>
-        <div className="om-drawer__head"><strong>사업 관리</strong><button type="button" className="om-icon" aria-label="메뉴 닫기" onClick={() => setOpen(false)}>✕</button></div>
-        <nav aria-label="담당자 이동">
-          {link('사업 목록', 'list', '/officer')}
-          {postingId && <>{link('이 사업의 신청 목록', 'applications', `/officer/programs/${postingId}`, 'applications')}
-            {link('사업 설정', 'settings', `/officer/programs/${postingId}`, 'settings')}
-            {link('사업 정보', 'info', `/officer/programs/${postingId}`, 'info')}</>}
-          {link('새 사업 올리기', 'new', '/officer/programs/new')}
-          <button type="button" onClick={() => {
-            void fetch('/api/officer/logout', { method: 'POST', credentials: 'same-origin' }).then((response) => {
-              if (response.ok) window.location.assign('/officer/login')
-            })
-          }}>로그아웃</button>
-        </nav>
-      </div>
-    </div>}
-  </div>
+  useOfficerShellNav({ postingId, current, disabled, onList, onTab })
+  return null
 }
 
 /** Officer Modal adapter: trap/return focus and keep outside clicks from dismissing it. */

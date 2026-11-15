@@ -10,7 +10,7 @@
  * 공간으로 옮겨 같은 목록·상세를 연다. 기본 사업의 번호는 서버에 물어야 알 수
  * 있어서, 옮기는 일은 작업 공간이 사업을 찾은 직후에 한다.
  */
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 
 import type { OfficerPosting } from '../../api.ts'
 import { currentParams, routeUrl } from '../../navigation-url.ts'
@@ -18,11 +18,13 @@ import NewProgram from './OneShotNewProgram.tsx'
 import ProgramList from './ProgramList.tsx'
 import ProgramWorkspace from './ProgramWorkspace.tsx'
 import OfficerSession from './OfficerSession.tsx'
+import OfficerShell from './OfficerShell.tsx'
+import type { OfficerTab } from './officer-shell-context.ts'
 
 type Route =
   | { screen: 'list' }
   | { screen: 'new' }
-  | { screen: 'workspace'; target: number | 'builtin'; posting?: OfficerPosting }
+  | { screen: 'workspace'; target: number | 'builtin'; posting?: OfficerPosting; nonce?: number }
 
 /** 예전 접수 목록이 주소에 쓰던 값. 하나라도 있으면 목록·상세로 가던 링크다. */
 const OLD_LIST_PARAMS = [
@@ -53,7 +55,7 @@ function moveOldLink(postingId: number): void {
   routeUrl(`/officer/programs/${postingId}${rest}`, keep, true)
 }
 
-function OfficerScreens() {
+function OfficerScreens({ headerHost }: { headerHost: HTMLElement | null }) {
   const [route, setRoute] = useState<Route>(readRoute)
 
   // `?mode=officer`로 들어왔거나 알 수 없는 주소면 사업 목록의 주소로 맞춘다.
@@ -71,40 +73,42 @@ function OfficerScreens() {
   /** 지운 사업이나 없는 기본 사업의 주소는 방문 기록에 남기지 않는다. */
   const replaceWithList = useCallback(() => go({ screen: 'list' }, '/officer', true), [go])
 
+  const toNew = useCallback(() => go({ screen: 'new' }, '/officer/programs/new'), [go])
+  const openProgram = useCallback((posting: OfficerPosting) => go(
+    { screen: 'workspace', target: posting.id, posting }, `/officer/programs/${posting.id}`,
+  ), [go])
+  /** 사이드바에서 사업의 탭으로 간다. 같은 사업이어도 작업 공간을 새로 올려 주소의 탭을 다시 읽게 한다. */
+  const openProgramTab = useCallback((posting: OfficerPosting, tab: OfficerTab = 'applications') => {
+    const path = `/officer/programs/${posting.id}`
+    routeUrl(path, tab === 'applications' ? {} : { tab })
+    setRoute({ screen: 'workspace', target: posting.id, posting, nonce: Date.now() })
+    window.scrollTo({ top: 0 })
+  }, [])
+
+  let screen: ReactNode
   if (route.screen === 'new') {
-    return (
-      <NewProgram
-        onCancel={toList}
-        onCreated={(posting) => { go(
-          { screen: 'workspace', target: posting.id, posting }, `/officer/programs/${posting.id}`, true,
-        ); routeUrl(`/officer/programs/${posting.id}`, { tab: 'settings' }, true) }}
-      />
-    )
-  }
-
-  if (route.screen === 'workspace') {
-    return (
-      <ProgramWorkspace
-        key={route.target}
-        target={route.target}
-        initialPosting={route.posting}
-        onBuiltinFound={moveOldLink}
-        onBack={toList}
-        onGone={replaceWithList}
-      />
-    )
-  }
-
-  return (
-    <ProgramList
-      onNew={() => go({ screen: 'new' }, '/officer/programs/new')}
-      onOpen={(posting) => go(
-        { screen: 'workspace', target: posting.id, posting }, `/officer/programs/${posting.id}`,
-      )}
+    screen = <NewProgram
+      onCancel={toList}
+      onCreated={(posting) => { go(
+        { screen: 'workspace', target: posting.id, posting }, `/officer/programs/${posting.id}`, true,
+      ); routeUrl(`/officer/programs/${posting.id}`, { tab: 'settings' }, true) }}
     />
-  )
+  } else if (route.screen === 'workspace') {
+    screen = <ProgramWorkspace
+      key={`${route.target}:${route.nonce ?? 0}`}
+      target={route.target}
+      initialPosting={route.posting}
+      onBuiltinFound={moveOldLink}
+      onBack={toList}
+      onGone={replaceWithList}
+    />
+  } else {
+    screen = <ProgramList onNew={toNew} onOpen={openProgram} />
+  }
+
+  return <OfficerShell headerHost={headerHost} onList={toList} onNew={toNew} onProgram={openProgramTab}>{screen}</OfficerShell>
 }
 
-export default function OfficerApp() {
-  return <OfficerSession><OfficerScreens /></OfficerSession>
+export default function OfficerApp({ headerHost = null }: { headerHost?: HTMLElement | null }) {
+  return <OfficerSession headerHost={headerHost}><OfficerScreens headerHost={headerHost} /></OfficerSession>
 }

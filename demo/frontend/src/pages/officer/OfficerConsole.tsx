@@ -203,7 +203,7 @@ export default function OfficerConsole({ basePath }: { basePath: string }) {
   return (
     <div className="officer">
       <header className="officer__head">
-        <h1>청년 취업지원패키지 신청 목록</h1>
+        <h2 className="officer__title">청년 취업지원패키지 신청 목록</h2>
         {/* 목업을 보고 있다는 사실을 숨기지 않는다. 이 배너가 없으면 시연을 보는
             사람이 실제 접수 건으로 오해한다. */}
         {mock && (open === null || isMockId(open.id)) && (

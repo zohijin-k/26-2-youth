@@ -1,12 +1,14 @@
 import { useEffect, useState, type ReactNode, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { officerLoginUrl, officerReturnPath } from '../../officer-session.ts'
 import { createModernNavigationRegistration, OfficerNavigationContext } from './officer-navigation-context.ts'
+import './officer-fonts.css'
 import './officer-session.css'
 import './officer-modern-tokens.css'
 import './officer-modern.css'
 import './officer-entry-modern.css'
 
-export default function OfficerSession({ children }: { children: ReactNode }) {
+export default function OfficerSession({ children, headerHost = null }: { children: ReactNode; headerHost?: HTMLElement | null }) {
   const mock = new URLSearchParams(window.location.search).get('mock') === '1'
   const loginPage = window.location.pathname === '/officer/login'
   const [ready, setReady] = useState(mock)
@@ -70,7 +72,9 @@ export default function OfficerSession({ children }: { children: ReactNode }) {
     <button className="btn btn--primary" disabled={busy} type="submit">{busy ? '확인 중' : '로그인'}</button>
   </form></main>
   if (!ready) return <main className="om officer-login om-entry-login"><p role={error ? 'alert' : 'status'}>{error || '담당자 세션을 확인하고 있습니다.'}</p><button type="button" className="btn" onClick={() => window.location.reload()}>다시 시도</button></main>
-  return <OfficerNavigationContext.Provider value={registerModernDrawer}>{modernDrawerCount === 0 && <div className="officer-session-bar"><span>담당자 로그인됨</span><button type="button" className="btn" onClick={() => {
+  // 로그인 상태 줄은 머리글 오른쪽 자리가 있으면 그곳에 그린다. 서랍이 있는 화면은 서랍의 로그아웃을 쓴다.
+  const sessionBar = <div className="officer-session-bar"><span>담당자 로그인됨</span><button type="button" className="btn" onClick={() => {
     void fetch('/api/officer/logout', { method: 'POST', credentials: 'same-origin' }).then(() => window.location.replace('/officer/login'))
-  }}>로그아웃</button></div>}{children}</OfficerNavigationContext.Provider>
+  }}>로그아웃</button></div>
+  return <OfficerNavigationContext.Provider value={registerModernDrawer}>{modernDrawerCount === 0 && (headerHost ? createPortal(sessionBar, headerHost) : sessionBar)}{children}</OfficerNavigationContext.Provider>
 }
