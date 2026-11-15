@@ -37,6 +37,9 @@ _COLONS = (":", "：")
 _PAGE_SHARE_LIMIT = .15
 _INLINE_CONFIDENCE = .6
 _LABEL_CONFIDENCE = .55
+#: Layout attribute for a choice word that is itself the option; renderers draw
+#: an oval around the chosen word instead of a check over its glyphs.
+CHOICE_MARK_CIRCLE = "circle"
 
 
 def _compact(text: str) -> str:
@@ -521,9 +524,11 @@ def _vector_fields(page: Any, page_no: int) -> list[dict[str, Any]]:
                 continue  # A printed box next to the word is the field.
             chars = _page_chars(page) if chars is None else chars
             group = f"p{page_no}_words_{len(found)}"
+            # The printed word is the option: pick one of the pair, marked by a circle around it.
             for _, choice_words in (first, second):
                 label = " ".join(str(w[4]).strip(_SEPARATORS) for w in choice_words)
-                found.append(_field(_ink(choice_words, chars), page_no, label, "check", _INLINE_CONFIDENCE, group=group))
+                found.append(_field(_ink(choice_words, chars), page_no, label, "radio", _INLINE_CONFIDENCE,
+                                    group=group, choice_mark=CHOICE_MARK_CIRCLE))
 
     inline = [field for field in _inline_fields(rows, horizontal, vertical, right_margin, page_no)
               if not _yields_to_value_cell(field, value_cells)]

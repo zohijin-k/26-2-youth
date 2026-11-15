@@ -40,7 +40,7 @@ def test_choice_word_pair_becomes_grouped_word_checks_without_comma():
     _text(page, 40, 100, "1. 귀하는 해당 지역 거주자입니까?")
     _text(page, 360, 100, "예,")
     _text(page, 390, 100, "아니오")
-    checks = [field for field in _fields(document) if field["field_type"] == "check"]
+    checks = [field for field in _fields(document) if field["field_type"] == "radio" and field.get("choice_mark") == "circle"]
     assert [field["label"] for field in checks] == ["예", "아니오"]
     assert checks[0]["group"] == checks[1]["group"]
     assert checks[0]["box"][2] <= 371.5  # the comma glyph is outside the 예 box
@@ -54,7 +54,7 @@ def test_multi_word_choice_pairs_are_joined():
     _text(page, 110, 100, "동의하지 않음")
     _text(page, 40, 140, "해당")
     _text(page, 90, 140, "해당 없음")
-    labels = sorted(field["label"] for field in _fields(document) if field["field_type"] == "check")
+    labels = sorted(field["label"] for field in _fields(document) if field["field_type"] == "radio" and field.get("choice_mark") == "circle")
     assert labels == ["동의하지 않음", "동의함", "해당", "해당 없음"]
 
 
@@ -62,7 +62,7 @@ def test_choice_word_inside_sentence_is_not_a_check():
     document, page = _page()
     _text(page, 40, 100, "예시를 참고하세요 예정된 일정은 없음")
     _text(page, 40, 140, "아니오 라고 적은 예외 사항")
-    assert [field for field in _fields(document) if field["field_type"] == "check"] == []
+    assert [field for field in _fields(document) if field["field_type"] in ("check", "radio")] == []
 
 
 def test_choice_header_split_by_cell_border_is_not_a_word_pair():
@@ -71,7 +71,7 @@ def test_choice_header_split_by_cell_border_is_not_a_word_pair():
         page.draw_line((x, 80), (x, 120))
     _text(page, 310, 100, "예")
     _text(page, 350, 100, "아니오")
-    assert [field for field in _fields(document) if field["field_type"] == "check"] == []
+    assert [field for field in _fields(document) if field["field_type"] in ("check", "radio")] == []
 
 
 def test_choice_words_next_to_printed_boxes_use_the_boxes_only():
@@ -266,4 +266,4 @@ def test_dense_vector_page_drafts_under_two_seconds():
     started = time.perf_counter()
     fields = _fields(document)
     assert time.perf_counter() - started < 2
-    assert len([field for field in fields if field["field_type"] == "check"]) == 2
+    assert len([field for field in fields if field["field_type"] == "radio" and field.get("choice_mark") == "circle"]) == 2

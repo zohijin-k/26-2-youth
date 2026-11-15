@@ -67,6 +67,8 @@
 .pdf-form__check-mark { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); overflow: visible; pointer-events: none; z-index: 1; }
 .pdf-form__check-mark rect { fill: var(--pdf-check-ink); stroke: var(--pdf-check-ink); }
 .pdf-form__check-mark path { fill: none; stroke: var(--gray-0); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+.pdf-form__circle-mark { position: absolute; overflow: visible; pointer-events: none; z-index: 1; }
+.pdf-form__circle-mark ellipse { fill: none; stroke: var(--pdf-check-ink); stroke-width: 1.6; }
 
 .pdf-form__radio-text { position: absolute; display: flex; align-items: center; justify-content: center; gap: 4px; z-index: 5; overflow: visible; pointer-events: auto; color: var(--pdf-print-ink); font-family: 'Noto Sans KR', sans-serif; font-weight: 400; white-space: nowrap; cursor: pointer; }
 .pdf-form__radio-text--serif { font-family: 'Noto Serif KR', serif; }

@@ -387,6 +387,8 @@ export interface FormFieldLayout {
   readonly?: boolean
   group?: string
   control?: 'radio_text'
+  /** A printed choice word that is itself the option: circle the chosen word. */
+  choice_mark?: 'circle'
   page: number
   box: [number, number, number, number]
   label_box?: [number, number, number, number]
