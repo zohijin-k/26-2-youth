@@ -253,6 +253,8 @@ export default function PdfFormsWorkspace({
     if (generic) { const value = readForm(form1, key); return typeof value === 'string' ? value : '' }
     if (key === 'birth') return dateText(form1.birth)
     if (key === 'name' && identity) return identity.name
+    // 신청서 맨 아래 "신청인 :" 칸도 본인인증 성명으로 채운다.
+    if (key === 'job.applicantName') return identity?.name ?? (typeof form1.name === 'string' ? form1.name : '')
     if (key.startsWith('consent.job.') && !key.endsWith('signature')) {
       const date = new Date()
       if (key.endsWith('.year')) return String(date.getFullYear())
@@ -333,6 +335,7 @@ export default function PdfFormsWorkspace({
   const setText = (key: string, value: string) => {
     if (key === 'name' && identity) return
     if (key === 'birth' && identity) return
+    if (key === 'job.applicantName') return
     if (key === 'consent.privacy') { onConsent({ ...consent, privacy: value }); return }
     if (key === 'consent.thirdParty') { onConsent({ ...consent, thirdParty: value }); return }
     if (key === 'birth' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -552,7 +555,7 @@ export default function PdfFormsWorkspace({
       ? subsidySelections.find((item) => item.item_type === 'suit')?.linked_interview_indices[Number(suitField[1]) - 1]
       : null
     const suitFieldsLinked = !!suitField && selectedItems.includes('interview') && !!suitLink
-    const locked = generic ? !!field.readonly : !!identity && (key === 'name' || key === 'birth')
+    const locked = generic ? !!field.readonly : key === 'job.applicantName' || (!!identity && (key === 'name' || key === 'birth'))
     const dateValue = key === 'birth'
       ? (() => {
           const b = form1.birth

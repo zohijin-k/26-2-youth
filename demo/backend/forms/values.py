@@ -209,6 +209,8 @@ def build_job_application(
     ):
         _put(filled.texts, key, form1.get(key))
     _put(filled.texts, "birth", format_date(form1.get("birth")))
+    # 맨 아래 "신청인 :" 칸. 동의서와 같이 본인인증 성명을 쓴다.
+    _put(filled.texts, "job.applicantName", (app.identity_json or {}).get("name") or form1.get("name"))
     _, month, day = _written_values(form_date(app))
     for key, value in (("job.applicationMonth", month), ("job.applicationDay", day)):
         _put(filled.texts, key, value)

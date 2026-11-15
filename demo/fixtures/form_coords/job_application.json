@@ -656,6 +656,23 @@
       ],
       "anchor": "(인)"
     },
+    "job.applicantName": {
+      "type": "text",
+      "page": 0,
+      "x": 415.16,
+      "y": 686.01,
+      "size": 10.0,
+      "align": "left",
+      "font_family": "sans",
+      "box": [
+        415.16,
+        675.65,
+        486.43,
+        688.6
+      ],
+      "anchor": "신청인 :",
+      "mode": "after"
+    },
     "subsidy.interview.면접비": {
       "type": "check",
       "page": 0,
