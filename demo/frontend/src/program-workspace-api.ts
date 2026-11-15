@@ -1,3 +1,4 @@
+import type { SnapSuggestion } from './lib/form-snap.ts'
 import type { OfficerPosting } from './api.ts'
 import { officerSessionResponse } from './officer-session.ts'
 
@@ -87,6 +88,11 @@ export function replaceProgramFiles(id: number, notice: File | null, forms: File
 
 export const draftProgramForm = (postingId: number, formId: number) =>
   workspaceRequest<ManagedProgramData>(`/api/officer/postings/${postingId}/workspace/forms/${formId}/draft`, { method: 'POST' })
+
+export const snapProgramFormField = (postingId: number, formId: number, page: number, x: number, y: number) =>
+  workspaceRequest<SnapSuggestion>(`/api/officer/postings/${postingId}/workspace/forms/${formId}/snap`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ page, x, y }),
+  })
 
 export const saveProgramForm = (postingId: number, formId: number, layout: ManagedFormLayout) =>
   workspaceRequest<ManagedProgramData>(`/api/officer/postings/${postingId}/workspace/forms/${formId}/layout`, {

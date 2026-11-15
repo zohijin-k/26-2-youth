@@ -549,3 +549,61 @@ def draft_layout(pdf: bytes, *, form_no: str = "form_1", title: str = "서식", 
             "confirmed": False,
             "message": "입력칸 초안을 확인해 주세요." if fields else "자동 초안 없음 — 직접 입력칸을 추가해 주세요.",
         }
+
+
+def _suggestion(box: Any, kind: str, label: str) -> dict[str, Any]:
+    rect = pymupdf.Rect(box)
+    return {"box": [round(value, 2) for value in rect], "field_type": kind, "label": label.strip()[:200] or "입력칸"}
+
+
+def snap_field(pdf: bytes, page_no: int, x: float, y: float) -> dict[str, Any] | None:
+    """Suggest a box around one officer click, or ``None`` when nothing surrounds it.
+
+    Order: a drafted candidate under the point, the smallest table cell holding the
+    point when that cell is blank, then the blank between words on the clicked row.
+    The officer still reviews every added field; nothing here is confirmed.
+    """
+    try:
+        document = pymupdf.open(stream=pdf, filetype="pdf")
+    except Exception as error:
+        raise ValueError("서식 PDF를 읽을 수 없습니다.") from error
+    with document:
+        if document.needs_pass:
+            raise ValueError("암호가 설정된 PDF는 사용할 수 없습니다.")
+        if not 0 <= page_no < document.page_count:
+            raise IndexError(page_no)
+        page = document[page_no]
+        point = pymupdf.Point(x, y)
+        drafted = [field for field in _vector_fields(page, page_no) if pymupdf.Rect(field["box"]).contains(point)]
+        if drafted:
+            field = min(drafted, key=lambda item: pymupdf.Rect(item["box"]).get_area())
+            return _suggestion(field["box"], field["field_type"], field["label"])
+        words = page.get_text("words", sort=True)
+        cells, _, _, vertical = _geometry(page)
+        around = [cell for cell in cells if cell.contains(point)]
+        if around:
+            cell = min(around, key=lambda item: item.get_area())
+            if cell.get_area() <= _PAGE_SHARE_LIMIT * page.rect.get_area() and not _cell_text(words, cell).strip():
+                left = [_cell_text(words, other) for other in cells if abs(other.x1 - cell.x0) <= _TOLERANCE
+                        and min(other.y1, cell.y1) - max(other.y0, cell.y0) >= .5 * cell.height]
+                label = next((text for text in left if text.strip()), "입력칸")
+                return _suggestion(cell + (2, 2, -2, -2), _kind(label), label)
+        row = next((row for row in _rows(words) if _union(row).y0 - 2 <= y <= _union(row).y1 + 2), None)
+        if row is None:
+            return None
+        band = _union(row)
+        if any(word[0] < x < word[2] for word in row):
+            return None  # The click is on printed text, not on a blank.
+        before = [word for word in row if word[2] <= x]
+        after = [word for word in row if word[0] >= x]
+        lefts = [value for value in (before[-1][2] if before else None, _edge(vertical, x, band, right=False))
+                 if value is not None]
+        rights = [value for value in (after[0][0] if after else None, _edge(vertical, x, band, right=True))
+                  if value is not None]
+        if not lefts or not rights:
+            return None
+        left, right = max(lefts), min(rights)
+        if right - left - 6 < 1.5 * band.height:
+            return None
+        label = " ".join(str(word[4]) for word in before[-2:]) if before and before[-1][2] == left else "입력칸"
+        return _suggestion(pymupdf.Rect(left + 3, band.y0, right - 3, band.y1), _kind(label), label)
