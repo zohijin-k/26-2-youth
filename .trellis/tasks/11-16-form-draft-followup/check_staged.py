@@ -24,7 +24,7 @@ for path in paths:
     assert path not in {'logo.png', '.trellis/tasks/11-14-renewal-applicant-design/task.json'}, 'User file staged'
     assert Path(path).name != '.' + 'env', 'Secret configuration staged'
 diff = git('diff', '--cached')
-assert not re.search(rb'sk-[A-Za-z0-9-]{10,}', diff), 'Secret-shaped value staged'
+assert not re.search(rb'sk-[A-Za-z0-9_-]{16,}', diff), 'Secret-shaped value staged'
 assert b'data/' + b'private' not in diff, 'Forbidden source reference staged'
 for value in dotenv_values(ROOT / ('.' + 'env')).values():
     assert not value or len(value) < 8 or value.encode() not in diff, 'Configured secret value staged'

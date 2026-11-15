@@ -10,5 +10,17 @@
     "form1_box_checks": "O",
     "consent_box_checks": "O",
     "application_box_checks": "O"
+  },
+  "decision1": {
+    "form2_radio_text": "O",
+    "form1_box_checks": "O",
+    "consent_box_checks": "O",
+    "application_box_checks": "O"
+  },
+  "decision2": {
+    "form2_radio_text": "O",
+    "form1_box_checks": "O",
+    "consent_box_checks": "O",
+    "application_box_checks": "O"
   }
 }

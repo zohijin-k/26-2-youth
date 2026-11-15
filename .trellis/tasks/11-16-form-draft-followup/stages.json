@@ -1,7 +1,17 @@
 [
   {"stage": 0, "result": "통과", "commit": null, "new_tests": 0, "notes": "main c8161f4에서 분기; df 여유 33Gi; 보호 해시 10/10; A1267/B1676/C18/D72 기준선 통과"},
+
   {"stage": 1, "result": "실패", "commit": null, "new_tests": 0, "notes": "failed-stage1.patch(10파일). 새 시험 백엔드8·프런트4 통과, 픽셀 4/4 동일, 종단 O. 기존 test_form_draft_inline.py 3개가 field_type=='check'로 규칙 a 칸을 찾아 실패 → 기존 시험 수정 금지라 되돌림"},
+
   {"stage": 2, "result": "통과", "commit": "077ec95", "new_tests": 11, "notes": "라벨 어휘·점 날짜·단어 안 상자·라벨 정리·쪽 범위 시험; 재현율 87.4%→92.5%, 정밀도 92.0%→93.0%, oversized 0; A/B/C/D 통과(B1687)"},
+
   {"stage": 3, "result": "통과", "commit": "a6ed6e6", "new_tests": 4, "notes": "측정 전용 보충 13칸(사람 확인 필요)과 보충 포함 열; form_coords 수정 없음; A/B/C/D 통과(B1691)"},
-  {"stage": 4, "result": "통과", "commit": "문서 커밋(HEAD)", "new_tests": 0, "notes": "spec 문서 갱신; Playwright 종단 2회(커밋 코드, 1단계 patch 임시 적용) 모두 통과; 최종 A/B/C/D 는 report.md 6절"}
+
+  {"stage": 4, "result": "통과", "commit": "문서 커밋(HEAD)", "new_tests": 0, "notes": "spec 문서 갱신; Playwright 종단 2회(커밋 코드, 1단계 patch 임시 적용) 모두 통과; 최종 A/B/C/D 는 report.md 6절"},
+
+  {"stage": "decision-1", "result": "통과", "commit": "b532bb1", "new_tests": 12, "notes": "failed-stage1.patch 적용 + inline 시험 5줄(허락); A1267/B1699/C18/D76; 픽셀 4/4 동일"},
+
+  {"stage": "decision-2·3", "result": "일부 통과", "commit": "6e3fd63", "new_tests": 6, "notes": "어휘 4개·(서명/인) 커밋. 앞 괄호 정리·면접일시 제외는 기존 시험 고정값과 충돌 → failed-decision3-bracket.patch, failed-decision2-supplement.patch; B1705"},
+
+  {"stage": "decision-4", "result": "통과", "commit": "문서 커밋(HEAD)", "new_tests": 0, "notes": "spec 갱신, 종단 1회 O(바꾸면 예 해제, 제출 PDF ○ 8), 측정 92.5%→93.7% / 93.0%→91.4%"}
 ]

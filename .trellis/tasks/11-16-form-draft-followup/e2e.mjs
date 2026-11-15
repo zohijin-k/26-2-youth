@@ -1,12 +1,12 @@
 /** Loopback UI journey: officer uploads 서식2·서식5 (English file names), checks auto fields, confirms,
  * publishes; applicant picks one choice word, switches to the other, submits; the submitted PDF is saved
- * for the ○ check (e2e_submitted.py). E2E_MODE names the code under test: committed | stage1-patch. */
+ * for the ○ check (e2e_submitted.py). E2E_MODE names the code under test: committed | stage1-patch | decision. */
 const { chromium } = await import(process.env.PLAYWRIGHT_PACKAGE ?? '/tmp/renewal-npm-cache/_npx/e41f203b7505f1fb/node_modules/playwright/index.mjs')
 import assert from 'node:assert/strict'
 import { writeFile, mkdir } from 'node:fs/promises'
 
 const MODE = process.env.E2E_MODE ?? 'committed'
-assert.ok(['committed', 'stage1-patch'].includes(MODE))
+assert.ok(['committed', 'stage1-patch', 'decision'].includes(MODE))
 const BASE = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:5191'
 assert.ok(['127.0.0.1', 'localhost'].includes(new URL(BASE).hostname))
 const FILES = '/tmp/form-draft-followup-e2e/files'

@@ -113,3 +113,91 @@
 4. "계좌번호( ___ 은행)" 처럼 괄호가 붙은 라벨(콜론 없음)을 빈칸으로 볼 규칙을 만들지(job_application 2칸).
 5. 라벨 앞 괄호: 지금 라벨은 "(사업명", "(은행명" 처럼 여는 괄호를 남김(지시 d는 끝 콜론·공백만 지움). 여는 괄호도 지울지.
 6. 사용자 미커밋 변경(신청자 화면 5개 파일)은 이번 작업 시작 전부터 있던 것으로, 게이트 D는 이 변경이 있는 작업 트리에서 통과함. 커밋하지 않고 그대로 둠.
+
+## 8. 후속 결정 반영 (2026-11-16, 9b2e581 이후)
+
+사람 결정(1단계 적용·보충 정답 정리·라벨 어휘/정리)을 반영한 결과. 금지 사항은 그대로이고, 예외는 `test_form_draft_inline.py` 규칙 a 칸 고르는 조건 5줄뿐.
+
+### 8.1 결과 표
+
+| 항목 | 결과 | 커밋 | 새 시험 | 비고 |
+|---|---|---|---:|---|
+| 1. 1단계 적용(radio + ○) | O | b532bb1 | 백엔드 8, 프런트 4 | `failed-stage1.patch` 적용 + 허락된 시험 5줄 수정 |
+| 3-1. 라벨 어휘 기간·수령액·회사명·담당자 | O | 6e3fd63 | 3 | `autofill_source` None, `_AUTOFILL` 그대로 |
+| 3-2. 서명 표시 "(서명/인)" | O | 6e3fd63 | 3 | |
+| 3-3. 짝 없는 앞 여는 괄호 지우기 | **X (failed-decision3-bracket.patch)** | – | (patch 안: 2) | 기존 시험이 라벨 "(은행명"을 고정 → 8.3 |
+| 2. 보충 정답에서 면접일시 칸 빼기 | **X (failed-decision2-supplement.patch)** | – | 0 | 기존 시험이 보충 13칸·18칸을 고정 → 8.3 |
+| 4. 문서·종단·측정 | O | 문서 커밋(HEAD) | 0 | spec 갱신, Playwright 종단 1회 O |
+
+- 커밋 이름: 2·3을 한 커밋(`feat(forms): refine draft labels and evaluation supplements`)으로 하라는 지시였으나, 보충 정답 정리가 실패 patch로 빠져 커밋 내용과 맞도록 `feat(forms): refine draft labels`로 커밋함.
+
+### 8.2 수정한 기존 시험 5줄 (`demo/backend/tests/test_form_draft_inline.py`)
+
+| 줄 | 시험 이름 | 이전 조건 | 이후 조건 | 빈 목록 아님 확인 |
+|---:|---|---|---|---|
+| 43 | `test_choice_word_pair_becomes_grouped_word_checks_without_comma` | `field["field_type"] == "check"` | `field["field_type"] == "radio" and field.get("choice_mark") == "circle"` | 기존 assert 라벨 목록 `["예", "아니오"]` (2개) |
+| 57 | `test_multi_word_choice_pairs_are_joined` | `field["field_type"] == "check"` | `field["field_type"] == "radio" and field.get("choice_mark") == "circle"` | 기존 assert 라벨 4개 목록 |
+| 65 | `test_choice_word_inside_sentence_is_not_a_check` | `field["field_type"] == "check"` | `field["field_type"] in ("check", "radio")` | 부정 시험(0개) |
+| 74 | `test_choice_header_split_by_cell_border_is_not_a_word_pair` | `field["field_type"] == "check"` | `field["field_type"] in ("check", "radio")` | 부정 시험(0개) |
+| 269 | `test_dense_vector_page_drafts_under_two_seconds` | `field["field_type"] == "check"` | `field["field_type"] == "radio" and field.get("choice_mark") == "circle"` | 기존 assert `len(...) == 2` |
+
+- 양성 시험 3개는 모두 개수를 고정하는 기존 assert가 있어 새 개수 assert를 더하지 않음. 다른 assert·기대값(라벨·group·쉼표 제외·신뢰도 0.6·`type == "check"`)·시험 이름은 그대로.
+
+### 8.3 실패 처리한 두 항목 (사람 결정 필요)
+
+| patch | 내용 | 충돌한 기존 시험(이전 커밋에서 이 작업이 만든 시험) | 적용에 필요한 시험 수정 |
+|---|---|---|---|
+| `failed-decision3-bracket.patch` | draft.py `_clean_label`: 끝 콜론·공백 + 짝 없는 앞 `(`·`（`·`[` 제거, anchor 원문 유지. 새 시험 2개(잡을 것 `(은행명 :`→`은행명`, `[소속 :`→`소속` / 잡지 말 것 `(서명)`·`(인)` 그대로) | `test_form_draft_followup.py::test_general_labels_with_colons_yield_blanks_without_autofill` (46·49줄 라벨 `"(은행명"`) | 46·49줄 `"(은행명"` → `"은행명"` |
+| `failed-decision2-supplement.patch` | `job_interview_confirmation.extra.json` 에서 `supplement.datetime` 제거(13→12칸, "사람 확인 필요" 유지), `build_eval_supplement.py` 에서 면접일시 제외 | `test_form_draft_eval_supplement.py::test_measure_reports_the_supplemented_interview_confirmation` (`supplement_fields == 13`, 보충 포함 `reference_fields == 18`) | `13` → `12`, `18` → `17` |
+
+- 두 patch 모두 HEAD에 `git apply --check` O. 각각 적용하면 해당 시험 1개만 실패하고 나머지는 통과함을 확인함(B 묶음 해당 파일 기준).
+- 보충 patch 적용 시 캡처는 `python build_eval_supplement.py --write` 로 다시 만든다(현재 캡처 `shots/stage3-…png` 는 13칸 기준).
+
+### 8.4 측정 (기준선 9b2e581 → 최종)
+
+| 서식 | 일치율 | 정밀도 | 오검출 | 과대 칸 | 보충 포함 일치율(13칸) | 보충 포함 정밀도(13칸) | 참고: 보충 12칸(patch) 일치율·정밀도 |
+|---|---|---|---|---|---|---|---|
+| job_application | 80.5% → 80.5% | 100.0% → 100.0% | 0 → 0 | 0 → 0 | 80.5% → 80.5% | 100.0% → 100.0% | 80.5%, 100.0% |
+| job_consent | 87.5% → 87.5% | 87.5% → 87.5% | 1 → 1 | 0 → 0 | 87.5% → 87.5% | 87.5% → 87.5% | 87.5%, 87.5% |
+| job_interview_confirmation | 100.0% → 100.0% | 35.7% → 29.4% | 9 → 12 | 0 → 0 | 77.8% → 94.4% | 100.0% → 100.0% | 100.0%, 100.0% |
+| 서식1 | 95.7% → 98.6% | 98.5% → 98.6% | 1 → 1 | 0 → 0 | 95.7% → 98.6% | 98.5% → 98.6% | 98.6%, 98.6% |
+| 서식2·3·4·5 | 100.0% → 100.0% | 100.0% → 100.0% | 0 → 0 | 0 → 0 | 100.0% | 100.0% | 100.0%, 100.0% |
+| **전체(micro)** | **92.5% → 93.7%** | **93.0% → 91.4%** | 11 → 14 | 0 → 0 | **90.7% → 93.6%** | **98.7% → 98.8%** | 94.2%, 98.8% |
+
+- 원자료: `measure-final.*`(9b2e581), `measure-decision.*`(HEAD), `measure-decision-supplement-patch.md`(보충 12칸 patch 기준, 참고용).
+- 늘어난 칸: 서식1 +2(기간·수령액 계열 라벨), job_interview_confirmation +3(아래 서명줄 회사명·담당자 빈칸, "(서명/인)"). job_interview_confirmation 의 +3 은 수작업 좌표에 없어 원래 열에선 오검출(정밀도 35.7%→29.4%)이지만, 보충 정답 서명줄 3칸과 모두 일치(보충 포함 정밀도 100%).
+- 면접일시 칸은 자동 초안이 잡지 않음 → 보충에서 빼면 job_interview_confirmation 보충 포함 일치율 100%.
+
+### 8.5 불변 확인
+
+- 픽셀(110dpi sha256, main 기준): 서식2 radio_text, 서식1·job_consent·job_application □ 체크 4개 모두 O — b532bb1 상태(`pixel/decision1`), HEAD 상태(`pixel/decision2`). `pixel/comparison.json`.
+- 종단(Playwright, 격리 서버 `e2e_backend.py --env-file .env`(합성값 덮어씀), 합성 데이터, 영문 파일 이름), `e2e-result-decision.json`·`e2e-submitted-decision.json`:
+
+| 확인 | 결과 |
+|---|---|
+| 서식2 자동 칸 | 16칸 모두 radio, needs_review 16 |
+| 서식5 자동 칸 | check 2·date 3·text 2·signature 1 |
+| 확인·공개 | O |
+| 1번 "예" 선택 | [예 O, 아니오 X], 화면 ○ 1개 |
+| "아니오"로 바꿈 | [예 X, 아니오 O] — "예" 해제, 화면 ○ 1개 |
+| 제출 | O |
+| 제출 PDF ○ | 서식2 쪽 8개(1번 아니오, 2–8번 예), 채운 □ 0개. 서식5 쪽은 이전 실행들과 같음(곡선 2·채운 표시 34) |
+| 캡처 | `shots/decision-04-applicant-picked-first.png`, `shots/decision-05-applicant-switched.png`, `shots/decision-08-submitted-form2.png` |
+
+### 8.6 시험·보호 해시
+
+| 묶음 | 9b2e581 | b532bb1 커밋 전 | 6e3fd63 커밋 전 | 문서 커밋 전 |
+|---|---:|---:|---:|---:|
+| A 엔진 | 1267 | 1267 | 1267 | 1267 |
+| B 백엔드 | 1691 | 1699 | 1705 | 1705 |
+| C 시나리오 18개 모듈 | 18/18 | 18/18 | 18/18 | 18/18 |
+| D 프런트 tsc·oxlint·build·단위 | 72, 경고 0 | 76, 경고 0 | 76, 경고 0 | 76, 경고 0 |
+
+- 보호 파일 10개 sha256: 각 커밋 전 O(`check_staged.py`). 비밀값 검사 정규식을 지시대로 `sk-[A-Za-z0-9_-]{16,}` 로 바꿈. 사용자 미커밋 파일(task.json, logo.png, 신청자 화면 5개 파일) 스테이지 0.
+- 과적합 검사: 9b2e581 이후 draft.py 에 추가한 줄 중 서식 이름·form_no·4자리 이상 숫자 0건.
+
+### 8.7 남은 사람 결정
+
+1. `failed-decision3-bracket.patch` 적용: `test_form_draft_followup.py` 46·49줄 `"(은행명"` → `"은행명"` 수정 허락 여부.
+2. `failed-decision2-supplement.patch` 적용: `test_form_draft_eval_supplement.py` 의 `13`→`12`, `18`→`17` 수정 허락 여부, 그리고 보충 12칸 캡처 확인.
+3. job_interview_confirmation 아래 서명줄 3칸(회사명·담당자·(서명/인))을 수작업 좌표에 넣을지(지금은 원래 열에서 오검출로 셈).

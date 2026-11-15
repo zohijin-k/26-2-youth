@@ -10,7 +10,7 @@ from pathlib import Path
 import pymupdf
 
 MODE = sys.argv[1]
-assert MODE in {'committed', 'stage1-patch'}
+assert MODE in {'committed', 'stage1-patch', 'decision'}
 HERE = Path(__file__).resolve().parent
 source = Path(f'/tmp/form-draft-followup-e2e/submitted-{MODE}.pdf')
 report = {'mode': MODE, 'pages': []}

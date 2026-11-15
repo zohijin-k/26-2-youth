@@ -35,3 +35,10 @@
 - 서버: `uvicorn e2e_backend:app --app-dir <task> --port 8031 --env-file .env` + `VITE_API_TARGET=http://127.0.0.1:8031 vite --port 5191`. DB·저장소는 /tmp/form-draft-followup-e2e, 담당자 비밀번호·세션 비밀은 합성값, API 키 제거.
 - 종단 2회: 커밋 코드(현재 동작 기록), 1단계 patch 를 작업 트리에 잠시 적용(커밋 안 함) → 끝난 뒤 `git apply -R` 로 되돌리고 /tmp/form-draft-followup-e2e·로그 삭제, 포트 닫힘 확인.
 - Playwright 는 /tmp/renewal-npm-cache 의 기존 패키지 사용(새 설치 없음).
+
+## 후속 결정 (9b2e581 이후)
+
+- df 여유 33Gi(시작·끝). 새 브랜치 없음.
+- 1단계: patch 적용 + 허락된 inline 시험 5줄 → 게이트 decision1(A1267/B1699/C18/D76) → b532bb1.
+- 2·3 구현 후 기존 시험 2개 충돌 확인: "(은행명" 라벨 고정(test_form_draft_followup), 보충 13·18칸 고정(test_form_draft_eval_supplement). 허락 범위 밖이라 두 부분만 patch로 빼고(failed-decision3-bracket.patch, failed-decision2-supplement.patch) 나머지(어휘 4개·"(서명/인)")만 게이트 decision2(B1705) 후 6e3fd63.
+- 종단 1회(E2E_MODE=decision), 끝난 뒤 서버 종료·/tmp/form-draft-followup-e2e 삭제·포트 닫힘 확인.
