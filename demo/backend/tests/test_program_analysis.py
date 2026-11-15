@@ -15,6 +15,11 @@ from demo.backend.tests.test_generic_programs import client, fill, pdf, start, T
 from demo.backend.tests.test_notice_analysis import public_pdf
 
 
+@pytest.fixture(autouse=True)
+def offline_notice_provider(monkeypatch):
+    monkeypatch.setenv('LLM_PROVIDER', 'none')
+
+
 def notice():
     return public_pdf(['합성 청년 지원사업 모집', '공고일: 2026.11.01',
         '신청 기간: 2026.11.01 ~ 2026.12.15', '지원 대상: 1987.1.1 ~ 2008.12.31 출생자',
@@ -41,6 +46,27 @@ def upload(client):
                ('forms_pdfs', ('public-form.pdf', pdf(True), 'application/pdf'))])
     assert result.status_code == 201, result.text
     return result.json()
+
+
+def test_upload_uses_fake_notice_provider_with_only_public_text_and_unconfirmed_suggestions(client, monkeypatch):
+    from demo.backend import notice_llm
+    captured = []
+    class FakeProvider:
+        name = 'fake'
+        def generate(self, purpose, payload):
+            captured.append((purpose, payload))
+            return json.dumps({'guidance': {'text': '신청 방법: 온라인 신청', 'page': 1,
+                'quote': '신청 방법: 온라인 신청'}, 'criteria': []})
+    monkeypatch.setattr(notice_llm, 'configured_notice_provider', lambda: FakeProvider())
+    data = upload(client)
+    assert len(captured) == 1 and captured[0][0] == 'notice_analysis'
+    assert set(captured[0][1]) == {'notice_pages', 'supplemental'}
+    assert all(set(page) == {'page', 'text'} for page in captured[0][1]['notice_pages'])
+    original = analyze_notice(notice(), '합성 공개 부가 설명')
+    assert data['analysis']['guidance'] == original['guidance']
+    suggestion = data['analysis']['suggestions'][0]
+    assert suggestion['needs_review'] is True and suggestion['confidence'] == 0
+    assert suggestion['quote'] == '신청 방법: 온라인 신청'
 
 
 def confirm_forms(client, workspace):

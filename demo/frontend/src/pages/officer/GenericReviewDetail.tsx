@@ -25,6 +25,9 @@ export default function GenericReviewDetail({ postingId, applicationId, onBack }
     finally { setBusy(false) }
   }
   const document = data?.documents.find((item) => item.document_id === active) || data?.documents[0]
+  const viewerDocument = document?.page_image_url
+    ? { ...document, file_url: document.page_image_url, file_format: 'png' }
+    : document
   const toggle = (kind: 'document_ids' | 'checklist_ids', id: string, checked: boolean) => {
     if (!data) return
     const prior = data.checks.current ? data.checks[kind] : []
@@ -41,7 +44,7 @@ export default function GenericReviewDetail({ postingId, applicationId, onBack }
       <header><div><p>{data.program_name}</p><h1>{data.name} · {data.application_no}</h1></div><strong>{data.decision.decision === 'approve' ? '최종 선정' : data.decision.decision === 'hold' ? '보류' : data.decision.decision === 'reject' ? '반려' : '검토 중'}</strong></header>
       <div className="generic-review__columns"><section className="generic-review__original" aria-label="제출 원본">
         <div role="tablist" aria-label="제출 서류">{data.documents.map((item) => <button type="button" role="tab" aria-selected={document?.document_id === item.document_id} className="btn" key={item.document_id} onClick={() => setActive(item.document_id)}>{item.label}</button>)}</div>
-        {document ? <DocumentViewer doc={document} highlight={null} /> : <p>제출 서류가 없습니다.</p>}
+        {viewerDocument ? <DocumentViewer doc={viewerDocument} highlight={null} /> : <p>제출 서류가 없습니다.</p>}
       </section><aside className="generic-review__findings">
         <h2>서류별 판정과 확인</h2><p>원본을 읽고 확인 표시를 남겨 주세요.</p>
         {data.documents.map((item) => { const id = item.slot_key === 'written' ? 'written' : String(item.document_id); return <section key={item.document_id}>

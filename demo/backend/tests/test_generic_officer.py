@@ -195,3 +195,70 @@ def test_missing_written_original_blocks_approval_even_with_checks(client, monke
     assert not response.json()['can_approve']
     assert client.get(path + '/written.pdf').status_code == 404
     assert client.post(path + '/decision', json={'decision': 'approve'}).status_code == 409
+
+
+
+def test_single_page_original_and_written_pdf_render_inline_png_without_changing_stored_bytes(client, monkeypatch):
+    import pymupdf
+    from demo.backend.api.common import STORAGE
+    posting, application, upload = submitted(client, monkeypatch)
+    detail_path = review_path(posting, application)
+    detail = client.get(detail_path).json()
+    assert {item['document_id'] for item in detail['documents']} == {upload['document_id'], -application['id']}
+    with models.get_session() as session:
+        row = session.get(models.Document, upload['document_id'])
+        stored_application = session.get(models.Application, application['id'])
+        paths = {row.id: STORAGE.parent / row.file_path,
+                 -application['id']: STORAGE.parent / stored_application.written_forms_archive_path}
+    before = {identifier: path.read_bytes() for identifier, path in paths.items()}
+    stranger = TestClient(app)
+    officer_only = TestClient(app)
+    officer_only.cookies.set('officer_session', client.cookies.get('officer_session'), path='/api')
+    for item in detail['documents']:
+        assert item['file_format'] == 'pdf' and item['page_count'] == 1
+        original_url = f'/api/files/{upload["document_id"]}' if item['document_id'] > 0 else detail_path + '/written.pdf'
+        assert item['file_url'] == original_url
+        assert stranger.get(item['page_image_url']).status_code == 401
+        rendered = officer_only.get(item['page_image_url'])
+        assert rendered.status_code == 200 and rendered.content.startswith(b'\x89PNG\r\n\x1a\n')
+        assert rendered.headers['content-type'] == 'image/png'
+        assert rendered.headers['content-disposition'] == 'inline'
+        assert rendered.headers['cache-control'] == 'no-store'
+        with pymupdf.open(stream=before[item['document_id']], filetype='pdf') as original:
+            assert rendered.content == original[0].get_pixmap(dpi=150).tobytes('png')
+        assert paths[item['document_id']].read_bytes() == before[item['document_id']]
+
+
+def test_original_page_route_enforces_program_application_document_and_containment_boundaries(client, monkeypatch):
+    import pymupdf
+    from demo.backend.api.common import STORAGE
+    posting, application, upload = submitted(client, monkeypatch)
+    path = review_path(posting, application)
+    other, _, layout = start(client, posting)
+    fill(client, other, layout)
+    other_upload = client.post(f'/api/applications/{other["id"]}/documents', data={'slot_key': 'photo_1_photo'},
+        files={'file': ('another-synthetic.pdf', pdf(), 'application/pdf')}).json()
+    assert client.post(f'/api/applications/{other["id"]}/submit').status_code == 200
+    other_posting = publish(client)
+    assert client.get(review_path(other_posting, application) + f'/documents/{upload["document_id"]}/page.png').status_code == 404
+    for identifier in (other_upload['document_id'], -other['id'], 0, 999999):
+        assert client.get(path + f'/documents/{identifier}/page.png').status_code == 404
+    with models.get_session() as session:
+        row = session.get(models.Document, upload['document_id'])
+        original_path = STORAGE.parent / row.file_path
+    with pymupdf.open() as two_pages:
+        two_pages.new_page().insert_text((40, 40), 'SYNTHETIC FIRST PAGE')
+        two_pages.new_page().insert_text((40, 40), 'SYNTHETIC SECOND PAGE')
+        original_path.write_bytes(two_pages.tobytes())
+    detail = client.get(path).json()
+    item = next(item for item in detail['documents'] if item['document_id'] == upload['document_id'])
+    assert item['page_count'] == 2 and 'page_image_url' not in item
+    assert client.get(path + f'/documents/{upload["document_id"]}/page.png').status_code == 404
+    outside = STORAGE.parent / 'synthetic-outside.pdf'
+    outside.write_bytes(pdf())
+    with models.get_session() as session:
+        row = session.get(models.Document, upload['document_id'])
+        row.file_path = outside.name
+        session.add(row)
+        session.commit()
+    assert client.get(path + f'/documents/{upload["document_id"]}/page.png').status_code == 404

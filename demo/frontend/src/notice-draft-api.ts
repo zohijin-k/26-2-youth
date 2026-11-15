@@ -12,6 +12,7 @@ export interface NoticeDraft {
   version: number; status: string; title: DraftValue<string>; period: DraftValue<{ apply_start: string; apply_end: string }>
   guidance: DraftValue<string>; required_docs: DraftDocument[]; criteria: DraftCriterion[]
   source_pages: { page: number; text: string }[]; warnings: string[]
+  suggestions?: { target_id: string; type: string; text?: string; values?: Record<string, unknown>; page: number | null; quote: string; source: string; confidence: number; needs_review: boolean }[]
 }
 export interface AnalyzedProgramData extends ManagedProgramData { analysis?: NoticeDraft | null }
 async function request<T>(url: string, init: RequestInit): Promise<T> {

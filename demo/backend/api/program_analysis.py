@@ -359,6 +359,8 @@ def upload_and_analyze(notice_pdf: UploadFile = File(...), forms_pdfs: list[Uplo
     form_files = [postings._read_pdf(upload, 'forms') for upload in forms_pdfs]
     try:
         draft = analyze_notice(notice, supplemental)
+        from ..notice_llm import enrich_notice
+        draft = enrich_notice(draft, supplemental)
     except ValueError:
         raise HTTPException(422, '공고문 PDF와 부가 설명문을 확인해 주세요.') from None
     period = draft['period']['value']

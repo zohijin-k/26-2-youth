@@ -779,6 +779,9 @@ export interface OfficerDocument {
   file_url: string
   file_name: string
   file_format: string
+  /** Officer-only faithful raster for one-page PDFs in the generic workspace. */
+  page_count?: number
+  page_image_url?: string
   page_index: number | null
   extracted: Record<string, string>
   bboxes: Record<string, BBox>

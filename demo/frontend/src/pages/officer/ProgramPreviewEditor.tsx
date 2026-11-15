@@ -76,7 +76,7 @@ export default function ProgramPreviewEditor({ postingId, onBack, onPostingChang
   const blockers = [...(data.publish_blockers || []), ...(dirty ? ['수정한 내용을 저장해 주세요.'] : []), ...(layoutDirty ? ['서식 틀을 저장하고 확정해 주세요.'] : []), ...(pending.length ? [`확인할 항목이 ${pending.length}개 남았습니다.`] : [])]
   const confirm = (item: DraftEvidence) => {
     const mark = <T extends DraftEvidence>(value: T): T => value.id === item.id ? { ...value, needs_review: false } : value
-    update({ ...draft, title: mark(draft.title), period: mark(draft.period), guidance: mark(draft.guidance), required_docs: draft.required_docs.map(mark), criteria: draft.criteria.map(mark) })
+    update({ ...draft, title: mark(draft.title), period: mark(draft.period), guidance: mark(draft.guidance), required_docs: draft.required_docs.map(mark), criteria: draft.criteria.map(mark), suggestions: draft.suggestions?.filter((suggestion) => suggestion.target_id !== item.id) })
   }
   const evidence = (item: DraftEvidence) => <div className="program-preview__evidence">
     {item.quote && <blockquote>“{item.quote}”</blockquote>}{[...(item.basis_evidence ? [item.basis_evidence] : []), ...(item.table_evidence || []), ...(item.sources || [])].map((source) => <div key={source.id}><blockquote>“{source.quote}”</blockquote>{source.page && <button className="program-preview__source" onClick={() => setPage(source.page)}>근거 공고문 {source.page}쪽 보기</button>}</div>)}
@@ -90,6 +90,13 @@ export default function ProgramPreviewEditor({ postingId, onBack, onPostingChang
     <header className="program-preview__bar"><div><p className="program-preview__eyebrow">신청자 화면 예시</p><h1>내용을 확인하고 올려 주세요</h1><p>노란 항목은 담당자 확인이 필요합니다. 수정한 항목은 다시 확인해 주세요.</p></div><button className="btn" onClick={onBack} disabled={busy || dirty || layoutDirty}>사업 목록</button></header>
     {error && <p role="alert" className="program-preview__error">{error}</p>}{message && <p role="status" className="program-preview__saved">{message}</p>}
     {!!draft.warnings.length && <div className="program-preview__notice">{draft.warnings.map((warning) => <p key={warning}>{warning}</p>)}</div>}
+    {!!draft.suggestions?.length && <section className="program-preview__notice" aria-label="AI 제안"><h2>AI 제안 · 담당자 확인 필요</h2><p>공고문 근거를 확인한 뒤 반영해 주세요. 제안은 판정 기준을 자동으로 바꾸지 않습니다.</p>{draft.suggestions.map((suggestion, index) => <div key={`${suggestion.target_id}-${index}`}>
+      <strong>{labels.get(suggestion.target_id) || '기준 확인'}</strong><blockquote>{suggestion.text || suggestion.quote}</blockquote>
+      {suggestion.page && <button className="btn" onClick={() => setPage(suggestion.page)}>공고문 {suggestion.page}쪽 보기</button>}
+      {suggestion.type === 'guidance' && suggestion.text && <button className="btn" disabled={readonly} onClick={() => update({ ...draft, guidance: { ...draft.guidance, value: suggestion.text!, needs_review: true }, suggestions: draft.suggestions?.filter((_, at) => at !== index) })}>안내문에 반영</button>}
+      <button className="btn" onClick={() => document.getElementById(`preview-${suggestion.target_id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>항목 확인하기</button>
+      <button className="btn" disabled={readonly} onClick={() => update({ ...draft, suggestions: draft.suggestions?.filter((_, at) => at !== index) })}>제안 제외</button>
+    </div>)}</section>}
     <div className="program-preview__layout"><div className="program-preview__page">
       <div className="program-preview__citizen-head"><strong>전북 청년정책</strong><span>온라인 신청</span></div>
       {section('title', '① 사업 제목과 신청 기간', <>

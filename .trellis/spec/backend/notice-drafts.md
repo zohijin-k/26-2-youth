@@ -42,3 +42,11 @@ Published or closed version 2 postings reject legacy metadata PATCH entirely.
 The runtime binding wrapper requires explicit finite numeric confidence and image
 quality within zero and one, before and after existing engine conversion. Missing
 values, booleans, NaN and infinity cannot establish trusted evidence.
+
+The optional notice provider uses LLM_PROVIDER=jbai and JBAI_TEXT_MODEL; its
+default is none. Project only notice page text and bounded public supplemental
+copy at both service and transport boundaries. Use the existing no-redirect HTTP
+transport, strict JSON schema and real source quotations. Keep proposals separate
+from rule candidates; accept only matching supported values and source evidence.
+Invalid JSON, timeouts, mismatches and transport errors return the local draft.
+Never log provider exceptions or give a provider applicant records or OCR values.

@@ -5,14 +5,15 @@ from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 from sqlmodel import select
+import pymupdf
 from engine_v2.pipeline.privacy import mask_data
 
 from .. import generic_programs as generic
 from ..generic_review import GenericReviewChecks, approval_blockers, checks_for, criteria_for, evidence
-from ..models import Application, ProgramPosting, Review, get_session
+from ..models import Application, Document, ProgramPosting, Review, get_session
 from ..rules.roles import ROLE_PROVINCE, decision_label, get_role
 from . import officer
 from .common import checklist_for, list_documents
@@ -53,14 +54,69 @@ def _written(app: Application, posting_id: int) -> dict[str, Any]:
             'declared_issue_date': None, 'uploaded_at': None}
 
 
+def _original_bytes(relative: str | None) -> bytes:
+    from .common import STORAGE
+    if not relative:
+        raise HTTPException(404, '서류 원본을 찾을 수 없습니다.')
+    root = STORAGE.resolve()
+    target = (root.parent / relative).resolve()
+    if not target.is_relative_to(root) or not target.is_file():
+        raise HTTPException(404, '서류 원본을 찾을 수 없습니다.')
+    return target.read_bytes()
+
+
+def _preview_metadata(document: dict[str, Any], relative: str | None,
+                      posting_id: int, application_id: int) -> dict[str, Any]:
+    if document.get('file_format') != 'pdf':
+        return document
+    try:
+        with pymupdf.open(stream=_original_bytes(relative), filetype='pdf') as original:
+            if original.needs_pass or not original.page_count:
+                return document
+            document['page_count'] = original.page_count
+            if original.page_count == 1:
+                document['page_image_url'] = (f'/api/officer/programs/{posting_id}/applications/'
+                    f'{application_id}/documents/{document["document_id"]}/page.png')
+    except Exception:
+        # Missing/corrupt originals retain their existing viewer/error handling;
+        # filesystem or PDF exceptions must not expose stored paths.
+        pass
+    return document
+
+
+@router.get('/{posting_id}/applications/{application_id}/documents/{document_id}/page.png')
+def single_original_page(posting_id: int, application_id: int, document_id: int) -> Response:
+    application, _, _ = _load(posting_id, application_id)
+    if document_id == -application_id:
+        relative = application.written_forms_archive_path
+    else:
+        with get_session() as session:
+            row = session.get(Document, document_id) if 0 < document_id < 2**63 else None
+            if row is None or row.application_id != application_id or (row.file_format or '').lower() != 'pdf':
+                raise HTTPException(404, '서류 원본을 찾을 수 없습니다.')
+            relative = row.file_path
+    data = _original_bytes(relative)
+    try:
+        with pymupdf.open(stream=data, filetype='pdf') as original:
+            if original.needs_pass or original.page_count != 1:
+                raise ValueError('single page unavailable')
+            png = original[0].get_pixmap(dpi=150).tobytes('png')
+    except Exception:
+        raise HTTPException(404, '서류 원본의 쪽을 표시할 수 없습니다.') from None
+    return Response(png, media_type='image/png',
+                    headers={'Content-Disposition': 'inline', 'Cache-Control': 'no-store'})
+
+
 @router.get('/{posting_id}/applications/{application_id}')
 def detail(posting_id: int, application_id: int, role: str = Query(ROLE_PROVINCE)) -> dict[str, Any]:
     app, review, posting = _load(posting_id, application_id)
     role_config = _role(role)
     labels = {row.slot_key: row.label for row in checklist_for(app)}
-    documents = [dict(officer._document_view(row, labels), check_id=str(row.id))
+    documents = [_preview_metadata(dict(officer._document_view(row, labels), check_id=str(row.id)),
+                                  row.file_path, posting_id, application_id)
                  for row in list_documents(application_id)]
-    documents.append(_written(app, posting_id))
+    documents.append(_preview_metadata(_written(app, posting_id), app.written_forms_archive_path,
+                                       posting_id, application_id))
     problems = approval_blockers(app, review)
     payload = mask_data({'application_id': app.id, 'posting_id': posting_id,
         'application_no': app.application_no, 'name': (app.identity_json or {}).get('name', ''),

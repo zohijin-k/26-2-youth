@@ -22,3 +22,10 @@ Do not import the applicant file-export API in the officer route or reuse its di
 Generic details contain document verdicts and criterion evidence, never the
 built-in score sheet. Manual criteria and uncertain automatic results require
 human checks; an AI suggestion cannot change a verdict.
+
+The protected DocumentViewer has an existing one-page PDF first-render issue.
+Generic details may expose a contained, officer-only raster of that exact page
+and pass it to the unchanged viewer's image mode. Keep the original PDF URL and
+bytes intact. Scope the preview to the posting, submitted application and owned
+document (or its written archive); wrong scope returns 404 and missing session
+returns 401. This display adapter does not change a document verdict.
