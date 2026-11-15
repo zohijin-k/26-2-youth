@@ -1,0 +1,23 @@
+{
+  "success": true,
+  "attempt_count": 2,
+  "attempts": [
+    {
+      "endpoint_path": "/open-api/v1/chat/completions",
+      "status": null,
+      "error_type": "URLError:gaierror"
+    },
+    {
+      "endpoint_path": "/open-api/v1/chat/completions",
+      "status": 200,
+      "error_type": null,
+      "network_access": "escalated",
+      "success": true
+    }
+  ],
+  "model": "MainModel",
+  "enable": {
+    "LLM_PROVIDER": "jbai",
+    "JBAI_TEXT_MODEL": "MainModel"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "applicant_entry": "src/pages/applicant/ApplicantApp.tsx",
+  "static_graph": [
+    "_ProgramGuidance-BHx9jCp6.js",
+    "index.html",
+    "src/pages/applicant/ApplicantApp.tsx"
+  ],
+  "files": [
+    "assets/ProgramGuidance-BHx9jCp6.js",
+    "assets/index-BfI_dEzZ.js",
+    "assets/ApplicantApp-BzAV2e2K.js"
+  ],
+  "officer_static_imports": 0,
+  "mock_static_imports": 0,
+  "mock_marker_hits": 0
+}

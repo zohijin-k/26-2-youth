@@ -1,0 +1,72 @@
+[
+  {
+    "stage": 0,
+    "result": "준비 완료",
+    "commit": null,
+    "new_tests": 0,
+    "notes": "origin/main 7dc87a9 includes 2f7bb2b; isolated baseline 1267/1412/18/48"
+  },
+  {
+    "stage": 1,
+    "result": "커밋됨",
+    "commit": "2d3c9fe",
+    "new_tests": {
+      "backend": 72,
+      "frontend": 2
+    },
+    "gate": "gate-stage1-final.json",
+    "notes": "익명200 기대값 2개 폐기; 기존 업무 기대값 유지; 명시적 합성 로그인/소유권 fixture"
+  },
+  {
+    "stage": 2,
+    "result": "커밋됨",
+    "commit": "61d4fe4",
+    "new_tests": {
+      "backend": 16,
+      "frontend": 0
+    },
+    "gate": "gate-stage2-final.json",
+    "notes": "사업별3탭·별도범용상세·원본확인fingerprint·기존단건/일괄승인우회차단"
+  },
+  {
+    "stage": 3,
+    "result": "커밋됨",
+    "commit": "d4d560f",
+    "new_tests": {
+      "backend": 38,
+      "frontend": 0
+    },
+    "gate": "gate-stage3.json",
+    "notes": "합성공고문·근거인용·복합조건checklist·기존규칙연결; 템플릿공고PDF0개"
+  },
+  {
+    "stage": 4,
+    "result": "커밋됨",
+    "commit": "3cf2623",
+    "new_tests": {
+      "backend": 66,
+      "frontend": 2
+    },
+    "gate": "gate-stage4-ready.json",
+    "notes": "네칸예시편집·게시게이트·신청자허용목록·동일토큰범위이전·NaN등불확실값확인필요"
+  },
+  {
+    "stage": 5,
+    "result": "커밋됨",
+    "commit": "6a92fba",
+    "new_tests": {
+      "backend": 41,
+      "frontend": 0
+    },
+    "gate": "gate-stage5-ready.json",
+    "notes": "JBAI선택제안39개+원본PNG표시2개시험; P6기존1ms계측변동무수정단독재실행통과"
+  },
+  {
+    "stage": 6,
+    "result": "커밋됨",
+    "commit": "HEAD(문서 커밋)",
+    "new_tests": 0,
+    "gate": "gate-final.json",
+    "notes": "화면22확인·22캡처, 실제HTTP54행, 문서·보고서"
+  }
+]

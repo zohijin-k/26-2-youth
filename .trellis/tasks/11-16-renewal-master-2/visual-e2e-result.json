@@ -1,0 +1,331 @@
+{
+  "viewport": {
+    "width": 1440,
+    "height": 1100
+  },
+  "applicant_viewport": {
+    "width": 940,
+    "height": 1000
+  },
+  "date": "2026-11-15",
+  "posting_id": 4,
+  "application_id": 2,
+  "application_no": "JP-2026-000002",
+  "job_application_id": 3,
+  "job_application_no": "JP-2026-000003",
+  "counts_before": {
+    "applications": 1,
+    "postings": 3
+  },
+  "counts_after": {
+    "applications": 3,
+    "postings": 4
+  },
+  "assertions": [
+    {
+      "name": "unconfirmed analysis and form template cannot publish",
+      "passed": true,
+      "detail": 409
+    },
+    {
+      "name": "pending sidebar selects the matching form field",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "confirmed form still requires every notice candidate review",
+      "passed": true,
+      "detail": 409
+    },
+    {
+      "name": "four-section preview saved after six explicit confirmations",
+      "passed": true,
+      "detail": 6
+    },
+    {
+      "name": "reviewed program published through the preview UI",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "three identity visits create zero applications",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "identity submit refresh reuses application",
+      "passed": true,
+      "detail": "JP-2026-000002"
+    },
+    {
+      "name": "other cookie context cannot read application",
+      "passed": true,
+      "detail": 403
+    },
+    {
+      "name": "owner cookie renders actual form image and locks identity autofill",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "unknown high-resolution synthetic image stays NEEDS_REVIEW",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "owner original preview remains inline",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "submission generates owner-readable written PDF archive",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "submitted generic document deletion blocked and archive unchanged",
+      "passed": true,
+      "detail": 409
+    },
+    {
+      "name": "submitted generic document reupload blocked and archive unchanged",
+      "passed": true,
+      "detail": 409
+    },
+    {
+      "name": "unchecked individual and bulk final selection both rejected",
+      "passed": true,
+      "detail": 409
+    },
+    {
+      "name": "all original and checklist confirmations permit final selection",
+      "passed": true,
+      "detail": 3
+    },
+    {
+      "name": "applicant metadata and form layouts exclude internal analysis evidence",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "job-package original forms and actual UI submission remain usable",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "existing job officer list and protected detail render with review uncertainty",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "mock protected detail renders without login or API requests",
+      "passed": true,
+      "detail": 0
+    },
+    {
+      "name": "protected job single-page PDF renders after explicit viewer zoom",
+      "passed": true,
+      "detail": {
+        "width": 595,
+        "height": 842,
+        "ink": 4656
+      }
+    },
+    {
+      "name": "generic single-page PDF first-paint image preserves original PDF bytes without zoom",
+      "passed": true,
+      "detail": {
+        "photo": {
+          "width": 1600,
+          "height": 1800
+        },
+        "rendered": {
+          "width": 1240,
+          "height": 1755
+        },
+        "png_requests": [
+          {
+            "path": "/api/officer/programs/4/applications/2/documents/-2/page.png",
+            "status": 200
+          }
+        ],
+        "source_file_format": "pdf",
+        "original_bytes_unchanged": true,
+        "zoom_actions": 0,
+        "page_errors": []
+      }
+    }
+  ],
+  "shots": [
+    {
+      "name": "officer-login",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-renewal-master-2/shots/officer-login.png",
+      "url": "http://127.0.0.1:5183/officer/login?returnTo=%2Fofficer%2Fprograms%2Fnew%3Fmock%3D0"
+    },
+    {
+      "name": "officer-one-shot-upload",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-renewal-master-2/shots/officer-one-shot-upload.png",
+      "url": "http://127.0.0.1:5183/officer/programs/new?mock=0"
+    },
+    {
+      "name": "officer-analyzed-preview",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-renewal-master-2/shots/officer-analyzed-preview.png",
+      "url": "http://127.0.0.1:5183/officer/programs/4?mock=0&tab=settings"
+    },
+    {
+      "name": "officer-editable-preview",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-renewal-master-2/shots/officer-editable-preview.png",
+      "url": "http://127.0.0.1:5183/officer/programs/4?mock=0&tab=settings"
+    },
+    {
+      "name": "officer-program-published",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-renewal-master-2/shots/officer-program-published.png",
+      "url": "http://127.0.0.1:5183/officer/programs/4?mock=0&tab=settings"
+    },
+    {
+      "name": "applicant-program-info",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-renewal-master-2/shots/applicant-program-info.png",
+      "url": "http://127.0.0.1:5183/programs/4"
+    },
+    {
+      "name": "applicant-identity",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-renewal-master-2/shots/applicant-identity.png",
+      "url": "http://127.0.0.1:5183/apply/programs/4/identity"
+    },
+    {
+      "name": "applicant-forms",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-renewal-master-2/shots/applicant-forms.png",
+      "url": "http://127.0.0.1:5183/apply/programs/4/forms"
+    },
+    {
+      "name": "applicant-upload",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-renewal-master-2/shots/applicant-upload.png",
+      "url": "http://127.0.0.1:5183/apply/programs/4/upload"
+    },
+    {
+      "name": "applicant-final",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-renewal-master-2/shots/applicant-final.png",
+      "url": "http://127.0.0.1:5183/apply/programs/4/final"
+    },
+    {
+      "name": "applicant-receipt",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-renewal-master-2/shots/applicant-receipt.png",
+      "url": "http://127.0.0.1:5183/apply/programs/4/complete"
+    },
+    {
+      "name": "applicant-mypage",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-renewal-master-2/shots/applicant-mypage.png",
+      "url": "http://127.0.0.1:5183/apply/programs/4/mypage"
+    },
+    {
+      "name": "officer-program-applications",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-renewal-master-2/shots/officer-program-applications.png",
+      "url": "http://127.0.0.1:5183/officer/programs/4?mock=0"
+    },
+    {
+      "name": "officer-generic-review-detail",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-renewal-master-2/shots/officer-generic-review-detail.png",
+      "url": "http://127.0.0.1:5183/officer/programs/4/applications/2?mock=0"
+    },
+    {
+      "name": "officer-generic-written-form",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-renewal-master-2/shots/officer-generic-written-form.png",
+      "url": "http://127.0.0.1:5183/officer/programs/4/applications/2?mock=0"
+    },
+    {
+      "name": "officer-generic-final-selection",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-renewal-master-2/shots/officer-generic-final-selection.png",
+      "url": "http://127.0.0.1:5183/officer/programs/4/applications/2?mock=0"
+    },
+    {
+      "name": "job-applicant-original-form",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-renewal-master-2/shots/job-applicant-original-form.png",
+      "url": "http://127.0.0.1:5183/apply/forms"
+    },
+    {
+      "name": "job-applicant-final",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-renewal-master-2/shots/job-applicant-final.png",
+      "url": "http://127.0.0.1:5183/apply/final"
+    },
+    {
+      "name": "job-applicant-receipt",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-renewal-master-2/shots/job-applicant-receipt.png",
+      "url": "http://127.0.0.1:5183/apply/complete"
+    },
+    {
+      "name": "job-officer-list",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-renewal-master-2/shots/job-officer-list.png",
+      "url": "http://127.0.0.1:5183/officer/programs/1?mock=0"
+    },
+    {
+      "name": "job-officer-existing-review-detail",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-renewal-master-2/shots/job-officer-existing-review-detail.png",
+      "url": "http://127.0.0.1:5183/officer/programs/1/province/review/3?mock=0"
+    },
+    {
+      "name": "final-review-component",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-renewal-master-2/shots/final-review-component.png",
+      "url": "http://127.0.0.1:5183/officer/programs/1/province/review/901609?mock=1",
+      "box": {
+        "x": 20,
+        "y": 2.5625,
+        "width": 1400,
+        "height": 997.796875
+      }
+    }
+  ],
+  "page_errors": [],
+  "request_failures": [
+    {
+      "path": "/api/officer/session",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/api/officer/session",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/api/officer/session",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/api/officer/session",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/api/applications/3/consents",
+      "error": "net::ERR_ABORTED"
+    }
+  ],
+  "errors": [],
+  "mock_api_requests": [],
+  "current_stage": "job-officer-existing-review-detail",
+  "viewer_zoom_check": {
+    "job": {
+      "width": 595,
+      "height": 842,
+      "ink": 4656
+    },
+    "required_for_existing_single_page_viewer": true
+  },
+  "raster_check": {
+    "photo": {
+      "width": 1600,
+      "height": 1800
+    },
+    "rendered": {
+      "width": 1240,
+      "height": 1755
+    },
+    "png_requests": [
+      {
+        "path": "/api/officer/programs/4/applications/2/documents/-2/page.png",
+        "status": 200
+      }
+    ],
+    "source_file_format": "pdf",
+    "original_bytes_unchanged": true,
+    "zoom_actions": 0,
+    "page_errors": []
+  }
+}

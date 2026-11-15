@@ -1,0 +1,8 @@
+{
+  "OFFICER_PASSWORD": "present",
+  "OFFICER_SESSION_SECRET": "present",
+  "JBAI_BASE_URL": "present",
+  "JBAI_API_KEY": "present",
+  "JBAI_TEXT_MODEL": "present",
+  "LLM_PROVIDER": "present"
+}

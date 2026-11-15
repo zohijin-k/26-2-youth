@@ -1,0 +1,18 @@
+[
+  {
+    "file": "demo/backend/tests/test_generic_access.py",
+    "function": "test_other_applicant_cannot_read_or_mutate_generic_application_or_files",
+    "assertion": "GET /api/officer/applications without officer session",
+    "before": 200,
+    "after": 401,
+    "reason": "Anonymous officer access retired"
+  },
+  {
+    "file": "demo/backend/tests/test_generic_access.py",
+    "function": "test_integer_aliases_and_wrong_cookie_cannot_bypass_generic_owner_guard",
+    "assertion": "GET /api/applications/{builtin_id} from another browser",
+    "before": 200,
+    "after": 403,
+    "reason": "Anonymous legacy application access retired"
+  }
+]

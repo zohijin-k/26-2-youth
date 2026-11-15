@@ -1,0 +1,151 @@
+{
+  "engine": {
+    "exit": 0,
+    "summary": [
+      "=============================== warnings summary ===============================",
+      "    warnings.warn(",
+      "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
+      "1267 passed, 7 warnings in 37.44s"
+    ],
+    "log": "/tmp/renewal-stage2-engine.log"
+  },
+  "backend": {
+    "exit": 0,
+    "summary": [
+      "1500 passed, 9 warnings in 117.23s (0:01:57)"
+    ],
+    "log": "/tmp/renewal-stage2-final-backend.log"
+  },
+  "scenarios": {
+    "run_p11_criteria_scenarios": {
+      "exit": 0,
+      "summary": [],
+      "log": "/tmp/renewal-stage2-run_p11_criteria_scenarios.log"
+    },
+    "run_p12_subsidy_criteria_scenarios": {
+      "exit": 0,
+      "summary": [],
+      "log": "/tmp/renewal-stage2-run_p12_subsidy_criteria_scenarios.log"
+    },
+    "run_p13_household_scenarios": {
+      "exit": 0,
+      "summary": [],
+      "log": "/tmp/renewal-stage2-run_p13_household_scenarios.log"
+    },
+    "run_p14_pdf_forms_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage2-run_p14_pdf_forms_scenarios.log"
+    },
+    "run_p15_jbai_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage2-run_p15_jbai_scenarios.log"
+    },
+    "run_p16_job_docs_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage2-run_p16_job_docs_scenarios.log"
+    },
+    "run_p17_own_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage2-run_p17_own_scenarios.log"
+    },
+    "run_p18_applicant_precheck_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage2-run_p18_applicant_precheck_scenarios.log"
+    },
+    "run_p19_nhis_history_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage2-run_p19_nhis_history_scenarios.log"
+    },
+    "run_p20_nhis_continuation_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage2-run_p20_nhis_continuation_scenarios.log"
+    },
+    "run_p2_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage2-run_p2_scenarios.log"
+    },
+    "run_p3_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage2-run_p3_scenarios.log"
+    },
+    "run_p4_scenarios": {
+      "exit": 0,
+      "summary": [
+        "통과 189 / 실패 0"
+      ],
+      "log": "/tmp/renewal-stage2-inline-p4.log"
+    },
+    "run_p5_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage2-run_p5_scenarios.log"
+    },
+    "run_p6_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "  [OK]   supplement_warning: '서류 미비 시 7일 내 보완 안내가 발송됩니다.'",
+        "  [OK]   supplement_warning: '서류 미비 시 7일 내 보완 안내가 발송됩니다.'"
+      ],
+      "log": "/tmp/renewal-stage2-run_p6_scenarios.log"
+    },
+    "run_p7_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage2-run_p7_scenarios.log"
+    },
+    "run_p8_localocr_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage2-run_p8_localocr_scenarios.log"
+    },
+    "run_p9_identity_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage2-run_p9_identity_scenarios.log"
+    }
+  },
+  "frontend": {
+    "exit": 0,
+    "summary": [
+      "tsc/lint/build passed; no warnings",
+      "tests50/pass50/fail0"
+    ],
+    "log": "/tmp/renewal-stage2-final-frontend.log"
+  }
+}
