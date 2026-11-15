@@ -739,6 +739,9 @@ def _build_job_application(doc: Any):
     )))
     fields["job.signature"] = _image_field(sheet, ImageField(
         "job.signature", "(인)", y_hint=688.6, grow=(1.5, 1.5, 1.5, 1.5)))
+    # 맨 아래 "신청인 :" 옆 칸. 동의서와 같이 본인인증 성명이 들어가고, 오른쪽 끝은 (인) 바로 앞이다.
+    fields["job.applicantName"] = _text_field(sheet, TextField("job.applicantName", "신청인 :", mode="after", y_hint=688.6))
+    fields["job.applicantName"]["box"][2] = round(fields["job.signature"]["box"][0] - 2.0, 2)
     for key, option in zip(("subsidy.interview", "subsidy.suit", "subsidy.photo", "subsidy.certificate"),
                            ("면접비", "면접정장비", "면접사진촬영비", "자격증 응시료")):
         fields.update(_check_group(sheet, CheckGroup(key, "신청분야", (option,), same_cell=True)))

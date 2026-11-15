@@ -4,7 +4,7 @@
  * 그려지는 것도 같은 모양이어야 하므로 신청자 화면 안에서는 전역 규칙이다.
  *
  * 차례: icon · btn · flow__actions · field · input/select · check/radio · date-triple ·
- *       notice · badge · card · spinner · progress · link · fact-list · dialog
+ *       notice · badge · card · spinner · progress · link · fact-list · dialog · more · segmented
  */
 
 /* ── icon ─────────────────────────────────────────────────────────────── */
@@ -151,7 +151,7 @@
 .field__label {
   padding: 0;
   color: var(--color-text);
-  font-size: var(--fs-15);
+  font-size: var(--fs-16);
   font-weight: var(--fw-bold);
   line-height: var(--lh-tight);
 }
@@ -159,9 +159,9 @@
 /* "필수"라는 글자 자체로 알린다. */
 .field__req {
   margin-left: var(--sp-2);
-  color: var(--danger-60);
+  color: var(--color-text-brand);
   font-size: var(--fs-13);
-  font-weight: var(--fw-medium);
+  font-weight: var(--fw-bold);
 }
 
 .field__hint {
@@ -187,15 +187,15 @@
   display: block;
   width: 100%;
   min-width: 0;
-  height: var(--control-md);
+  height: var(--control-lg);
   margin: 0;
-  padding: 0 var(--sp-3);
+  padding: 0 var(--sp-4);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-8);
   background-color: var(--color-surface);
   color: var(--color-text);
   font-family: inherit;
-  font-size: var(--fs-16);
+  font-size: var(--fs-17);
   line-height: var(--lh-tight);
   transition: border-color var(--ease), box-shadow var(--ease);
 }
@@ -240,19 +240,19 @@ textarea.input {
   display: inline-flex;
   align-items: flex-start;
   gap: var(--sp-3);
-  min-height: var(--control-sm);
+  min-height: var(--control-md);
   padding: var(--sp-2) 0;
   color: var(--color-text);
-  font-size: var(--fs-16);
+  font-size: var(--fs-17);
   cursor: pointer;
 }
 
 .check input,
 .radio input {
   flex: none;
-  width: 20px;
-  height: 20px;
-  margin: 2px 0 0;
+  width: 24px;
+  height: 24px;
+  margin: 0;
   accent-color: var(--color-primary);
   cursor: pointer;
 }
@@ -641,3 +641,175 @@ textarea.input {
 @media print { .document-dialog--printable { position: fixed; inset: 0; max-width: none; height: auto; max-height: none; box-shadow: none; } .document-dialog--printable .dialog__head, .document-dialog--printable .dialog__foot { display: none; } .document-dialog--printable .dialog__body { padding: 0; overflow: visible; } }
 
 .pdf-form__email-hint { font-size: var(--fs-13); }
+
+/* ── more (접어 둔 설명) ──────────────────────────────────────────────── */
+/* 화면에는 한 줄만 두고 자세한 안내는 눌러서 펼친다. 요약 줄 전체가 누르는 자리다. */
+.more { min-width: 0; }
+
+.more__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: fit-content;
+  max-width: 100%;
+  min-height: var(--control-md);
+  color: var(--color-text-brand);
+  font-size: var(--fs-16);
+  font-weight: var(--fw-medium);
+  list-style: none;
+  cursor: pointer;
+}
+
+.more__summary::-webkit-details-marker { display: none; }
+.more__summary:hover .more__label { text-decoration: underline; text-underline-offset: 3px; }
+.more__summary:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; border-radius: var(--radius-4); }
+
+.more__meta {
+  color: var(--color-text-subtle);
+  font-size: var(--fs-15);
+  font-weight: var(--fw-regular);
+}
+
+.more__chevron { transition: transform var(--ease); }
+.more[open] > .more__summary .more__chevron { transform: rotate(180deg); }
+
+.more__body {
+  padding: var(--sp-1) 0 var(--sp-2);
+  color: var(--color-text-subtle);
+  font-size: var(--fs-15);
+  line-height: var(--lh-base);
+}
+
+/* 펼친 안내는 옅은 남색 상자에 담는다. 왼쪽 굵은 선이 "여기부터 펼친 내용"을 알린다.
+   노란색은 아래 .caution(자주 틀리는 부분 같은 진짜 주의 문구)에만 쓴다. */
+.more--inline > .more__body {
+  margin: var(--sp-1) 0 var(--sp-2);
+  padding: var(--sp-4);
+  border: 1px solid var(--brand-10);
+  border-left: 4px solid var(--color-primary);
+  border-radius: var(--radius-8);
+  background: var(--color-surface-brand);
+  color: var(--color-text);
+}
+
+.more--inline > .more__body h4 { color: var(--color-text-brand); }
+
+/* 주의 문구: 펼친 안내 안에서도 이 부분만 노란 상자로 한 번 더 띄운다. */
+.caution {
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--warning-10);
+  border-radius: var(--radius-8);
+  background: var(--warning-5);
+}
+
+.more--inline > .more__body .caution h4,
+.caution h4 { display: flex; align-items: center; gap: var(--sp-2); color: var(--warning-60); }
+
+/* 색 있는 안내 상자 안에서는 흰 상자로 띄워 바탕과 구분한다. */
+.notice .more--inline > .more__body { background: var(--color-surface); }
+
+.more__body > :first-child { margin-top: 0; }
+.more__body > :last-child { margin-bottom: 0; }
+.more__body ul, .more__body ol { margin: 0; padding-left: var(--sp-5); }
+.more__body li + li { margin-top: var(--sp-1); }
+
+/* 카드 한 장을 통째로 접을 때: 요약 줄이 카드 제목처럼 보이고 폭 전체를 누를 수 있다. */
+.more--card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-12);
+  background: var(--color-surface);
+}
+
+.more--card > .more__summary {
+  width: 100%;
+  min-height: var(--control-lg);
+  padding: var(--sp-3) var(--sp-6);
+  color: var(--color-text);
+  font-size: var(--fs-17);
+  font-weight: var(--fw-bold);
+}
+
+.more--card > .more__summary .more__meta { margin-left: auto; }
+.more--card > .more__summary .more__chevron { color: var(--color-text-brand); }
+.more--card > .more__summary .more__label { flex: 1; }
+.more--card > .more__summary .more__meta + .more__chevron { margin-left: 0; }
+
+.more--card > .more__body {
+  padding: var(--sp-4) var(--sp-6) var(--sp-6);
+  border-top: 1px solid var(--color-divider);
+  color: var(--color-text);
+  font-size: var(--fs-16);
+}
+
+@media (max-width: 600px) {
+  .more--card > .more__summary { padding: var(--sp-3) var(--sp-4); }
+  .more--card > .more__body { padding: var(--sp-4); }
+}
+
+/* ── segmented (둘 중 하나 고르기) ────────────────────────────────────── */
+/* 크게 누르는 두 칸짜리 전환 단추. 실제로는 라디오이므로 키보드·낭독기에서 그대로 쓴다. */
+.segmented {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+}
+
+.segmented__option {
+  position: relative;
+  display: grid;
+  cursor: pointer;
+}
+
+.segmented__option input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.segmented__option span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--control-lg);
+  padding: var(--sp-1) var(--sp-2);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--fs-17);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-tight);
+  text-align: center;
+  transition: background-color var(--ease), border-color var(--ease), color var(--ease);
+}
+
+.segmented__option:first-child span { border-radius: var(--radius-8) var(--radius-0) var(--radius-0) var(--radius-8); }
+.segmented__option:last-child span { border-radius: var(--radius-0) var(--radius-8) var(--radius-8) var(--radius-0); }
+.segmented__option + .segmented__option span { margin-left: -1px; }
+.segmented__option:hover span { background: var(--gray-5); }
+
+/* 고른 쪽: 남색으로 꽉 채우고 흰 글자 · 체크 아이콘. 한눈에 "골랐다"가 보여야 한다. */
+.segmented__option input:checked + span {
+  position: relative;
+  z-index: 1;
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-text-on-primary);
+  font-weight: var(--fw-bold);
+}
+
+.segmented__option:hover input:checked + span { background: var(--color-primary-hover); }
+.segmented__option input:checked + span .icon { stroke-width: 2.5; }
+
+.segmented__option input:focus-visible + span {
+  z-index: 2;
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.segmented__option input:disabled + span { color: var(--color-text-muted); cursor: not-allowed; }
+.segmented__option:has(input:disabled) { cursor: not-allowed; }

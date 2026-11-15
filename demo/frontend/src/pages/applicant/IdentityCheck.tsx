@@ -11,7 +11,7 @@
  * 서명은 화면에 직접 하거나, 서명 파일(PNG·JPG·PDF, 5MB 이하)을 올린다.
  */
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
 import { fetchApplication, verifyIdentity, type Identity, type Blocker } from '../../api.ts'
 import FilePreview from '../../components/ApplicantFilePreview.tsx'
@@ -19,6 +19,7 @@ import PdfPages from '../../components/PdfPages.tsx'
 import SignaturePad from '../../components/SignaturePad.tsx'
 import ConfirmDialog from '../../components/ConfirmDialog.tsx'
 import Icon from '../../components/Icon.tsx'
+import MoreInfo from '../../components/MoreInfo.tsx'
 import Notice from '../../components/Notice.tsx'
 import Spinner from '../../components/Spinner.tsx'
 import useBeforeUnload from '../../hooks/useBeforeUnload.ts'
@@ -57,19 +58,29 @@ interface SignFile {
   previewUrl: string
 }
 
+/** 서명 칸의 최대 폭과 높이(px). 폭은 tokens.css의 --sign-max와 같다. */
+const SIGN_MAX_WIDTH = 560
+const SIGN_HEIGHT = 200
+
+/** 입력 칸 아래에 예시 글이 있는 항목. 나머지는 오류가 있을 때만 설명을 단다. */
+const HINTED_FIELDS: IdentityField[] = ['birth', 'phone', 'pledge']
+
 const PLEDGE =
   '본인은 위 정보의 당사자이며, 신청에 제출하는 서류는 모두 본인 명의임을 확인합니다. ' +
   '타인의 서류를 제출하거나 사실과 다른 내용을 제출한 경우 선정 취소 등 불이익을 받는 데 동의합니다.'
 
 interface Props {
-  appId: number
+  /** 제목 바로 아래에 두는 사업별 안내(일반 사업 신청). */
+  lead?: ReactNode
+  appId: number | null
+  ensureApplication?: () => Promise<number>
   /** 이미 인증을 마쳤으면 결과만 보여준다 */
   identity: Identity | null
-  onVerified: (identity: Identity, mobile: string) => void
+  onVerified: (identity: Identity, mobile: string, applicationId: number) => void
   onNext: () => void
 }
 
-export default function IdentityCheck({ appId, identity, onVerified, onNext }: Props) {
+export default function IdentityCheck({ lead, appId, ensureApplication, identity, onVerified, onNext }: Props) {
   const [name, setName] = useState('')
   const [birth, setBirth] = useState<YMD>(EMPTY_YMD)
   const [phone, setPhone] = useState('')
@@ -97,8 +108,11 @@ export default function IdentityCheck({ appId, identity, onVerified, onNext }: P
     document.querySelector<HTMLElement>(`[data-identity-field="${field}"] input, [data-identity-field="${field}"] button`)?.focus()
   }
   const fieldError = (field: IdentityField) => (attempted || touched[field]) && errors[field]
-  const errorLine = (field: IdentityField) => fieldError(field) ? <p className="field__error" id={`identity-${field}-error`}><Icon name="alertCircle" size={18} />{errors[field]}</p> : null
-  const describedBy = (field: IdentityField) => `identity-${field}-hint${fieldError(field) ? ` identity-${field}-error` : ''}`
+  const errorLine = (field: IdentityField) => fieldError(field) ? <p className="field__error" id={`identity-${field}-error`}><Icon name="alertCircle" size={18} /><span>{errors[field]}</span></p> : null
+  const describedBy = (field: IdentityField) => [
+    HINTED_FIELDS.includes(field) && `identity-${field}-hint`,
+    fieldError(field) && `identity-${field}-error`,
+  ].filter(Boolean).join(' ') || undefined
   const [eligibilityResult, setEligibilityResult] = useState<{
     appId: number; birth: string; blockers: Blocker[]
   } | null>(null)
@@ -106,7 +120,7 @@ export default function IdentityCheck({ appId, identity, onVerified, onNext }: P
     ? eligibilityResult.blockers : []
 
   useEffect(() => {
-    if (!identity) return
+    if (!identity || appId === null) return
     let active = true
     fetchApplication(appId).then((data) => {
       if (active) setEligibilityResult({ appId, birth: identity.birth, blockers: data.eligibility_blockers ?? [] })
@@ -134,7 +148,7 @@ export default function IdentityCheck({ appId, identity, onVerified, onNext }: P
   useLayoutEffect(() => {
     const body = signBody.current
     if (!body) return undefined
-    const updateWidth = () => setSignWidth(Math.min(420, Math.max(1, body.clientWidth - 32)))
+    const updateWidth = () => setSignWidth(Math.min(SIGN_MAX_WIDTH, Math.max(1, Math.floor(body.clientWidth))))
     updateWidth()
     const observer = new ResizeObserver(updateWidth)
     observer.observe(body)
@@ -145,13 +159,13 @@ export default function IdentityCheck({ appId, identity, onVerified, onNext }: P
     return (
       <section className="idcheck">
         <h2 className="idcheck__title">본인인증</h2>
+        {lead}
         {eligibilityBlockers.map((blocker) => (
-          <p key={blocker.target} className="idcheck__error" role="alert">{blocker.message}</p>
+          <Notice key={blocker.target} tone="danger" role="alert">{blocker.message}</Notice>
         ))}
-        {error && <p className="idcheck__error" role="alert">{error}</p>}
-        <div className="idcheck__done">
-          <strong>본인인증을 마쳤습니다.</strong>
-          <dl>
+        {error && <Notice tone="danger" role="alert">{error}</Notice>}
+        <Notice tone="success" title="본인인증을 마쳤습니다.">
+          <dl className="fact-list idcheck__verified">
             <div>
               <dt>성명</dt>
               <dd>{identity.name}</dd>
@@ -165,13 +179,13 @@ export default function IdentityCheck({ appId, identity, onVerified, onNext }: P
               <dd>{identity.phone}</dd>
             </div>
           </dl>
-          <p>
-            신청서의 성명·생년월일은 이 정보로 채워지며 고칠 수 없습니다. 올리시는 서류도 이
-            정보와 같은 사람의 것인지 확인합니다.
-          </p>
-        </div>
+        </Notice>
+        <p className="idcheck__after">
+          신청서의 성명·생년월일은 이 정보로 채워지며 고칠 수 없습니다. 올리시는 서류도 이
+          정보와 같은 사람의 것인지 확인합니다.
+        </p>
         <div className="flow__actions">
-          <button type="button" className="btn btn--primary" onClick={onNext}>
+          <button type="button" className="btn btn--primary btn--lg" onClick={onNext}>
             서식 작성하기
           </button>
         </div>
@@ -225,7 +239,9 @@ export default function IdentityCheck({ appId, identity, onVerified, onNext }: P
     setBusy(true)
     setError('')
     try {
-      const result = await verifyIdentity(appId, {
+      const applicationId = appId ?? await ensureApplication?.()
+      if (applicationId === undefined) throw new Error('신청 정보를 준비하지 못했습니다. 다시 시도해 주세요.')
+      const result = await verifyIdentity(applicationId, {
         name,
         birth: birthISO,
         phone,
@@ -233,7 +249,7 @@ export default function IdentityCheck({ appId, identity, onVerified, onNext }: P
         signature_data_url: signature,
         signature_kind: signMode === '직접 서명' ? 'electronic' : 'uploaded',
       })
-      onVerified(result, phone)
+      onVerified(result, phone, applicationId)
     } catch (e) {
       setError(friendlyError(e, '본인인증을 완료하지 못했습니다. 다시 시도해 주세요.'))
     } finally {
@@ -242,22 +258,30 @@ export default function IdentityCheck({ appId, identity, onVerified, onNext }: P
   }
 
   return (
-    <section className="idcheck card" onBlurCapture={(event) => {
+    <section className="idcheck" onBlurCapture={(event) => {
       const field = (event.target as HTMLElement).closest<HTMLElement>('[data-identity-field]')?.dataset.identityField as IdentityField | undefined
       if (field && !event.currentTarget.querySelector(`[data-identity-field="${field}"]`)?.contains(event.relatedTarget as Node)) setTouched((current) => ({ ...current, [field]: true }))
     }}>
       <h2 className="idcheck__title">본인인증</h2>
-      <Notice tone="info" title="신청 전에 확인해 주세요.">
-        <p>본인인증 → 서식 작성 → 서류 업로드 → 확인 및 제출 순서로 진행합니다. 본인 명의의 서류와 서명을 준비해 주세요.</p>
-        <p>데모 화면입니다. 실제 서비스에서는 로그인할 때 휴대폰·간편인증으로 대신합니다.</p>
+        {lead}
+      <Notice tone="info" title="본인 명의의 서류와 서명을 준비해 주세요">
+        <MoreInfo summary="신청 전 확인 사항 보기">
+          <ul>
+            <li>신청은 본인인증 → 서식 작성 → 서류 업로드 → 확인 및 제출 순서로 진행합니다.</li>
+            <li>증빙서류는 발급처에서 받은 PDF 파일을 권장합니다.</li>
+            <li>작성 중인 신청은 이 창(탭)에서만 이어서 쓸 수 있습니다. 제출을 마칠 때까지 창을 닫지 마세요.</li>
+            <li>본인인증에 입력한 성명·생년월일은 신청서에 그대로 들어가며 나중에 고칠 수 없습니다.</li>
+            <li>데모 화면입니다. 실제 서비스에서는 로그인할 때 휴대폰·간편인증으로 대신합니다.</li>
+          </ul>
+        </MoreInfo>
       </Notice>
       {attempted && Object.keys(errors).length > 0 && <Notice tone="danger" role="alert" title={`입력 내용을 ${Object.keys(errors).length}곳 확인해 주세요.`}>
         <ul>{IDENTITY_FIELDS.filter((field) => errors[field]).map((field) => <li key={field}><a href={`#identity-${field}`} onClick={(event) => { event.preventDefault(); focusField(field) }}>{errors[field]}</a></li>)}</ul>
       </Notice>}
 
-      <div className="idcheck__form">
-        <div className="field" data-identity-field="name" id="identity-name">
-          <label htmlFor="identity-name-input" className="field__label">성명 <span className="field__req">필수</span></label>
+      <div className="idcheck__form card">
+        <div className="field idcheck__field" data-identity-field="name" id="identity-name">
+          <label htmlFor="identity-name-input" className="field__label">성명<span className="field__req">필수</span></label>
           <input
             className="input"
             value={name}
@@ -268,17 +292,17 @@ export default function IdentityCheck({ appId, identity, onVerified, onNext }: P
             aria-describedby={describedBy('name')}
             autoComplete="name"
           />
-          <p className="field__hint" id="identity-name-hint">본인 서류에 기재된 성명을 입력해 주세요.</p>{errorLine('name')}
+          {errorLine('name')}
         </div>
         <fieldset className="field" data-identity-field="birth" id="identity-birth">
-          <legend className="field__label">생년월일 <span className="field__req">필수</span></legend>
+          <legend className="field__label">생년월일<span className="field__req">필수</span></legend>
           <div className="date-triple--ui">
-            {(['y', 'm', 'd'] as const).map((part, index) => <span key={part} className="idcheck__date-part"><input className={`input date-triple__${part}`} inputMode="numeric" aria-label={`생년월일 ${['연도', '월', '일'][index]}`} aria-required="true" aria-invalid={!!fieldError('birth')} aria-describedby={describedBy('birth')} value={birth[part]} onChange={(event) => setBirth({ ...birth, [part]: event.target.value })} /><span>{['년', '월', '일'][index]}</span></span>)}
+            {(['y', 'm', 'd'] as const).map((part, index) => <span key={part} className="idcheck__date-part"><input className={`input date-triple__${part}`} inputMode="numeric" aria-label={`생년월일 ${['연도', '월', '일'][index]}`} aria-required="true" aria-invalid={!!fieldError('birth')} aria-describedby={describedBy('birth')} value={birth[part]} onChange={(event) => setBirth({ ...birth, [part]: event.target.value })} /><span className="date-triple__unit">{['년', '월', '일'][index]}</span></span>)}
           </div>
-          <p className="field__hint" id="identity-birth-hint">연도는 네 자리, 월과 일은 숫자로 입력해 주세요.</p>{errorLine('birth')}
+          <p className="field__hint" id="identity-birth-hint">예: 1998년 6월 15일</p>{errorLine('birth')}
         </fieldset>
-        <div className="field" data-identity-field="phone" id="identity-phone">
-          <label htmlFor="identity-phone-input" className="field__label">휴대폰 <span className="field__req">필수</span></label>
+        <div className="field idcheck__field" data-identity-field="phone" id="identity-phone">
+          <label htmlFor="identity-phone-input" className="field__label">휴대폰<span className="field__req">필수</span></label>
           <input
             className="input"
             type="tel"
@@ -326,81 +350,89 @@ export default function IdentityCheck({ appId, identity, onVerified, onNext }: P
             aria-invalid={!!fieldError('phone')}
             aria-describedby={describedBy('phone')}
           />
-          <p className="field__hint" id="identity-phone-hint">010으로 시작하는 본인 휴대폰 번호를 입력해 주세요.</p>{errorLine('phone')}
+          <p className="field__hint" id="identity-phone-hint">010으로 시작하는 번호</p>{errorLine('phone')}
         </div>
-      </div>
 
-      <div className="idcheck__pledge">
-        <h3>본인 확인 서약</h3>
-        <p>{PLEDGE}</p>
-        <div data-identity-field="pledge" id="identity-pledge"><label className="idcheck__agree check">
-          <input type="checkbox" aria-required="true" aria-invalid={!!fieldError('pledge')} aria-describedby={describedBy('pledge')} checked={pledge} onChange={(e) => setPledge(e.target.checked)} />
-          위 내용을 확인했으며 동의합니다. (필수)
-        </label><p className="field__hint sr-only" id="identity-pledge-hint">본인 확인 서약에 동의해 주세요.</p>{errorLine('pledge')}</div>
-        <div className="idcheck__sign" data-identity-field="signature" id="identity-signature">
-          <span className="idcheck__sign-label">서명 <span className="field__req">필수</span></span>
-          <div>
-            <div className="idcheck__modes" role="radiogroup" aria-label="서명 방식">
-              {SIGN_MODES.map((m) => (
-                <label key={m} className="idcheck__mode">
-                  <input
-                    type="radio"
-                    name="identity-sign-mode"
-                    checked={signMode === m}
-                    onChange={() => {
-                      setSignMode(m)
-                      setError('')
-                    }}
-                  />
-                  <span>{m === '직접 서명' ? '그리기' : '서명 파일 업로드'}</span>
-                </label>
-              ))}
-            </div>
-<p className="field__hint" id="identity-signature-hint">직접 그리거나 PNG·JPG·PDF 서명 파일(5MB 이하)을 선택해 주세요.</p>
-            <div className="idcheck__signature-body" ref={signBody}>
-              {signMode === '직접 서명' ? (
-                <SignaturePad key={drawn ? `signed-${signWidth}` : `empty-${signWidth}`} value={drawn} onChange={setDrawn} width={signWidth} height={210} />
-              ) : (
-                <div className="idcheck__file">
-                  {file && (
-                    <button type="button" className="idcheck__preview" onClick={() => setViewing(true)} aria-label="올린 서명 크게 보기">
-                      {file.type === 'application/pdf' ? (
-                        <PdfPages url={file.previewUrl} width={Math.min(signWidth, 318)} maxHeight={138} maxPages={1} />
-                      ) : (
-                        <img src={file.previewUrl} alt="올린 서명 미리보기" />
-                      )}
-                      <span className="idcheck__zoomhint" aria-hidden="true">크게 보기</span>
-                    </button>
-                  )}
-                  {!file && <span>PNG·JPG·PDF 서명 파일을 올려 주세요. (5MB 이하)</span>}
-                  <label className="btn" htmlFor="identity-sign-file">{file ? '다른 파일 선택' : '파일 선택'}</label>
-                  <input
-                    key={fileKey}
-                    id="identity-sign-file"
-                    type="file"
-                    accept={SIGN_FILE_ACCEPT}
-                    aria-label="서명 파일"
-                    onChange={(e) => pickFile(e.target.files?.[0])}
-                  />
-                </div>
-              )}
-            </div>
-            {file && viewing && (
-              <FilePreview
-                url={file.previewUrl}
-                name={file.name}
-                kind={file.type === 'application/pdf' ? 'pdf' : 'image'}
-                onClose={() => setViewing(false)}
-              />
+        <div className="card__panel idcheck__pledge" data-identity-field="pledge" id="identity-pledge">
+          <h3 className="idcheck__pledge-title">본인 확인 서약<span className="field__req">필수</span></h3>
+          <p className="idcheck__pledge-text" id="identity-pledge-hint">{PLEDGE}</p>
+          <label className="check idcheck__agree">
+            <input type="checkbox" aria-required="true" aria-invalid={!!fieldError('pledge')} aria-describedby={describedBy('pledge')} checked={pledge} onChange={(e) => setPledge(e.target.checked)} />
+            <span>위 내용을 확인했으며 동의합니다.</span>
+          </label>
+          {errorLine('pledge')}
+        </div>
+
+        <div className="field idcheck__sign" data-identity-field="signature" id="identity-signature">
+          <span className="field__label" id="identity-sign-label">서명<span className="field__req">필수</span></span>
+          {/* 둘 중 하나를 고르는 두 칸짜리 전환 단추. 실제로는 라디오 두 개다. */}
+          <div className="segmented idcheck__modes" role="radiogroup" aria-labelledby="identity-sign-label" aria-describedby={describedBy('signature')}>
+            {SIGN_MODES.map((m) => (
+              <label key={m} className="segmented__option">
+                <input
+                  type="radio"
+                  name="identity-sign-mode"
+                  checked={signMode === m}
+                  onChange={() => {
+                    setSignMode(m)
+                    setError('')
+                  }}
+                />
+                <span>
+                  {signMode === m && <Icon name="check" size={18} />}
+                  {m}
+                </span>
+              </label>
+            ))}
+          </div>
+          <div className={fieldError('signature') ? 'idcheck__sign-area is-invalid' : 'idcheck__sign-area'} ref={signBody}>
+            {signMode === '직접 서명' ? (
+              <SignaturePad key={drawn ? `signed-${signWidth}` : `empty-${signWidth}`} value={drawn} onChange={setDrawn} width={signWidth} height={SIGN_HEIGHT} />
+            ) : (
+              <div className="idcheck__file">
+                {file ? (
+                  <button type="button" className="idcheck__preview" onClick={() => setViewing(true)} aria-label="올린 서명 크게 보기">
+                    {file.type === 'application/pdf' ? (
+                      <PdfPages url={file.previewUrl} width={Math.max(1, Math.min(signWidth - 48, 280))} maxHeight={112} maxPages={1} />
+                    ) : (
+                      <img src={file.previewUrl} alt="올린 서명 미리보기" />
+                    )}
+                    <span className="idcheck__zoomhint" aria-hidden="true"><Icon name="eye" size={16} />크게 보기</span>
+                  </button>
+                ) : (
+                  <p className="idcheck__file-guide">
+                    <Icon name="upload" size={24} />
+                    <span>PNG·JPG·PDF 서명 파일을 올려 주세요. (5MB 이하)</span>
+                  </p>
+                )}
+                {file && <p className="idcheck__filename">{file.name}</p>}
+                <input
+                  key={fileKey}
+                  id="identity-sign-file"
+                  className="sr-only"
+                  type="file"
+                  accept={SIGN_FILE_ACCEPT}
+                  aria-label="서명 파일"
+                  onChange={(e) => pickFile(e.target.files?.[0])}
+                />
+                <label className="btn idcheck__file-pick" htmlFor="identity-sign-file"><Icon name="upload" />{file ? '다른 파일 선택' : '파일 선택'}</label>
+              </div>
             )}
-            <div className="idcheck__signature-foot">
-              {signMode === '서명 파일 올리기' && file && <span className="idcheck__filename">{file.name}</span>}
-              <button type="button" className="btn btn--quiet btn--small" disabled={signMode === '직접 서명' ? !drawn : !file} onClick={() => setConfirming('clear')}>
-                <Icon name="trash" />
-                지우기
-              </button>
-            </div>
-            {errorLine('signature')}
+          </div>
+          {file && viewing && (
+            <FilePreview
+              url={file.previewUrl}
+              name={file.name}
+              kind={file.type === 'application/pdf' ? 'pdf' : 'image'}
+              onClose={() => setViewing(false)}
+            />
+          )}
+          <div className="idcheck__sign-foot">
+            {errorLine('signature') ?? <span />}
+            <button type="button" className="btn btn--quiet btn--small" disabled={!signatureValue} onClick={() => setConfirming('clear')}>
+              <Icon name="trash" size={18} />
+              지우기
+            </button>
           </div>
         </div>
       </div>
@@ -410,7 +442,7 @@ export default function IdentityCheck({ appId, identity, onVerified, onNext }: P
       <div className="flow__actions">
         <button
           type="button"
-          className="btn btn--primary"
+          className="btn btn--primary btn--lg"
           disabled={busy}
           onClick={() => {
             setAttempted(true)

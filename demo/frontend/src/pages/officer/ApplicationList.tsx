@@ -10,6 +10,7 @@ import { Fragment, useEffect, useId, useRef, useState, type FormEvent, type Keyb
 import {
   OFFICER_QUEUES,
   fetchApplicationReasons,
+  fetchReasonExplanation,
   type ApplicationReasons,
   type DecisionKey,
   type OfficerList,
@@ -51,6 +52,7 @@ function StatusChip({ row }: { row: OfficerRow }) {
 
 interface Props {
   list: OfficerList
+  generic?: boolean
   query: OfficerListQuery
   onQuery: (patch: Partial<OfficerListQuery>) => void
   /** 심사 화면 열기. `slotKey`가 있으면 그 서류를 연 채로 시작한다. */
@@ -66,6 +68,7 @@ interface Props {
 
 export default function ApplicationList({
   list,
+  generic = false,
   query,
   onQuery,
   onOpen,
@@ -162,7 +165,10 @@ export default function ApplicationList({
   const loadReasons = (id: number) => {
     setReasons((prev) => ({ ...prev, [id]: { status: 'loading' } }))
     fetchApplicationReasons(id, list.role.key)
-      .then((data) => setReasons((prev) => ({ ...prev, [id]: { status: 'ready', data } })))
+      .then(async (data) => {
+        const explanation = await fetchReasonExplanation(id, list.role.key).catch(() => null)
+        setReasons((prev) => ({ ...prev, [id]: { status: 'ready', data: { ...data, explanation } } }))
+      })
       .catch(() => setReasons((prev) => ({ ...prev, [id]: { status: 'error' } })))
   }
 
@@ -378,7 +384,7 @@ export default function ApplicationList({
               ].filter(Boolean).join(' ')
               return (
                 <Fragment key={id}>
-                  <tr className={rowClass} onClick={() => onOpen(id)}>
+                  <tr className={rowClass} onClick={() => generic ? toggleReasons(id) : onOpen(id)}>
                     {canBulk && (
                       <td className="alist__check" onClick={(event) => event.stopPropagation()}>
                         <label>
@@ -395,10 +401,10 @@ export default function ApplicationList({
                       <button
                         type="button"
                         className="alist__open"
-                        aria-label={`${row.application_no} ${row.name} 심사 화면 열기`}
+                        aria-label={`${row.application_no} ${row.name} ${generic ? '사유 보기' : '심사 화면 열기'}`}
                         onClick={(event) => {
                           event.stopPropagation()
-                          onOpen(id)
+                          if (generic) toggleReasons(id); else onOpen(id)
                         }}
                       >
                         {row.application_no}
@@ -408,7 +414,7 @@ export default function ApplicationList({
                     <td className="alist__time">{formatDayTime(row.submitted_at)}</td>
                     <td><StatusChip row={row} /></td>
                     <td className="alist__more" onClick={(event) => event.stopPropagation()}>
-                      {needsCheck(row) && (
+                      {(generic || needsCheck(row)) && (
                         <button
                           type="button"
                           id={`${uid}-more-${id}`}
@@ -433,6 +439,7 @@ export default function ApplicationList({
                           state={state}
                           onRetry={() => loadReasons(id)}
                           onOpen={onOpen}
+                          generic={generic}
                         />
                       </td>
                     </tr>
@@ -480,7 +487,8 @@ export default function ApplicationList({
  * 적는다. 올리지 않은 필수 서류도 같은 목록에 넣는다. 규칙 판정이 저장해 둔
  * 값만 보여준다.
  */
-function Reasons({ id, row, state, onRetry, onOpen }: {
+function Reasons({ id, row, state, onRetry, onOpen, generic = false }: {
+  generic?: boolean
   id: string
   row: OfficerRow
   state: ReasonState
@@ -506,7 +514,8 @@ function Reasons({ id, row, state, onRetry, onOpen }: {
         </p>
       )}
 
-      {empty && (
+      {generic && <p className="alist__reasons-note">자격 규칙 미설정 — 담당자가 공고문 기준으로 확인</p>}
+      {empty && !generic && (
         <p className="alist__reasons-note">저장된 사유가 없습니다. 심사 화면에서 서류를 확인해 주세요.</p>
       )}
 
@@ -543,9 +552,10 @@ function Reasons({ id, row, state, onRetry, onOpen }: {
         </ul>
       )}
 
-      {/* 3단계: LLM이 쓴 설명이 이 자리(규칙 사유 목록 아래)에 들어온다. 지금은 아무것도 그리지 않는다. */}
+      {data?.explanation && <section className="alist__reasons-note"><strong>{data.explanation.label}</strong><p>{data.explanation.text}</p><small>{data.explanation.basis}</small></section>}
+      {generic && <p className="alist__reasons-note">이 사업의 건별 심사 화면 연결은 준비 중입니다.</p>}
 
-      {state.status !== 'loading' && (
+      {!generic && state.status !== 'loading' && (
         <button
           type="button"
           className="alist__link"

@@ -24,6 +24,7 @@ from pydantic import BaseModel
 from sqlmodel import select
 from engine_v2.pipeline.privacy import mask_data
 
+from .. import generic_programs as generic
 from ..models import (
     STATUS_DECIDED,
     STATUS_DRAFT,
@@ -42,7 +43,6 @@ from ..rules.programs import (
     JOB_PACKAGE,
     PROGRAMS,
     ProgramConfig,
-    get_program,
 )
 from ..rules.required_docs import upload_slots
 from ..rules.roles import (
@@ -65,6 +65,8 @@ from .common import (
     subsidy_estimate,
 )
 from .forms import form_links
+
+get_program = generic.program
 
 router = APIRouter(prefix="/api/officer", tags=["officer"])
 
@@ -180,8 +182,8 @@ class Entry:
         self.review = review
         program = get_program(app.program_code)
         self.program = program
-        form1 = app.form1_json or {}
-        self.name = str(form1.get("name") or "")
+        form1 = generic.officer_form_values(app) if generic.is_generic(app.program_code) else app.form1_json or {}
+        self.name = str((app.identity_json or {}).get("name") or "") if generic.is_generic(app.program_code) else str(form1.get("name") or "")
         self.region = extract_region(
             str(form1.get("address") or ""), program.target_regions
         )
@@ -449,6 +451,8 @@ def _columns(program: str | None) -> list[dict[str, str]]:
     서류 컬럼은 `미비서류` 바로 뒤에 온다. 개수를 보고 "어디가 걸렸나"로 눈이
     이어지는 순서다.
     """
+    if generic.is_generic(program):
+        return [column for column in LIST_COLUMNS if column["key"] != "total_score"]
     if program == JOB_PACKAGE:
         return list(LIST_COLUMNS)
 
@@ -500,7 +504,7 @@ def _row(
         ),
         "officer_role": entry.review.officer_role if entry.review else None,
         #: 시군 내 고득점순 순위. 커트라인 판단의 근거다.
-        "rank": rank,
+        "rank": None if generic.is_generic(app.program_code) else rank,
         #: 서류 칸. 두배적금이 아니면 빈 배열이다.
         "documents": doc_cells,
     }
@@ -613,7 +617,7 @@ def list_applications(
 
     default_sort = (
         "submitted"
-        if program and get_program(program).selection == "first_come"
+        if program and (generic.is_generic(program) or get_program(program).selection == "first_come")
         else "score"
     )
     sort_key = sort or default_sort
@@ -901,6 +905,8 @@ def review_detail(application_id: int, role: str = Query(ROLE_PROVINCE)) -> dict
         raise HTTPException(400, str(exc)) from None
 
     app = load_application(application_id)
+    if generic.is_generic(app.program_code):
+        raise HTTPException(409, "이 사업은 신청 목록의 규칙 결과로 확인해 주세요.")
     if app.status == STATUS_DRAFT:
         raise HTTPException(404, "아직 제출되지 않은 신청 건입니다.")
 
@@ -1047,6 +1053,7 @@ def review_reasons(application_id: int, role: str = Query(ROLE_PROVINCE)) -> dic
         "ai_status_label": AI_STATUS_LABELS.get(entry.ai_status or "", "미심사"),
         # 사유의 출처. 지금은 규칙 판정 결과뿐이다.
         "source": "rules",
+        **({"program_notice": generic.NOTICE} if generic.is_generic(app.program_code) else {}),
         "documents": [
             {
                 "slot_key": d.slot_key,

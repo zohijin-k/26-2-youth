@@ -17,7 +17,7 @@ export const MOCK_ID_BASE = 900_000
 
 export const isMockId = (applicationId: number) => byId.has(applicationId)
 
-const JOB_PACKAGE = 'job_package'
+import { YOUTH_PROGRAM as JOB_PACKAGE } from '../../program-scope.ts'
 
 const PROGRAM_NAMES: Record<string, string> = { [JOB_PACKAGE]: '전북청년 취업지원패키지' }
 

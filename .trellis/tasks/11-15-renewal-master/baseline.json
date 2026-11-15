@@ -1,0 +1,76 @@
+{
+  "base": "7472697",
+  "engine": {
+    "passed": 1267,
+    "failed": 0,
+    "dependency_warnings": 7
+  },
+  "backend": {
+    "passed": 1317,
+    "failed": 0,
+    "dependency_warnings": 9
+  },
+  "scenarios": {
+    "run_p11_criteria_scenarios": {
+      "exit": 0
+    },
+    "run_p12_subsidy_criteria_scenarios": {
+      "exit": 0
+    },
+    "run_p13_household_scenarios": {
+      "exit": 0
+    },
+    "run_p14_pdf_forms_scenarios": {
+      "exit": 0
+    },
+    "run_p15_jbai_scenarios": {
+      "exit": 0
+    },
+    "run_p16_job_docs_scenarios": {
+      "exit": 0
+    },
+    "run_p17_own_scenarios": {
+      "exit": 0
+    },
+    "run_p18_applicant_precheck_scenarios": {
+      "exit": 0
+    },
+    "run_p19_nhis_history_scenarios": {
+      "exit": 0
+    },
+    "run_p20_nhis_continuation_scenarios": {
+      "exit": 0
+    },
+    "run_p2_scenarios": {
+      "exit": 0
+    },
+    "run_p3_scenarios": {
+      "exit": 0
+    },
+    "run_p4_scenarios": {
+      "exit": 0
+    },
+    "run_p5_scenarios": {
+      "exit": 0
+    },
+    "run_p6_scenarios": {
+      "exit": 0
+    },
+    "run_p7_scenarios": {
+      "exit": 0
+    },
+    "run_p8_localocr_scenarios": {
+      "exit": 0
+    },
+    "run_p9_identity_scenarios": {
+      "exit": 0
+    }
+  },
+  "frontend": {
+    "typecheck": 0,
+    "lint_warnings": 0,
+    "build_chunk_warnings": 0,
+    "node_passed": 32,
+    "node_failed": 0
+  }
+}

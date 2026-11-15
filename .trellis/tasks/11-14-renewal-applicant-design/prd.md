@@ -62,3 +62,5 @@ Applicant code and automated verification are implemented. See `verification.md`
 The owner approved the two proposed commits including existing preparation files and requested continuation of interrupted work. When asked to clarify scope, the owner selected completion of the current applicant design task; later renewal phases 3–5 are outside this continuation. Browser and native Chrome access were retried and remain unavailable. Final review fixes stay within applicant feedback and validation: measured transport percentages, date help linkage, initial-list retry, truthful pending-save state and valid PNG signature preparation.
 
 Implementation commit: `258e88c1dbdc54bff635c90e1ede6d33a7aafe50`. The approved documentation commit records the final review and remaining browser acceptance.
+
+Follow-up on 2026-11-15 (owner requests: simpler, larger, details on click, fewer complaint triggers): commits `ff41235` and `4cc627a`; see the last section of `verification.md` for scope, checks and what remains unverified.

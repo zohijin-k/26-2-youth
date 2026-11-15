@@ -28,9 +28,9 @@ import PdfPages from '../../components/PdfPages.tsx'
 import StatusBadge from '../../components/ApplicantStatusBadge.tsx'
 import { DateTriple } from '../../forms/FormSheet.tsx'
 import { EMPTY_YMD, isCompleteYMD, ymdToISO, type YMD } from '../../forms/ymd.ts'
-import Dialog from '../../components/Dialog.tsx'
 import ConfirmDialog from '../../components/ConfirmDialog.tsx'
 import Icon from '../../components/Icon.tsx'
+import MoreInfo from '../../components/MoreInfo.tsx'
 import Notice from '../../components/Notice.tsx'
 import ProgressBar from '../../components/ProgressBar.tsx'
 import Spinner from '../../components/Spinner.tsx'
@@ -209,22 +209,15 @@ function DocumentResult({
   )
 }
 
-/** ⓘ에 보여줄 내용이 하나라도 있는지. 없으면 아이콘 자체를 띄우지 않는다. */
-function hasInfo(item: DocRequirementRow): boolean {
+/** 카드에서 접어 둔 요건 설명 · 체크포인트. "서류 안내 보기"를 눌러야 펼쳐진다. 발급처 링크는
+    카드에 남겨 새 창으로 바로 열리게 한다 — 접힌 안내 안에 숨기지 않는다. */
+function SlotInfo({ item }: { item: DocRequirementRow }) {
   return (
-    item.doc_type_choices.length > 1 ||
-    item.required_fields.length > 0 ||
-    item.notes.length > 0 ||
-    item.alternatives.length > 0 ||
-    item.warnings.length > 0
-  )
-}
-
-/** 카드에서 뺀 요건 설명 · 체크포인트를 모아 보여주는 모달. 발급처 링크는 원래대로
-    카드에 남겨 새 창으로 바로 열리게 한다 — 모달 안에 숨기지 않는다. */
-function SlotInfoModal({ item, onClose }: { item: DocRequirementRow; onClose: () => void }) {
-  return (
-    <Dialog title={item.label} onClose={onClose}>
+    <>
+      <div className="dinfo__section">
+        <h4>올리는 방법</h4>
+        <p>받는 형식: {item.accept.map((format) => format.toUpperCase()).join(' · ')}. 발급처의 PDF를 권장합니다. 촬영할 때는 서류 전체가 밝고 선명하게 나오도록 해 주세요.</p>
+      </div>
       {item.doc_type_choices.length > 1 && (
         <div className="dinfo__section">
           <h4>인정되는 서류</h4>
@@ -256,8 +249,8 @@ function SlotInfoModal({ item, onClose }: { item: DocRequirementRow; onClose: ()
         </div>
       )}
       {item.warnings.length > 0 && (
-        <div className="dinfo__section">
-          <h4>자주 틀리는 부분</h4>
+        <div className="dinfo__section caution">
+          <h4><Icon name="alert" size={18} />자주 틀리는 부분</h4>
           <ul className="dinfo__warn">
             {item.warnings.map((w) => (
               <li key={w}>{w}</li>
@@ -265,7 +258,7 @@ function SlotInfoModal({ item, onClose }: { item: DocRequirementRow; onClose: ()
           </ul>
         </div>
       )}
-    </Dialog>
+    </>
   )
 }
 
@@ -293,7 +286,6 @@ function SlotCard({
   onRetry: (doc: UploadedDocument) => void
 }) {
   const input = useRef<HTMLInputElement>(null)
-  const [infoOpen, setInfoOpen] = useState(false)
   const [interviewFormOpen, setInterviewFormOpen] = useState(false)
   const [interviewPdfReady, setInterviewPdfReady] = useState(false)
   const [interviewHwp, setInterviewHwp] = useState<string | null>(null)
@@ -340,17 +332,7 @@ function SlotCard({
       <div className="dslot__head">
         <div className="dslot__title">
           <span className="dslot__label">{item.label}</span>
-          {item.required && <span className="dslot__req">필수</span>}
-          {hasInfo(item) && (
-            <button
-              type="button"
-              className="dslot__info"
-              onClick={() => setInfoOpen(true)}
-              aria-label={`${item.label} 요건 안내`}
-            >
-              <Icon name="info" />
-            </button>
-          )}
+          {item.required && <span className="field__req">필수</span>}
         </div>
         <div className="dslot__head-meta">
           {status ? (
@@ -364,8 +346,8 @@ function SlotCard({
         </div>
       </div>
 
-      <p className="dslot__formats">받는 형식: {item.accept.map((format) => format.toUpperCase()).join(' · ')}. 발급처의 PDF를 권장합니다. 촬영할 때는 서류 전체가 밝고 선명하게 나오도록 해 주세요.</p>
       <p className="dslot__criteria">{item.issue_rule_label}{item.notes.filter((note) => note.startsWith('조회기간에 ') || note.startsWith('최근 ')).map((note) => ` · ${note}`).join('')}</p>
+      <MoreInfo summary="서류 안내 보기" className="dslot__more"><SlotInfo item={item} /></MoreInfo>
 
       {/^(interview|suit)_\d+_confirmation$/.test(item.slot_key) && (
         <details className="dslot__files-menu"><summary className="btn btn--small">면접확인서 양식</summary>
@@ -396,10 +378,10 @@ function SlotCard({
             <fieldset className="dslot__declared" onBlur={(event) => {
               if (!event.currentTarget.contains(event.relatedTarget as Node) && Object.values(declared).some(Boolean)) setDateAttempted(true)
             }}>
-              <legend className="dslot__declared-label">서류에 적힌 {basisLabel} (필수)</legend>
+              <legend className="dslot__declared-label">서류에 적힌 {basisLabel}<span className="field__req">필수</span></legend>
               <DateTriple value={declared} onChange={onDeclaredChange} ariaPrefix={item.label} describedBy={`slot-${item.slot_key}-date-hint`} invalid={dateAttempted && !dateReady} />
               <p id={`slot-${item.slot_key}-date-hint`} className="dslot__gate" role={dateAttempted && !dateReady ? 'alert' : undefined}>
-                {dateReady ? `서류에 적힌 ${basisLabel}과 같은지 확인해 주세요.` : `${basisLabel}을 실제 달력에 있는 날짜로 모두 입력하면 파일을 올릴 수 있습니다.`}
+                {dateReady ? `서류에 적힌 ${basisLabel}과 같은지 확인해 주세요.` : `${basisLabel}을 모두 입력하면 파일을 고를 수 있습니다.`}
               </p>
             </fieldset>
           )}
@@ -409,6 +391,7 @@ function SlotCard({
             className="btn dslot__upload"
             onClick={() => { setDateAttempted(true); if (dateReady) input.current?.click(); else document.querySelector<HTMLElement>(`#slot-${item.slot_key} .form-date input`)?.focus() }}
           >
+            <Icon name="upload" />
             파일 선택
           </button>
         </div>
@@ -419,7 +402,6 @@ function SlotCard({
       {!preparing && !job && problem && <Notice tone="danger" role="alert">{problem}</Notice>}
       <p className="sr-only" aria-live="polite" aria-atomic="true">{announcement}</p>
       {doc && <DocumentResult doc={doc} onRetry={() => onRetry(doc)} />}
-      {infoOpen && <SlotInfoModal item={item} onClose={() => setInfoOpen(false)} />}
       {interviewFormOpen && (
         <Modal
           title="면접확인서 양식 보기"
@@ -564,11 +546,9 @@ export default function DocumentUpload({applicationId, onProgress, onPendingChan
     <div className="dupload">
       <h2>서류 업로드</h2>
       <div className="dupload__progress">
-        제출 서류 <strong>{checklist.upload_done}</strong> / {checklist.upload_total}
+        <span className="dupload__count">제출 서류 <strong>{checklist.upload_done}</strong> / {checklist.upload_total}</span>
         {checklist.program.has_subsidy_items && (
-          <span className="dupload__progress-hint">
-            고르신 지원 항목에 따라 서류가 늘고 줍니다. 항목을 바꾸면 이 목록도 바뀝니다.
-          </span>
+          <span className="dupload__progress-hint">고른 지원 항목에 따라 목록이 바뀝니다.</span>
         )}
         <ProgressBar value={checklist.upload_done} max={checklist.upload_total || 1} label="제출 서류" />
       </div>
@@ -592,8 +572,7 @@ export default function DocumentUpload({applicationId, onProgress, onPendingChan
       </ul>
 
       {onlineItems.length > 0 && (
-        <section className="dupload__online">
-          <h3>업로드하지 않아도 되는 서류</h3>
+        <MoreInfo summary="올리지 않아도 되는 서류" meta={`${onlineItems.length}건`} className="dupload__online">
           <ul>
             {onlineItems.map((i) => (
               <li key={i.slot_key}>
@@ -601,7 +580,7 @@ export default function DocumentUpload({applicationId, onProgress, onPendingChan
               </li>
             ))}
           </ul>
-        </section>
+        </MoreInfo>
       )}
 
       {checklist.unassigned.length > 0 && (

@@ -9,8 +9,9 @@ export interface Form1Value {
   bankName: string
   accountNo: string
   accountHolder: string
+  bankbookFileName: string
 }
 export const EMPTY_FORM1: Form1Value = {
   name: '', birth: EMPTY_YMD, address: '', mobile: '', email: '',
-  bankName: '', accountNo: '', accountHolder: '',
+  bankName: '', accountNo: '', accountHolder: '', bankbookFileName: '',
 }

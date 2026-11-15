@@ -1,0 +1,13 @@
+{
+  "protected_hashes_unchanged": true,
+  "engine_rules_coords_changed": false,
+  "baseline_tests_changed": false,
+  "browser_assertions": 17,
+  "browser_errors": 0,
+  "temporary_servers_stopped": true,
+  "push_pr_merge_executed": false,
+  "existing_user_paths_excluded": [
+    "logo.png",
+    ".trellis/tasks/11-14-renewal-applicant-design/task.json"
+  ]
+}

@@ -129,7 +129,7 @@ export default function SignaturePad({ value, onChange, width = 260, height = 90
           {empty ? '서명 전' : '서명 완료'}
         </span>
       </span>
-      {allowImage && <label className="signature-image">서명 이미지 선택 (PNG, 5MB 이하)<input type="file" accept=".png" onChange={(event) => {
+      {allowImage && <label className="signature-image"><span className="btn">서명 이미지 선택</span><span>PNG, 5MB 이하</span><input className="sr-only" type="file" accept=".png" aria-label="서명 이미지 선택" onChange={(event) => {
         const file = event.target.files?.[0]
         event.target.value = ''
         if (!file) return

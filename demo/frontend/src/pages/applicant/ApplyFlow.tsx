@@ -7,13 +7,14 @@ import {
   createApplication,
   fetchApplication,
   fetchApplicationConsents,
+  fetchFinalCheck,
   fetchPrograms,
   fetchStatus,
   fetchSubsidyItems,
   patchApplication,
   postConsents,
   postSelfCheck,
-  type ApplicationRow,
+  type Blocker,
   type ConsentPayload,
   type Identity,
   type Program,
@@ -23,6 +24,7 @@ import {
 } from '../../api.ts'
 import DocumentUpload from './DocumentUpload.tsx'
 import FinalCheck from './FinalCheck.tsx'
+import MissingItems from './MissingItems.tsx'
 import IdentityCheck from './IdentityCheck.tsx'
 import MyPage from './MyPage.tsx'
 import SubsidyItems from './SubsidyItems.tsx'
@@ -40,6 +42,8 @@ import useBeforeUnload from '../../hooks/useBeforeUnload.ts'
 import { friendlyError } from '../../lib/error-copy.ts'
 import { readReceiptSteps } from '../../lib/receipt-steps.ts'
 import { formatDateTime } from '../../lib/format.ts'
+import { ACTIVE_APPLICATION_KEY, createIdentitySession } from '../../lib/identity-session.ts'
+import { YOUTH_PROGRAM as YOUTH_PROGRAM_CODE } from '../../program-scope.ts'
 import './apply-flow.css'
 
 type Stage =
@@ -51,19 +55,6 @@ type Stage =
   | 'complete'
   | 'mypage'
 
-const ACTIVE_APPLICATION_KEY = 'applicant.activeApplicationId'
-const YOUTH_PROGRAM_CODE = 'job_package'
-// Share an in-flight draft across StrictMode replay and history remounts.
-let pendingDraft: Promise<ApplicationRow> | null = null
-function youthDraft(): Promise<ApplicationRow> {
-  if (!pendingDraft) {
-    pendingDraft = createApplication(YOUTH_PROGRAM_CODE).then((application) => {
-      try { window.sessionStorage.setItem(ACTIVE_APPLICATION_KEY, String(application.id)) } catch { /* In-memory flow still works. */ }
-      return application
-    }).catch((error: unknown) => { pendingDraft = null; throw error })
-  }
-  return pendingDraft.then((application) => fetchApplication(application.id))
-}
 
 function savedPage(): { appId: number; stage: Stage; previous: Stage } | null {
   const params = currentParams()
@@ -97,11 +88,15 @@ const APPLY_STEPS: Step[] = [
 function lockIdentity(form: Form1Value, identity: Identity | null): Form1Value {
   if (!identity) return form
   const [y, m, d] = identity.birth.split('-')
-  return { ...form, name: identity.name, birth: { y, m: String(Number(m)), d: String(Number(d)) } }
+  return { ...form, accountHolder: form.accountHolder || identity.name, name: identity.name, birth: { y, m: String(Number(m)), d: String(Number(d)) } }
 }
 
 export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | null }) {
   const [initialPage] = useState(savedPage)
+  const [applicationSession] = useState(() => createIdentitySession({
+    programCode: YOUTH_PROGRAM_CODE, storage: () => window.sessionStorage,
+    load: fetchApplication, create: createApplication,
+  }))
   const initialUrlWrite = useRef(true)
   const [restoring, setRestoring] = useState(true)
   const [startupAttempt, setStartupAttempt] = useState(0)
@@ -143,6 +138,14 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
   const [formProgress, setFormProgress] = useState<StepperProgress>({ completed: 0, total: 0 })
   const [uploadPending, setUploadPending] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<StepperProgress>({ completed: 0, total: 0 })
+  /** 서류 업로드에서 다음으로 가기 전 서버가 알려 준 남은 항목. 서류를 더 올리면 지우고 다시 확인한다. */
+  /** 단계 표시에서 "확인 및 제출"을 눌러 미리 볼 때, 누르기 전에 있던 화면. 정상 진행으로 왔으면 null. */
+  const [peekFrom, setPeekFrom] = useState<Stage | null>(null)
+  const [finalGateResult, setFinalGate] = useState<{ upload: string; blockers: Blocker[] } | null>(null)
+  const [gateChecking, setGateChecking] = useState(false)
+  const [gateError, setGateError] = useState('')
+  const uploadState = `${uploadProgress.completed}/${uploadProgress.total}`
+  const finalGate = finalGateResult?.upload === uploadState ? finalGateResult.blockers : null
   const saveQueue = useRef<Promise<void>>(Promise.resolve())
 
   useEffect(() => {
@@ -154,43 +157,24 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
         if (!active) return
         const picked = programs.find((item) => item.code === YOUTH_PROGRAM_CODE)
         if (!picked) throw new Error('청년 취업지원패키지 설정을 불러오지 못했습니다.')
-        let application: ApplicationRow | null = null
-        let restored = false
-        const pageToRestore = initialPage ?? savedPage()
-        if (pageToRestore) {
-          try {
-            const saved = await fetchApplication(pageToRestore.appId)
-            if (!active) return
-            if (saved.program_code === YOUTH_PROGRAM_CODE) {
-              application = saved
-              restored = true
-            } else {
-              pendingDraft = null
-              try { window.sessionStorage.removeItem(ACTIVE_APPLICATION_KEY) } catch { /* Storage may be disabled. */ }
-            }
-          } catch (error: unknown) {
-            if (!active) return
-            if (!(error instanceof Error) || !/실패 \(404\)/.test(error.message)) throw error
-            pendingDraft = null
-            try { window.sessionStorage.removeItem(ACTIVE_APPLICATION_KEY) } catch { /* Storage may be disabled. */ }
-          }
-        }
+        setProgram(picked)
+        const application = await applicationSession.restore()
         if (!active) return
-        if (!application) application = await youthDraft()
+        if (!application) {
+          setAppId(null)
+          setAppNo('')
+          return
+        }
+        const restored = true
         const [consents, status, subsidy] = await Promise.all([
           fetchApplicationConsents(application.id), fetchStatus(application.id), fetchSubsidyItems(application.id),
         ])
         if (!active) return
-        try {
-          window.sessionStorage.setItem(ACTIVE_APPLICATION_KEY, String(application.id))
-          pendingDraft = null
-        } catch { /* Retain the shared promise in memory when storage is disabled. */ }
-        setProgram(picked)
         setAppId(application.id)
         setAppNo(application.application_no)
         const savedIdentity = application.identity_json
         setIdentity(savedIdentity?.name && savedIdentity.birth ? savedIdentity as Identity : null)
-        setForm1({ ...EMPTY_FORM1, ...application.form1_json } as Form1Value)
+        setForm1(lockIdentity({ ...EMPTY_FORM1, ...application.form1_json } as Form1Value, savedIdentity?.name && savedIdentity.birth ? savedIdentity as Identity : null))
         setAnswers(application.self_check_json as SelfCheckAnswers)
         setSelectedSubsidyTypes(subsidy.selections.length)
         const consentValue = (type: string) => {
@@ -206,7 +190,9 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
             first_come: status.first_come, supplement: status.supplement, subsidy: status.subsidy, notice: status.result_notice })
         }
         const requestedStage = restored && initialPage ? initialPage.stage : 'identity'
-        setStage(requestedStage === 'complete' && status.status === 'draft' ? 'final' : requestedStage)
+        // 제출을 마친 신청은 서류 업로드 화면(자동 판독 결과가 보이는 곳)을 열지 않고 접수증으로 보낸다.
+        setStage(requestedStage === 'complete' && status.status === 'draft' ? 'final'
+          : requestedStage === 'upload' && status.status !== 'draft' ? 'complete' : requestedStage)
         setStageBeforeMypage(restored && initialPage ? initialPage.previous : 'identity')
       } catch (error: unknown) {
         if (active) setError(friendlyError(error, '신청 화면을 불러오지 못했습니다. 다시 시도해 주세요.'))
@@ -216,7 +202,7 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
     }
     void restore()
     return () => { active = false }
-  }, [initialPage, startupAttempt])
+  }, [initialPage, startupAttempt, applicationSession])
 
   useEffect(() => {
     if (restoring) return
@@ -240,11 +226,11 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
     setUploadProgress({ completed, total })
   }, [])
 
-  const save = (body: { form1?: unknown; self_check?: unknown }): Promise<void> => {
-    if (appId === null) return Promise.resolve()
+  const save = (body: { form1?: unknown; self_check?: unknown }, targetId = appId): Promise<void> => {
+    if (targetId === null) return Promise.resolve()
     pendingSaves.current += 1
     setSaveState('saving')
-    const next = saveQueue.current.catch(() => undefined).then(() => patchApplication(appId, body)).then(() => {
+    const next = saveQueue.current.catch(() => undefined).then(() => patchApplication(targetId, body)).then(() => {
       pendingSaves.current -= 1
       if (pendingSaves.current === 0) setSaveState(saveFailed.current ? 'failed' : 'saved')
     })
@@ -306,6 +292,28 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
     }
   }
 
+  /** 서류 업로드 → 확인 및 제출. 서버 기준으로 모두 채워졌을 때만 넘어가고, 아니면 남은 항목을 그 자리에서 보여 준다. */
+  const goToFinal = async () => {
+    if (appId === null || gateChecking) return
+    setGateChecking(true)
+    setGateError('')
+    try {
+      const check = await fetchFinalCheck(appId)
+      if (check.can_submit || check.already_submitted) {
+        setFinalGate(null)
+        setPeekFrom(null)
+        setStage('final')
+        return
+      }
+      setFinalGate({ upload: uploadState, blockers: check.blockers })
+      window.requestAnimationFrame(() => document.getElementById('upload-gate')?.focus())
+    } catch (e: unknown) {
+      setGateError(friendlyError(e, '제출할 수 있는지 확인하지 못했습니다. 다시 시도해 주세요.'))
+    } finally {
+      setGateChecking(false)
+    }
+  }
+
   /** 최종 확인의 수정 링크는 이미 도달한 단계로만 돌아가게 한다. */
   const jumpTo = (next: Stage) => {
     if (next === stage) return
@@ -333,23 +341,30 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
     window.scrollTo({ top: 0 })
   }
 
-  const stepStatus = (index: number): string => {
-    if (submittedDone) return index === 3 ? '접수 완료' : '완료'
+  /** 단계 표시 아래 "N단계 · 상태 · 진행 수"의 상태와 진행 수. */
+  // 미리 보기 중이면 "어디까지 마쳤는지"는 누르기 전 단계를 기준으로 한다. 아직 안 한 단계를 완료로 보이지 않게 한다.
+  const peeking = stage === 'final' && peekFrom !== null
+  const stageIndex = (s: Stage) => s === 'identity' ? 0 : s === 'forms' || s === 'subsidy' ? 1 : s === 'upload' ? 2 : 3
+  const reachedIndex = stage === 'final' && peekFrom !== null ? stageIndex(peekFrom) : currentIndex
+  const stepComplete = (index: number) => submittedDone || index < reachedIndex || (index === 2 && uploadComplete)
+
+  const stepStatus = (index: number): { state: string; count: string } => {
+    if (submittedDone) return { state: index === 3 ? '접수 완료' : '완료', count: '' }
     const progress = index === 1 ? formProgress : index === 2 ? uploadProgress : null
     const count = progress && progress.total > 0 ? `${progress.completed} / ${progress.total}` : ''
-    if (index < currentIndex) return index === 2 && count ? `완료 · ${count}` : '완료'
-    if (index > currentIndex) {
-      const state = index === 2 && uploadComplete ? '완료' : '예정'
-      return count ? `${state} · ${count}` : state
-    }
-    return count ? `현재 · ${count}` : '현재 단계'
+    if (index === currentIndex) return { state: peeking ? '미리 보기' : '현재', count }
+    if (stepComplete(index)) return { state: '완료', count: index === 2 ? count : '' }
+    return { state: peeking && index === reachedIndex ? '진행 중' : '예정', count }
   }
 
+  /** 단계 표시에서 갈 수 있는 곳: 이미 거친 단계, 다녀간 서류 업로드, 그리고 "확인 및 제출" 미리 보기. */
+  const stepReachable = (index: number) => !uploadPending && !submittedDone && stage !== 'mypage' && index !== 0 && index !== currentIndex &&
+    (index <= reachedIndex || (index === 2 && uploadProgress.total > 0) || (index === 3 && identity !== null))
+
   const stepperNavigate = (index: number) => {
-    const previouslyReachedUpload = index === 2 && uploadProgress.total > 0
-    if (submittedDone || stage === 'mypage' || index === 0 || uploadPending) return
-    if (index >= currentIndex && !previouslyReachedUpload) return
-    setStage(index === 1 ? 'forms' : 'upload')
+    if (!stepReachable(index)) return
+    if (index === 3) setPeekFrom(stage)
+    setStage(index === 1 ? 'forms' : index === 2 ? 'upload' : 'final')
     window.scrollTo({ top: 0 })
   }
 
@@ -375,21 +390,24 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
         </header>
         <ol className="flow__stages" aria-label="신청 단계">
           {APPLY_STEPS.map(({ key, label }, i) => {
-            const complete = submittedDone || i < currentIndex || (i === 2 && uploadComplete)
+            const complete = stepComplete(i)
             const current = i === currentIndex
-            const canNavigate = !uploadPending && !submittedDone && stage !== 'mypage' && i !== 0 &&
-              (i < currentIndex || (i === 2 && uploadProgress.total > 0))
-            const status = stepStatus(i)
+            const canNavigate = stepReachable(i)
+            const { state, count } = stepStatus(i)
             return (
             <li
               key={key}
-              className={current ? 'is-current' : complete ? 'is-complete' : 'is-waiting'}
+              className={current ? (peeking ? 'is-current is-preview' : 'is-current') : complete ? 'is-complete' : 'is-waiting'}
             >
               {(() => {
                 const content = <>
                   <span className="flow__stage-no" aria-hidden="true">{complete && !current ? <Icon name="check" size={18} /> : !current ? i + 1 : null}</span>
                   <span className="flow__stage-copy">
-                    <span className="flow__stage-caption">{i + 1}단계 · {status}</span>
+                    <span className="flow__stage-caption">
+                      <span>{i + 1}단계</span>
+                      <span className="flow__stage-status">{state}</span>
+                      {count && <span className="flow__stage-count">{count}</span>}
+                    </span>
                     <span className="flow__stage-label">{label}</span>
                   </span>
                 </>
@@ -402,21 +420,24 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
           })}
         </ol>
       </div></div>
-      <div className={`flow__body${stage === 'forms' ? ' flow__body--wide' : ''}`}>
-      {stage === 'forms' && <p className="flow__save" role="status" aria-live="polite">
-        {saveState === 'saving' ? <><Spinner /> 저장 중…</> : saveState === 'failed' ? <><Icon name="alertCircle" /> 저장하지 못했습니다. 내용을 확인하고 다시 저장해 주세요.</> : consentDirty ? '동의 내용을 저장하려면 서식에서 저장하고 닫기를 눌러 주세요.' : saveState === 'saved' ? <><Icon name="checkCircle" /> 저장했습니다</> : '서식을 작성하면 저장 상태가 여기에 표시됩니다.'}
-      </p>}
+      <div className="flow__body">
 
       {/* ── 본인인증 (데모) ── */}
-      {stage === 'identity' && appId !== null && (
+      {stage === 'identity' && (
         <IdentityCheck
           appId={appId}
+          ensureApplication={async () => {
+            const application = await applicationSession.ensure()
+            setAppId(application.id)
+            setAppNo(application.application_no)
+            return application.id
+          }}
           identity={identity}
-          onVerified={(verified, mobile) => {
+          onVerified={(verified, mobile, verifiedAppId) => {
             setIdentity(verified)
             const locked = lockIdentity({ ...form1, mobile }, verified)
             setForm1(locked)
-            save({ form1: locked })
+            save({ form1: locked }, verifiedAppId)
             setStage('forms')
             window.scrollTo({ top: 0 })
           }}
@@ -444,21 +465,13 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
           error={formError}
           readOnly={!!submitted}
           onProgress={reportFormProgress}
+          saveStatus={saveState === 'saving' ? <><Spinner /> 저장 중…</> : saveState === 'failed' ? <><Icon name="alertCircle" /> 저장하지 못했습니다. 내용을 확인하고 다시 저장해 주세요.</> : consentDirty ? '동의 내용을 저장하려면 서식에서 저장하고 닫기를 눌러 주세요.' : saveState === 'saved' ? <><Icon name="checkCircle" /> 저장했습니다</> : undefined}
         />
       )}
 
       {/* ── [4] 지원 항목 (취업지원패키지) ── */}
       {stage === 'subsidy' && appId !== null && (
         <>
-          <div className="flow-block flow-block--ok">
-            <strong>신청서와 동의서 작성이 끝났습니다.</strong>
-            <p>신청번호 {appNo}</p>
-            <p>
-              이제 지원받을 항목을 선택해 주세요. 항목은 여러 개를 함께 신청할 수 있고,
-              고른 항목에 따라 올려야 할 서류가 정해집니다.
-            </p>
-          </div>
-          <div className="flow__gap" />
           <SubsidyItems
             applicationId={appId}
             onChanged={(state: SubsidyState) => {
@@ -483,7 +496,7 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
       )}
 
       {/* ── [5] 서류 업로드 ── */}
-      {stage === 'upload' && appId !== null && (
+      {stage === 'upload' && appId !== null && !submitted && (
         <>
           {identity === null && (
             <div className="flow-block flow-block--warn">
@@ -498,6 +511,8 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
           )}
           <DocumentUpload key={checklistKey} applicationId={appId} onProgress={reportUploadProgress} onPendingChange={setUploadPending} />
           <p className="field__hint" role="status">{uploadPending ? '선택하신 파일을 처리하고 있습니다. 다른 칸의 파일을 선택하며 기다릴 수 있습니다.' : ''}</p>
+          {finalGate && <MissingItems id="upload-gate" title="아직 제출할 수 없습니다. 아래 항목을 모두 마쳐야 다음으로 넘어갑니다." blockers={finalGate} current="upload" onGoto={(next) => { setFinalGate(null); jumpTo(next) }} />}
+          {gateError && <Notice tone="danger" role="alert">{gateError}</Notice>}
           <div className="flow__actions">
             <button
               type="button"
@@ -507,8 +522,8 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
             >
               이전
             </button>
-            <button type="button" className="btn btn--primary" disabled={uploadPending} onClick={() => setStage('final')}>
-              제출 전 최종 확인
+            <button type="button" className={gateChecking ? 'btn btn--primary btn--busy' : 'btn btn--primary'} disabled={uploadPending} aria-busy={gateChecking || undefined} onClick={() => void goToFinal()}>
+              {gateChecking && <Spinner />}제출 전 최종 확인
             </button>
           </div>
         </>
@@ -525,7 +540,7 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
               setStage('complete')
               window.scrollTo({ top: 0 })
             }}
-            onBack={() => jumpTo('upload')}
+            onBack={() => jumpTo(peeking && peekFrom ? peekFrom : 'upload')}
             onGoto={jumpTo}
           />
         </>

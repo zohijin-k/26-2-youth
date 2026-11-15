@@ -14,6 +14,8 @@
 
 import math
 from collections.abc import Sequence
+import re
+
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -62,6 +64,8 @@ from .common import (
     subsidy_estimate,
     subsidy_rows,
 )
+
+from .. import generic_programs as generic
 
 router = APIRouter(prefix="/api/applications", tags=["review"])
 
@@ -188,6 +192,25 @@ def _blockers(app: Application) -> list[dict[str, Any]]:
                     "goto": "form1",
                 }
             )
+
+    if app.program_code == JOB_PACKAGE and (app.doc_context_json or {}).get("applicant_flow_version") == 1:
+        from . import common
+
+        storage_root = common.STORAGE.resolve()
+        copies = [row for row in list_documents(app.id or 0) if row.slot_key == "bank_account"]
+        has_copy = any((target := (common.STORAGE.parent / row.file_path).resolve()).is_relative_to(storage_root)
+                       and target.is_file() for row in copies)
+        if not has_copy:
+            items = [item for item in items if item["target"] != "bankbookFileName"]
+            items.append({"kind": "form", "target": "bankbookFileName", "label": "통장 사본(본인 명의)",
+                          "goto": "form1", "message": "본인 명의 통장 사본 파일을 첨부해 주세요."})
+
+    holder = re.sub(r"\s+", "", str(form1.get("accountHolder") or ""))
+    verified_name = re.sub(r"\s+", "", str((app.identity_json or {}).get("name") or ""))
+    if app.program_code == JOB_PACKAGE and holder and verified_name and holder != verified_name:
+        items.append({"kind": "eligibility", "target": "accountHolder", "label": "예금주",
+                      "code": "ACCOUNT_HOLDER_MISMATCH", "goto": "form1",
+                      "message": "지원금은 본인 명의 계좌로만 지급됩니다. 예금주를 본인인증 성명과 같게 입력해 주세요."})
 
     if invalid_email and not any(key == "email" for key, _ in program.required_form_fields):
         items.append({
@@ -442,6 +465,8 @@ def _load_review(application_id: int) -> Review | None:
 def final_check(application_id: int) -> dict[str, Any]:
     """제출 전 최종 확인 (계획서 3.1절 [5])."""
     app = load_application(application_id)
+    if generic.is_generic(app.program_code):
+        return generic.final_check(app)
     program = get_program(app.program_code)
     supplement = supplement_for_application(app)
     documents = list_documents(application_id)
@@ -584,7 +609,14 @@ def _run_review(app: Application) -> Review:
                 "stage": "stage2_eligibility", "code": work.reason_code,
                 "detail_codes": work.detail_codes, "message": work.basis, "doc_type": None,
             })
+    bankbook_needs_review = any(d.slot_key == "bank_account" and d.stage1_status != "PASS" for d in documents)
+    if bankbook_needs_review:
+        payload.setdefault("reasons", []).append({
+            "stage": "stage1_documents", "code": "ACCOUNT_COPY_REVIEW", "doc_type": "통장사본",
+            "message": "예금주와 계좌번호는 담당자가 통장 사본 원본으로 확인합니다.",
+        })
     additional_statuses = (
+        "NEEDS_REVIEW" if bankbook_needs_review else "PASS",
         "NEEDS_REVIEW" if household_needs_review else "PASS",
         "NEEDS_REVIEW" if income_needs_review else "PASS",
         age.status,
@@ -752,6 +784,8 @@ def submit(application_id: int) -> dict[str, Any]:
     응답에는 **점수를 넣지 않는다**. 접수됐다는 사실과 다음 절차만 돌려준다.
     """
     app = load_application(application_id)
+    if generic.is_generic(app.program_code):
+        return generic.submit(app)
     if app.status != STATUS_DRAFT:
         raise HTTPException(400, "이미 제출된 신청입니다.")
 
@@ -819,6 +853,8 @@ def status(application_id: int) -> dict[str, Any]:
     읽더라도 진행 단계를 정하는 데만 쓴다.
     """
     app = load_application(application_id)
+    if generic.is_generic(app.program_code):
+        return generic.status(app)
     program = get_program(app.program_code)
     documents = list_documents(application_id)
 

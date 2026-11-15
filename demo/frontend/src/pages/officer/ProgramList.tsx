@@ -98,6 +98,7 @@ export default function ProgramList({ onNew, onOpen }: Props) {
                 >
                   <span className="plist__top">
                     <span className={`plist__chip plist__chip--${item.phase}`}>{item.phase_label}</span>
+                    {item.builtin && <span>기본 사업 · 읽기 전용</span>}
                     {item.builtin && <span className="plist__tag">기본 사업</span>}
                   </span>
                   <strong className="plist__name">{item.title}</strong>

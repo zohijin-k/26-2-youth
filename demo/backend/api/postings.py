@@ -143,7 +143,9 @@ def _public_dict(posting: ProgramPosting, today: date) -> dict[str, Any]:
     """신청자 목록의 사업 한 건."""
     phase = phase_of(posting, today)
     builtin = posting.rule_code is not None
-    can_apply = phase == PHASE_OPEN and builtin
+    from . import posting_workspace, posting_workflow
+    generic_ready = posting_workspace.managed(posting) and not posting_workflow.publish_blockers(posting)
+    can_apply = phase == PHASE_OPEN and (builtin or generic_ready)
     return {
         "id": posting.id,
         "title": posting.title,
@@ -153,7 +155,7 @@ def _public_dict(posting: ProgramPosting, today: date) -> dict[str, Any]:
         "phase_label": PHASE_LABELS[phase],
         "builtin": builtin,
         "can_apply": can_apply,
-        "apply_path": APPLY_PATH if can_apply else None,
+        "apply_path": (APPLY_PATH if builtin else f"/apply/programs/{posting.id}/identity") if can_apply else None,
         "has_notice": _stored_file(posting, "notice") is not None,
     }
 
@@ -179,7 +181,7 @@ def _officer_dict(
     data = _public_detail_dict(posting, today)
     has_forms = _stored_file(posting, "forms") is not None
     base = f"/api/officer/postings/{posting.id}/files"
-    application_count, needs_check_count = counts.get(posting.rule_code or "", (0, 0))
+    application_count, needs_check_count = counts.get(posting.rule_code or f"posting_{posting.id}", (0, 0))
     data.update(
         {
             "notice_url": f"{base}/notice.pdf" if data["has_notice"] else None,
@@ -208,7 +210,7 @@ def _counts(postings: list[ProgramPosting]) -> dict[str, tuple[int, int]]:
     신청 목록의 확인 필요 탭과 같은 함수(`officer.queue_of`)로 가른다.
     규칙 코드가 없는 사업은 신청 화면이 아직 없어 여기에 잡히지 않고 0으로 나간다.
     """
-    codes = {p.rule_code for p in postings if p.rule_code}
+    codes = {p.rule_code or f"posting_{p.id}" for p in postings}
     if not codes:
         return {}
     tally = {code: [0, 0] for code in codes}
@@ -294,6 +296,19 @@ def _read_pdf(upload: UploadFile | None, kind: str) -> tuple[bytes, str]:
         raise HTTPException(422, f"{label}는 {MAX_PDF_LABEL} 이하만 올릴 수 있습니다.")
     if not data.startswith(PDF_MAGIC):
         raise HTTPException(422, f"{label}는 PDF 파일만 올릴 수 있습니다.")
+    import pymupdf
+    try:
+        with pymupdf.open(stream=data, filetype="pdf") as pdf:
+            if pdf.needs_pass:
+                raise HTTPException(422, f"{label}의 암호를 해제한 뒤 올려 주세요.")
+            if not pdf.page_count:
+                raise HTTPException(422, f"{label}에 쪽이 없습니다.")
+            if kind == "forms" and pdf.page_count > 20:
+                raise HTTPException(422, "서식 PDF는 파일당 20쪽 이하로 올려 주세요.")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(422, f"{label}를 읽을 수 없습니다. 정상적인 PDF를 올려 주세요.") from None
     name = Path(upload.filename.replace("\\", "/")).name.strip()[:200]
     return data, name or f"{kind}.pdf"
 
@@ -376,6 +391,10 @@ def create_posting(
     apply_end: str | None = Form(None),
     notice_pdf: UploadFile | None = File(None),
     forms_pdf: UploadFile | None = File(None),
+    forms_pdfs: list[UploadFile] = File(default=[]),
+    workflow_version: int = Form(0),
+    required_docs: str = Form("[]"),
+    guidance_text: str = Form(""),
 ) -> dict[str, Any]:
     """새 사업을 작성 중 상태로 만든다.
 
@@ -389,6 +408,16 @@ def create_posting(
     _check_period(start, end)
     notice_bytes, notice_name = _read_pdf(notice_pdf, "notice")
     forms_bytes, forms_name = _read_pdf(forms_pdf, "forms")
+
+    if workflow_version not in (0, 1):
+        raise HTTPException(422, "사업 작성 방식을 확인해 주세요.")
+    from . import posting_workspace
+    slots = posting_workspace.validate_slots(required_docs)
+    extras = [_read_pdf(upload, "forms") for upload in forms_pdfs]
+    if len(extras) > 9:
+        raise HTTPException(422, "서식 PDF는 10개 이하로 올려 주세요.")
+    if len(guidance_text) > GUIDANCE_MAX:
+        raise HTTPException(422, "안내 문구는 20,000자 이하로 입력해 주세요.")
 
     posting = ProgramPosting(
         title=clean_title,
@@ -411,6 +440,8 @@ def create_posting(
             (folder / "forms.pdf").write_bytes(forms_bytes)
             posting.notice_path = f"{POSTINGS_DIR}/{posting.id}/notice.pdf"
             posting.forms_path = f"{POSTINGS_DIR}/{posting.id}/forms.pdf"
+            if workflow_version == 1:
+                posting_workspace.initialize(s, posting, slots, [(forms_bytes, forms_name), *extras], guidance_text)
             s.add(posting)
             s.commit()
         except Exception:
@@ -472,10 +503,17 @@ def publish_posting(posting_id: int) -> dict[str, Any]:
         posting = _find(s, posting_id)
         if posting.status == POSTING_PUBLISHED:
             raise HTTPException(409, "이미 게시한 사업입니다.")
+        from .posting_workspace import managed, form_rows
+        if managed(posting) and (not form_rows(posting_id) or any(not row.confirmed_hash for row in form_rows(posting_id))):
+            raise HTTPException(409, "서식 틀을 확인하고 확정한 뒤 게시해 주세요.")
         if posting.rule_code is None:
             for kind, (_, _, label) in FILE_KINDS.items():
                 if _stored_file(posting, kind) is None:
                     raise HTTPException(409, f"{label}가 없어 게시할 수 없습니다.")
+        from .posting_workflow import publish_blockers
+        blockers = publish_blockers(posting)
+        if blockers:
+            raise HTTPException(409, " ".join(blockers))
         now = datetime.now()
         posting.status = POSTING_PUBLISHED
         if posting.published_at is None:

@@ -44,7 +44,7 @@
   --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px; --sp-8:32px; --sp-10:40px; --sp-12:48px; --sp-16:64px;
 
   /* shape */
-  --radius-4:4px; --radius-6:6px; --radius-8:8px; --radius-12:12px; --radius-pill:999px;
+  --radius-0:0; --radius-4:4px; --radius-6:6px; --radius-8:8px; --radius-12:12px; --radius-pill:999px;
   --shadow-1:0 0 2px rgb(0 0 0 / 5%),0 4px 8px rgb(0 0 0 / 8%);
   --shadow-2:0 0 2px rgb(0 0 0 / 8%),0 8px 16px rgb(0 0 0 / 12%);
   --shadow-3:0 0 2px rgb(0 0 0 / 8%),0 16px 24px rgb(0 0 0 / 12%);
@@ -57,6 +57,8 @@
   /* control / layout */
   --control-lg:56px; --control-md:48px; --control-sm:40px; --ease:160ms ease;
   --shell-max:1200px; --content-max:880px; --gutter:24px; --shell-h:72px;
+  --field-short:360px;      /* 성명·휴대폰처럼 짧은 값의 입력 칸 */
+  --sign-max:560px;         /* 서명 칸 최대 폭 */
   --z-sticky:20; --z-skip:90; --z-modal:100;
 }
 

@@ -141,6 +141,9 @@ def checklist_from_inputs(
 
 
 def checklist_for(app: Application) -> list[DocRequirement]:
+    from .. import generic_programs as generic
+    if generic.is_generic(app.program_code):
+        return generic.checklist(app)
     return checklist_from_inputs(
         get_program(app.program_code),
         doc_context(app),

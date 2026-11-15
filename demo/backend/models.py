@@ -13,6 +13,7 @@ from typing import Any, Optional
 
 from sqlalchemy import JSON, Column, UniqueConstraint
 from sqlmodel import Field, Session, SQLModel, create_engine
+from .rules.programs import JOB_PACKAGE
 
 DB_PATH = Path(__file__).resolve().parents[1] / "demo.db"
 engine = create_engine(f"sqlite:///{DB_PATH}", connect_args={"check_same_thread": False})
@@ -211,6 +212,27 @@ class ProgramPosting(SQLModel, table=True):
     published_at: Optional[datetime] = None
 
 
+class ProgramApplicationSnapshot(SQLModel, table=True):
+    """Immutable application-owned published form and document configuration."""
+    application_id: int = Field(primary_key=True, foreign_key="application.id")
+    posting_id: int = Field(index=True)
+    snapshot_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=datetime.now)
+
+
+class ProgramForm(SQLModel, table=True):
+    """Uploaded form and officer-reviewed layout; additive for existing databases."""
+    __table_args__ = {"sqlite_autoincrement": True}
+    id: Optional[int] = Field(default=None, primary_key=True)
+    posting_id: int = Field(index=True, foreign_key="programposting.id")
+    file_name: str
+    file_path: str
+    layout_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    confirmed_hash: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+
 #: 병합 PDF 페이지 중 어느 슬롯에도 배정되지 않은 것.
 UNASSIGNED_SLOT = "unassigned"
 
@@ -226,7 +248,7 @@ POSTING_PUBLISHED = "published"
 POSTING_CLOSED = "closed"
 
 #: 사업 저장소에 미리 올려 두는 기본 사업의 규칙 코드. 두배적금은 올리지 않는다.
-BUILTIN_POSTING_CODES = ("job_package",)
+BUILTIN_POSTING_CODES = (JOB_PACKAGE,)
 
 
 def init_db() -> None:

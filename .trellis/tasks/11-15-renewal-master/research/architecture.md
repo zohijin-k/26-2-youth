@@ -1,0 +1,3 @@
+# Initial architecture
+
+Existing postings API persists ProgramPosting (draft/published/closed), single notice/forms PDF paths and template_json. ProgramConfig in rules/programs.py supplies immutable built-in eligibility/required fields. required_docs.py creates per-program slots. PdfFormsWorkspace overlays fixture coordinates in PDF point space and writes built-in forms through API form exports. ApplyFlow currently creates job-package drafts on mount. OfficerApp routes registry/new/workspace; ProgramWorkspace hosts OfficerConsole and built-in criteria; ReviewDetail and DocumentViewer are protected. No project skill directories are present; load specs directly.

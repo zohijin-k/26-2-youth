@@ -16,7 +16,8 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 from sqlmodel import select
 
-from ..models import STATUS_DRAFT, Application, Consent, get_session
+from ..models import STATUS_DRAFT, Application, Consent, Document, get_session
+from .. import generic_programs as generic
 from ..forms.signature_scan import signature_scan_paths
 from ..forms.email import is_valid_email, normalize_email
 from ..rules.criteria import latest as latest_criteria
@@ -32,6 +33,7 @@ SIGNATURES = STORAGE / "signatures"
 
 class CreateRequest(BaseModel):
     program_code: str
+    applicant_flow_version: int = 0
 
 
 class PatchRequest(BaseModel):
@@ -190,33 +192,45 @@ def _require_draft(app: Application) -> None:
 
 @router.post("")
 def create(body: CreateRequest, response: Response, request: Request) -> dict[str, Any]:
-    get_program(body.program_code)  # 잘못된 사업 코드면 여기서 걸린다
+    if body.applicant_flow_version not in (0, 1):
+        raise HTTPException(422, "신청 화면 버전을 확인해 주세요.")
+    posting = generic.eligible_posting(body.program_code) if generic.is_generic(body.program_code) else None
+    if posting is None:
+        get_program(body.program_code)  # Built-in validation remains unchanged.
     applicant_token = secrets.token_urlsafe(32)
     app = Application(
         application_no=_next_application_no(body.program_code),
         program_code=body.program_code,
-        criteria_version=latest_criteria(body.program_code).version,
+        doc_context_json=({"applicant_flow_version": 1} if body.applicant_flow_version == 1 else {}),
+        criteria_version=None if posting else latest_criteria(body.program_code).version,
         applicant_access_hash=hashlib.sha256(applicant_token.encode("utf-8")).hexdigest(),
     )
     with get_session() as s:
         s.add(app)
+        s.flush()
+        if posting is not None:
+            generic.freeze(s, app, posting)
         s.commit()
         s.refresh(app)
     response.set_cookie(
         key=f"applicant_access_{app.id}",
         value=applicant_token,
-        path=f"/api/applications/{app.id}/forms/files",
+        path="/api" if generic.is_generic(app.program_code) else f"/api/applications/{app.id}/forms/files",
         max_age=5 * 365 * 24 * 60 * 60,
         httponly=True,
         secure=request.url.scheme == "https",
         samesite="lax",
     )
+    if generic.is_generic(app.program_code):
+        return generic.application_dict(app)
     return app.model_dump(exclude={"applicant_access_hash", "written_forms_archive_path", "written_forms_archive_count"})
 
 
 @router.get("/{application_id}")
 def read(application_id: int) -> dict[str, Any]:
     app = _load(application_id)
+    if generic.is_generic(app.program_code):
+        return generic.application_dict(app)
     return {**app.model_dump(exclude={"applicant_access_hash", "written_forms_archive_path", "written_forms_archive_count"}),
             "eligibility_blockers": age_blockers(get_program(app.program_code), app.form1_json or {}, app.identity_json)}
 
@@ -229,9 +243,26 @@ def patch(application_id: int, body: PatchRequest) -> dict[str, Any]:
         if app is None:
             raise HTTPException(404, "신청 건을 찾을 수 없습니다.")
         _require_draft(app)
+        if generic.is_generic(app.program_code):
+            if body.self_check is not None or body.form5 is not None:
+                raise HTTPException(400, "이 사업은 확정된 서식 입력칸만 저장할 수 있습니다.")
+            if body.form1 is not None:
+                app.form1_json = generic.values(app, body.form1)
+            app.updated_at = datetime.now()
+            s.add(app)
+            s.commit()
+            s.refresh(app)
+            return generic.application_dict(app)
         if body.form1 is not None:
             _validate_period_dates(body.form1)
-            app.form1_json = _lock_identity(_normalize_form_values(body.form1), app.identity_json or {})
+            values = _normalize_form_values(body.form1)
+            bankbook = s.exec(select(Document).where(
+                Document.application_id == application_id, Document.slot_key == "bank_account")).first()
+            if bankbook is not None:
+                values["bankbookFileName"] = Path(bankbook.file_path).name
+            elif app.program_code == "job_package" and (app.doc_context_json or {}).get("applicant_flow_version") == 1:
+                values.pop("bankbookFileName", None)
+            app.form1_json = _lock_identity(values, app.identity_json or {})
         if body.self_check is not None:
             app.self_check_json = body.self_check
         if body.form5 is not None:
@@ -309,11 +340,13 @@ def verify_identity(application_id: int, body: IdentityRequest) -> dict[str, Any
             "pledge_signature_path": str(target.relative_to(STORAGE.parent)),
             "pledge_signature_kind": body.signature_kind,
         }
-        app.form1_json = _lock_identity(app.form1_json or {}, app.identity_json)
+        app.form1_json = generic.values(app, app.form1_json or {}, phone=f"{phone[:3]}-{phone[3:7]}-{phone[7:]}") if generic.is_generic(app.program_code) else _lock_identity(app.form1_json or {}, app.identity_json)
         app.updated_at = datetime.now()
         s.add(app)
         s.commit()
         s.refresh(app)
+        if generic.is_generic(app.program_code):
+            return {"identity": generic.application_dict(app)["identity_json"], "form1": app.form1_json, "eligibility_blockers": []}
         return {"identity": app.identity_json, "form1": app.form1_json,
                 "eligibility_blockers": age_blockers(get_program(app.program_code), app.form1_json or {}, app.identity_json)}
 
@@ -412,3 +445,11 @@ def list_consents(application_id: int) -> list[dict[str, Any]]:
             }
             for r in rows
         ]
+
+
+@router.get("/{application_id}/program")
+def application_program(application_id: int) -> dict[str, Any]:
+    app = _load(application_id)
+    if not generic.is_generic(app.program_code):
+        raise HTTPException(404, "게시 사업 신청의 안내가 아닙니다.")
+    return generic.program_info(app)

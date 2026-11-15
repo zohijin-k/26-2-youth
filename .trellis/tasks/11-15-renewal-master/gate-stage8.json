@@ -1,0 +1,158 @@
+{
+  "engine": {
+    "exit": 0,
+    "summary": [
+      "=============================== warnings summary ===============================",
+      "    warnings.warn(",
+      "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
+      "1267 passed, 7 warnings in 34.64s"
+    ],
+    "log": "/tmp/renewal-stage8-engine.log"
+  },
+  "backend": {
+    "exit": 0,
+    "summary": [
+      "=============================== warnings summary ===============================",
+      "    warnings.warn(",
+      "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
+      "1407 passed, 9 warnings in 93.03s (0:01:33)"
+    ],
+    "log": "/tmp/renewal-stage8-backend.log"
+  },
+  "scenarios": {
+    "run_p11_criteria_scenarios": {
+      "exit": 0,
+      "summary": [],
+      "log": "/tmp/renewal-stage8-run_p11_criteria_scenarios.log"
+    },
+    "run_p12_subsidy_criteria_scenarios": {
+      "exit": 0,
+      "summary": [],
+      "log": "/tmp/renewal-stage8-run_p12_subsidy_criteria_scenarios.log"
+    },
+    "run_p13_household_scenarios": {
+      "exit": 0,
+      "summary": [],
+      "log": "/tmp/renewal-stage8-run_p13_household_scenarios.log"
+    },
+    "run_p14_pdf_forms_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage8-run_p14_pdf_forms_scenarios.log"
+    },
+    "run_p15_jbai_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage8-run_p15_jbai_scenarios.log"
+    },
+    "run_p16_job_docs_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage8-run_p16_job_docs_scenarios.log"
+    },
+    "run_p17_own_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage8-run_p17_own_scenarios.log"
+    },
+    "run_p18_applicant_precheck_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage8-run_p18_applicant_precheck_scenarios.log"
+    },
+    "run_p19_nhis_history_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage8-run_p19_nhis_history_scenarios.log"
+    },
+    "run_p20_nhis_continuation_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage8-run_p20_nhis_continuation_scenarios.log"
+    },
+    "run_p2_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage8-run_p2_scenarios.log"
+    },
+    "run_p3_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage8-run_p3_scenarios.log"
+    },
+    "run_p4_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage8-run_p4_scenarios.log"
+    },
+    "run_p5_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage8-run_p5_scenarios.log"
+    },
+    "run_p6_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn(",
+        "  [OK]   supplement_warning: '서류 미비 시 7일 내 보완 안내가 발송됩니다.'",
+        "  [OK]   supplement_warning: '서류 미비 시 7일 내 보완 안내가 발송됩니다.'"
+      ],
+      "log": "/tmp/renewal-stage8-run_p6_scenarios.log"
+    },
+    "run_p7_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage8-run_p7_scenarios.log"
+    },
+    "run_p8_localocr_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage8-run_p8_localocr_scenarios.log"
+    },
+    "run_p9_identity_scenarios": {
+      "exit": 0,
+      "summary": [
+        "  warnings.warn("
+      ],
+      "log": "/tmp/renewal-stage8-run_p9_identity_scenarios.log"
+    }
+  },
+  "frontend": {
+    "exit": 0,
+    "summary": [
+      "✓ built in 199ms",
+      "✔ photos pass without a probe (0.200417ms)",
+      "✔ fail keeps the file and message; retry queues the same file again at the end of the line (0.384458ms)",
+      "ℹ tests 48",
+      "ℹ pass 48",
+      "ℹ fail 0"
+    ],
+    "log": "/tmp/renewal-stage8-frontend.log"
+  }
+}

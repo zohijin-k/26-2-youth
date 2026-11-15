@@ -1,6 +1,6 @@
 import type { OfficerRole } from './api.ts'
 
-export const YOUTH_PROGRAM = 'job_package'
+export { YOUTH_PROGRAM } from './program-scope.ts'
 
 /** 서버의 역할·처리 권한을 유지하면서 화면의 점수제 사업 안내만 교체한다. */
 export function youthOfficerRole(role: OfficerRole): OfficerRole {

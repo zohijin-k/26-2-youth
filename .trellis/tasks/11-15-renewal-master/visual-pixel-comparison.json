@@ -1,0 +1,44 @@
+[
+  {
+    "screen": "programs",
+    "baseline_size": [
+      1440,
+      1000
+    ],
+    "final_size": [
+      1440,
+      1000
+    ],
+    "result": "changed",
+    "changed_pixels": 621,
+    "changed_ratio": 0.00043125
+  },
+  {
+    "screen": "list",
+    "baseline_size": [
+      1440,
+      1539
+    ],
+    "final_size": [
+      1440,
+      1539
+    ],
+    "result": "identical",
+    "changed_pixels": 0,
+    "changed_ratio": 0.0
+  },
+  {
+    "screen": "review",
+    "baseline_size": [
+      1440,
+      1402
+    ],
+    "final_size": [
+      1440,
+      1402
+    ],
+    "result": "identical",
+    "changed_pixels": 0,
+    "changed_ratio": 0.0
+  }
+]

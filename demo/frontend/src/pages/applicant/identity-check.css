@@ -1,31 +1,192 @@
-.idcheck { display: grid; gap: var(--sp-6); }
-.idcheck__form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-6); }
-.idcheck__date-part { display: inline-flex; align-items: center; gap: var(--sp-1); }
-.idcheck__pledge { border-top: 1px solid var(--color-divider); padding-top: var(--sp-6); }
-.idcheck__pledge h3 { margin-bottom: var(--sp-3); }
-.idcheck__pledge > p { margin: 0 0 var(--sp-4); color: var(--color-text-subtle); }
-.idcheck__sign { display: grid; grid-template-columns: var(--sp-16) minmax(0, 1fr); gap: var(--sp-4); margin-top: var(--sp-4); }
-.idcheck__sign-label { padding-top: var(--sp-3); font-size: var(--fs-15); font-weight: var(--fw-bold); }
-.idcheck__modes { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-bottom: var(--sp-3); }
-.idcheck__mode { display: flex; align-items: center; gap: var(--sp-2); min-height: var(--control-sm); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--color-border); border-radius: var(--radius-8); cursor: pointer; }
-.idcheck__mode:has(input:checked) { color: var(--color-text-brand); border-color: var(--color-primary); background: var(--brand-5); }
-.idcheck__mode input { width: var(--sp-5); height: var(--sp-5); margin: 0; accent-color: var(--color-primary); }
-.idcheck__signature-body { min-width: 0; padding: var(--sp-4); margin-top: var(--sp-3); border: 1px solid var(--color-border-strong); border-radius: var(--radius-8); background: var(--gray-5); }
-.idcheck .signature-box { display: flex; flex-wrap: wrap; gap: var(--sp-3); min-width: 0; }
-.idcheck .signature-frame { position: relative; overflow: hidden; max-width: 100%; border: 1px solid var(--color-border); border-radius: var(--radius-8); background: var(--color-surface); }
-.idcheck .signature-pad { display: block; max-width: 100%; touch-action: none; }
-.idcheck .signature-placeholder { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; color: var(--color-text-muted); font-size: var(--fs-15); }
-.idcheck .signature-actions { display: flex; gap: var(--sp-2); }
-.idcheck__file { display: grid; justify-items: start; gap: var(--sp-3); color: var(--color-text-subtle); font-size: var(--fs-15); }
-.idcheck__file input[type=file] { width: 100%; font: inherit; }
-.idcheck__preview { display: grid; max-width: 100%; padding: var(--sp-2); border: 1px solid var(--color-border); border-radius: var(--radius-8); background: var(--color-surface); color: var(--color-text-brand); cursor: zoom-in; }
-.idcheck__preview img { display: block; max-width: 100%; max-height: 160px; object-fit: contain; }
-.idcheck__zoomhint { font-size: var(--fs-15); }
-.idcheck__signature-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--sp-2); margin-top: var(--sp-2); }
-.idcheck__filename { margin-right: auto; font-size: var(--fs-15); }
-.idcheck__done dl { display: grid; gap: var(--sp-3); }
-.idcheck__done dl > div { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: var(--sp-4); }
-.idcheck__done dd { margin: 0; font-weight: var(--fw-bold); }
-.idcheck__error { color: var(--danger-60); }
-@media (max-width: 900px) { .idcheck__form { grid-template-columns: minmax(0, 1fr); } }
-@media (max-width: 600px) { .idcheck__sign { grid-template-columns: minmax(0, 1fr); gap: var(--sp-2); } .idcheck__signature-body { padding: var(--sp-3); } }
+/*
+ * 본인인증. 다른 단계와 같은 틀: 제목·안내는 바탕 위, 입력 묶음은 흰 카드 한 장, 주 버튼은 바탕 위 맨 아래.
+ * 변수는 styles/tokens.css에서만 가져온다. 입력 · 안내 상자 · 버튼 모양은 styles/components.css에 있다.
+ */
+
+.idcheck {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-4);
+}
+
+.idcheck__form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-6);
+}
+
+/* fieldset의 legend에는 .field의 간격이 붙지 않으므로 직접 띄운다. */
+.idcheck legend.field__label { margin-bottom: var(--sp-2); }
+
+/* 성명 · 휴대폰처럼 짧은 값은 칸도 짧게 둔다. */
+.idcheck__field .input { max-width: var(--field-short); }
+
+.idcheck__date-part { display: inline-flex; align-items: center; gap: var(--sp-2); }
+
+/* ── 본인 확인 서약 ───────────────────────────────────────────────────── */
+/* 서약 문장은 항상 펼쳐 두고, 그 아래 크게 누르는 동의 한 줄을 둔다. */
+.idcheck__pledge {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-2);
+}
+
+.idcheck__pledge-title { font-size: var(--fs-17); }
+
+.idcheck__pledge-text {
+  margin: 0;
+  font-size: var(--fs-16);
+  line-height: var(--lh-base);
+}
+
+.idcheck__agree { font-weight: var(--fw-bold); }
+
+/* ── 서명 ─────────────────────────────────────────────────────────────── */
+.idcheck__sign { max-width: var(--sign-max); }
+
+/* 서명하는 자리. 직접 서명이면 캔버스, 파일이면 고른 파일이 들어간다. */
+.idcheck__sign-area {
+  display: grid;
+  place-items: center;
+  min-height: 202px;
+  overflow: hidden;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-8);
+  background: var(--color-surface);
+}
+
+.idcheck__sign-area.is-invalid { border-color: var(--danger-50); }
+
+/* SignaturePad는 서식 화면과 함께 쓰는 부품이다. 여기서는 테두리 없이 자리 전체를 채운다. */
+.idcheck__sign-area .signature-box,
+.idcheck__sign-area .signature-frame {
+  display: block;
+}
+
+.idcheck__sign-area .signature-frame {
+  position: relative;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-0);
+  background: var(--color-surface);
+}
+
+/* 서명 기준선: 어디에 쓰면 되는지 보이게. */
+.idcheck__sign-area .signature-frame::after {
+  content: '';
+  position: absolute;
+  right: var(--sp-6);
+  bottom: 26%;
+  left: var(--sp-6);
+  border-bottom: 1px dashed var(--gray-30);
+  pointer-events: none;
+}
+
+.idcheck__sign-area .signature-pad {
+  display: block;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.idcheck__sign-area .signature-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--color-text-muted);
+  font-size: var(--fs-15);
+  pointer-events: none;
+}
+
+/* 서명 칸 자체의 지우기 · 상태 줄은 숨기고, 아래 줄의 지우기 하나만 쓴다. */
+.idcheck__sign-area .signature-actions { display: none; }
+
+.idcheck__file {
+  display: grid;
+  justify-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-6) var(--sp-4);
+  text-align: center;
+}
+
+.idcheck__file-guide {
+  display: grid;
+  justify-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+  color: var(--color-text-subtle);
+  font-size: var(--fs-15);
+}
+
+.idcheck__preview {
+  position: relative;
+  display: grid;
+  place-items: center;
+  max-width: 100%;
+  min-width: 120px;
+  min-height: 72px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  background: var(--color-surface);
+  cursor: zoom-in;
+}
+
+.idcheck__preview:hover { border-color: var(--color-border-strong); }
+
+.idcheck__preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 112px;
+  object-fit: contain;
+}
+
+.idcheck__zoomhint {
+  position: absolute;
+  right: var(--sp-1);
+  bottom: var(--sp-1);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 2px var(--sp-2);
+  border-radius: var(--radius-4);
+  background: var(--color-dim);
+  color: var(--color-text-on-primary);
+  font-size: var(--fs-13);
+  line-height: var(--lh-tight);
+}
+
+.idcheck__filename {
+  max-width: 100%;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-text-subtle);
+  font-size: var(--fs-15);
+}
+
+/* 파일 입력은 화면에 보이지 않는다. 포커스 고리는 "파일 선택" 단추에 그린다. */
+.idcheck__file input:focus-visible + .idcheck__file-pick {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.idcheck__sign-foot {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.idcheck__sign-foot .btn { flex: none; }
+
+/* ── 인증을 마친 화면 ─────────────────────────────────────────────────── */
+.idcheck__verified { margin-top: var(--sp-2); }
+
+.idcheck__after { margin: 0; }
+
+@media (max-width: 600px) {
+  .idcheck__form { gap: var(--sp-5); }
+}

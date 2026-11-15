@@ -147,3 +147,33 @@ Associate an isolated ordinal with a law-change annotation only when adjacency i
 ## 12. Independent file quality
 
 Reading/identity/history uncertainty does not downgrade a separately measured original-resolution defect. The demo upload boundary treats LOW_IMAGE_QUALITY as FAIL while keeping LOW_OCR_CONFIDENCE review-only. Scalable text pages and unknown measurements cannot establish that defect. Preserve additional-page form scope and all other certain findings; see failure-filtering.md sections10–11 for daily selected-history completeness, quality provenance and full blocker-message contracts. This does not modify engine/ rules or income/age/work thresholds.
+
+
+## Account attachment boundary
+
+The applicant account section stores bankbook bytes through the existing document store and inline preview route. Validate content and size before persistence; retain `bankbookFileName` across delayed autosaves. An uploaded bankbook is `NEEDS_REVIEW` until an officer compares the printed account, and its review status participates in review aggregation without changing engine rules. Compare account holder against verified identity at final-check and submit. Historical filename-only fixtures retain compatibility; filenames alone are not document verification.
+
+
+## Managed posting templates
+
+New posting screens create `workflow_version=1`; extension data lives under `/workspace` while legacy response schemas remain stable. `ProgramForm` is an additive table, so existing databases start through `create_all` without a destructive reset. All automatic candidates, including AcroForm widgets, require explicit human review. Empty/image-only drafts require manual fields. Validate finite boxes against actual PDF page bounds, normalize absent choice groups, and keep renderer types compatible with existing coordinates. Saving a layout clears its confirmation hash. Publishing managed postings requires every form to have fields and a confirmation hash matching the current layout, existing PDFs and a valid period. Preserve original coordinate fixtures.
+
+
+## Published program applications
+
+Generic `posting_<id>` applications freeze confirmed layouts, selected document requirements and copied PDF bytes in an additive `ProgramApplicationSnapshot`. Keep built-in eligibility and engine rules unchanged. Applicant fields use globally unique public IDs and positive projections; validate field types and redact resident-number text before persistence. Name/birth autofill is server-locked. Generic application/form/file routes reuse the existing applicant cookie hash and require owner access; officer routes stay separate.
+
+Generic review is PASS only when all submitted documents and required slots are PASS and required form fields are complete. Otherwise use NEEDS_REVIEW; confirmed document FAIL still blocks submission through shared document checks. Always show the unconfigured-eligibility notice to officers. Recheck current posting state/period before draft submission; keep submitted snapshots readable after later posting edits or closure. Do not connect an incompatible score sheet by altering protected detail components.
+
+New browser job-package sessions and all actual bankbook uploads carry the strict flow marker. Require an existing matching document row and bytes, preserve the marker through context updates, clear stale filenames on delete, and store same-name replacements at unique paths. Legacy direct synthetic API contracts remain separate; never treat a filename as new-upload verification.
+
+
+## Optional text drafting
+
+Default provider is none. JBAI requires explicit provider/enabled settings plus environment credentials; tests inject fake transports and never call live services. Guidance accepts only server-owned public posting facts, selected canonical document labels and public notice text. Review explanations accept canonical codes only and reconstruct static field labels/rule wording; never pass stored messages, OCR values or applicant fields. Project inputs again immediately before transport, disable redirects, and do not log provider exceptions. Explanations are non-authoritative text displayed below rule results and cannot change decisions.
+
+
+Required dynamic text uses trimmed emptiness checks at final-check, submit and review aggregation; whitespace, tabs and nonbreaking spaces must never establish a complete required field. Keep a synthetic API regression that verifies both submission refusal and NEEDS_REVIEW.
+
+
+Generic submitted documents are immutable: deny deletes and uploads after submission. Generic replacements use fresh directories and replace rows in one save transaction; original bytes remain available if processing fails. Serialize owner-authorized generic mutations per application/event loop in the local ASGI process. Interrupted generic merges retain FAIL and mark only newly saved incomplete rows NEEDS_REVIEW. Preserve all legacy document assessment behavior.

@@ -1,17 +1,17 @@
 /** 백엔드 호출. vite dev 서버가 /api 를 :8000 으로 프록시한다. */
 
 import { FORM_FIELD_KEYS } from './forms/form-field-bindings.ts'
-import {
-  MOCK_ROLES,
-  isMockId,
-  mockApplicationReasons,
-  mockBulkRefusal,
-  mockDecide,
-  mockOfficerList,
-  mockReviewDetail,
-} from './pages/officer/mock-data.ts'
+import { youthOfficerRole } from './officer-scope.ts'
+import { YOUTH_PROGRAM } from './program-scope.ts'
 
-import { YOUTH_PROGRAM, youthOfficerRole } from './officer-scope.ts'
+type OfficerMocks = typeof import('./pages/officer/mock-data.ts')
+let loadedOfficerMocks: OfficerMocks | null = null
+const loadOfficerMocks = async (): Promise<OfficerMocks> =>
+  loadedOfficerMocks ??= await import('./pages/officer/mock-data.ts')
+
+/** Loaded only by officer requests; synchronous membership supports the officer banner. */
+export const isOfficerMockId = (applicationId: number): boolean =>
+  loadedOfficerMocks?.isMockId(applicationId) ?? false
 
 /**
  * 사업 설정. 화면 분기는 전부 이 값으로 한다.
@@ -27,7 +27,7 @@ export interface Program {
   document_cutoff: string
   age_basis_date: string
   birth_range: [string, string]
-  selection: 'scored' | 'first_come'
+  selection: 'scored' | 'first_come' | 'manual'
   is_first_come: boolean
   supplement_days: number | null
   allows_supplement: boolean
@@ -226,7 +226,7 @@ export interface DocContext {
 export interface ChecklistProgram {
   code: string
   name: string
-  selection: 'scored' | 'first_come'
+  selection: 'scored' | 'first_come' | 'manual'
   allows_supplement: boolean
   supplement_days: number | null
   document_cutoff: string
@@ -261,11 +261,11 @@ export interface MergedUploadResult {
 
 /** 제출을 막는 항목 하나. `goto`는 "어디로 가면 고칠 수 있는가"다. */
 export interface Blocker {
-  kind: 'form' | 'consent' | 'document' | 'context' | 'subsidy' | 'eligibility'
+  kind: 'form' | 'consent' | 'document' | 'context' | 'subsidy' | 'eligibility' | 'identity'
   target: string
   label: string
   message: string
-  goto: 'form1' | 'consent' | 'upload' | 'subsidy'
+  goto: 'form1' | 'consent' | 'upload' | 'subsidy' | 'identity' | 'forms'
 }
 
 export interface FinalCheck {
@@ -274,7 +274,7 @@ export interface FinalCheck {
   program_name: string
   allows_supplement: boolean
   supplement_days: number | null
-  selection: 'scored' | 'first_come'
+  selection: 'scored' | 'first_come' | 'manual'
   first_come: FirstComeInfo | null
   subsidy: SubsidyEstimate | null
   status: string
@@ -350,7 +350,7 @@ export const fetchPrograms = () => json<Program[]>('/api/programs')
 export const createApplication = (programCode: string) =>
   json<ApplicationRow>('/api/applications', {
     method: 'POST',
-    body: JSON.stringify({ program_code: programCode }),
+    body: JSON.stringify({ program_code: programCode, applicant_flow_version: 1 }),
   })
 
 export const fetchApplication = (id: number) =>
@@ -370,6 +370,10 @@ export const patchApplication = (
 
 export interface FormFieldLayout {
   type: 'text' | 'check' | 'image'
+  required?: boolean
+  field_type?: 'text' | 'number' | 'date' | 'check' | 'radio' | 'signature'
+  readonly?: boolean
+  group?: string
   control?: 'radio_text'
   page: number
   box: [number, number, number, number]
@@ -733,6 +737,7 @@ export interface OfficerList {
 
 /** 목록에서 행을 펼쳤을 때 보이는, 이 건을 확인해야 하는 사유. */
 export interface ApplicationReasons {
+  explanation?: { text: string; label: string; basis: string } | null
   application_id: number
   ai_status: DocStatus | null
   ai_status_label: string
@@ -884,42 +889,45 @@ const youthList = (list: OfficerList): OfficerList => ({
 })
 
 export const fetchOfficerRoles = async (): Promise<OfficerRole[]> => {
-  if (isOfficerMockActive()) return MOCK_ROLES.map(youthOfficerRole)
+  if (isOfficerMockActive()) return (await loadOfficerMocks()).MOCK_ROLES.map(youthOfficerRole)
   try {
     return (await json<OfficerRole[]>('/api/officer/roles')).map(youthOfficerRole)
   } catch (error) {
     if (mockMode().blocked) throw error
     mockActive = true
-    return MOCK_ROLES.map(youthOfficerRole)
+    return (await loadOfficerMocks()).MOCK_ROLES.map(youthOfficerRole)
   }
 }
 
 export const fetchOfficerList = async (params: OfficerListQuery): Promise<OfficerList> => {
+  // Published programs keep their own server list and never receive synthetic fallback rows.
+  if (params.program?.startsWith('posting_')) {
+    return json<OfficerList>(`/api/officer/applications?${query({ ...params })}`)
+  }
   const scoped = { ...params, program: YOUTH_PROGRAM, sort: 'submitted' }
-  if (isOfficerMockActive()) return youthList(mockOfficerList(scoped))
+  const mockList = async () => youthList((await loadOfficerMocks()).mockOfficerList(scoped))
+  if (isOfficerMockActive()) return mockList()
   try {
     const body = await json<OfficerList>(`/api/officer/applications?${query(scoped)}`)
-    // 구분별 건수는 구분·처리상태·AI판정 필터와 무관하다. 그래서 "접수 건이 하나도
-    // 없다"는 관할·검색어·기간을 걸지 않았을 때 세 구분의 합이 0인 경우다.
     const unfiltered = !params.region && !params.town && !params.q
       && !params.submitted_from && !params.submitted_to
     const received = body.queues.needs_check + body.queues.pass + body.queues.done
     if (received === 0 && unfiltered && !mockMode().blocked) {
       mockActive = true
-      return youthList(mockOfficerList(scoped))
+      return mockList()
     }
     return youthList(body)
   } catch (error) {
     if (mockMode().blocked) throw error
     mockActive = true
-    return youthList(mockOfficerList(scoped))
+    return mockList()
   }
 }
 
 export const fetchReviewDetail = async (applicationId: number, role: string): Promise<ReviewDetailData> => {
-  // A real youth detail ID must keep working even after an empty list activated mock mode.
-  const detail = isMockId(applicationId) && !mockMode().blocked
-    ? mockReviewDetail(applicationId, role)
+  const mocks = mockMode().blocked ? null : await loadOfficerMocks()
+  const detail = mocks?.isMockId(applicationId)
+    ? mocks.mockReviewDetail(applicationId, role)
     : await json<ReviewDetailData>(`/api/officer/applications/${applicationId}?${query({ role })}`)
   if (detail.program_code !== YOUTH_PROGRAM) {
     throw new Error('이 화면에서는 청년 취업지원패키지 신청만 확인할 수 있습니다.')
@@ -928,19 +936,22 @@ export const fetchReviewDetail = async (applicationId: number, role: string): Pr
 }
 
 /** 행을 펼쳤을 때 읽는 확인 필요 사유. 저장된 규칙 판정 결과만 온다. */
-export const fetchApplicationReasons = async (applicationId: number, role: string): Promise<ApplicationReasons> =>
-  isMockId(applicationId) && !mockMode().blocked
-    ? mockApplicationReasons(applicationId)
+export const fetchApplicationReasons = async (applicationId: number, role: string): Promise<ApplicationReasons> => {
+  const mocks = mockMode().blocked ? null : await loadOfficerMocks()
+  return mocks?.isMockId(applicationId)
+    ? mocks.mockApplicationReasons(applicationId)
     : json<ApplicationReasons>(`/api/officer/applications/${applicationId}/reasons?${query({ role })}`)
+}
 
-export const postDecision = (
+export const postDecision = async (
   applicationId: number,
   body: { role: string; decision: DecisionKey; memo: string },
 ) => {
-  if (isMockId(applicationId) && !mockMode().blocked) {
-    mockDecide([applicationId], body.role, body.decision, body.memo)
-    const detail = mockReviewDetail(applicationId, body.role)
-    return Promise.resolve({ decision: body.decision, label: detail.decision.label, decided_at: detail.decision.decided_at })
+  const mocks = mockMode().blocked ? null : await loadOfficerMocks()
+  if (mocks?.isMockId(applicationId)) {
+    mocks.mockDecide([applicationId], body.role, body.decision, body.memo)
+    const detail = mocks.mockReviewDetail(applicationId, body.role)
+    return { decision: body.decision, label: detail.decision.label, decided_at: detail.decision.decided_at }
   }
   return json<{ decision: string; label: string; decided_at: string | null }>(
     `/api/officer/applications/${applicationId}/decision`,
@@ -948,16 +959,17 @@ export const postDecision = (
   )
 }
 
-export const postBulkDecision = (body: {
+export const postBulkDecision = async (body: {
   role: string
   decision: DecisionKey
   memo: string
   application_ids: number[]
 }) => {
-  if (!mockMode().blocked && body.application_ids.every(isMockId)) {
-    const refusal = mockBulkRefusal(body.application_ids, body.role, body.decision)
-    if (refusal) return Promise.reject(new Error(refusal))
-    return Promise.resolve({ processed: mockDecide(body.application_ids, body.role, body.decision, body.memo) })
+  const mocks = mockMode().blocked ? null : await loadOfficerMocks()
+  if (mocks && body.application_ids.every(mocks.isMockId)) {
+    const refusal = mocks.mockBulkRefusal(body.application_ids, body.role, body.decision)
+    if (refusal) throw new Error(refusal)
+    return { processed: mocks.mockDecide(body.application_ids, body.role, body.decision, body.memo) }
   }
   return json<{ processed: number }>('/api/officer/applications/decisions', {
     method: 'POST', body: JSON.stringify(body),
@@ -1023,6 +1035,10 @@ export interface NewPostingFields {
   apply_end: string
   notice_pdf: File
   forms_pdf: File
+  forms_pdfs?: File[]
+  required_docs?: string[]
+  guidance_text?: string
+  workflow_version?: number
 }
 
 export type PostingPatch = Partial<Pick<OfficerPosting, 'title' | 'apply_start' | 'apply_end' | 'guidance_text'>>
@@ -1057,13 +1073,13 @@ export const isOfficerMockCounted = () => mockCountsUsed
  * 카드의 숫자와 그 카드를 눌러 들어간 목록의 숫자가 같아야 한다. 신청 목록은
  * `?mock=1`이거나, `?mock=0`이 아니면서 실제 접수 건이 0건일 때 목업으로 바뀐다.
  */
-function withMockCounts(posting: OfficerPosting): OfficerPosting {
+async function withMockCounts(posting: OfficerPosting): Promise<OfficerPosting> {
   if (!posting.builtin) return posting
   const mode = mockMode()
   const mocked = !mode.blocked && (mode.forced || posting.application_count === 0)
   mockCountsUsed = mocked
   if (!mocked) return posting
-  const list = mockOfficerList({ role: 'province', program: YOUTH_PROGRAM, sort: 'submitted', page: 1, page_size: 1 })
+  const list = (await loadOfficerMocks()).mockOfficerList({ role: 'province', program: YOUTH_PROGRAM, sort: 'submitted', page: 1, page_size: 1 })
   return { ...posting, application_count: list.total, needs_check_count: list.queues.needs_check }
 }
 
@@ -1075,7 +1091,7 @@ export const fetchPosting = (id: number) => json<PublicPostingDetail>(`/api/post
 
 /** 담당자 화면: 작성 중인 사업까지. 작성 중이 맨 앞에 온다. */
 export const fetchOfficerPostings = async (): Promise<OfficerPosting[]> =>
-  (await json<{ items: OfficerPosting[] }>('/api/officer/postings')).items.map(withMockCounts)
+  Promise.all((await json<{ items: OfficerPosting[] }>('/api/officer/postings')).items.map(withMockCounts))
 
 export const fetchOfficerPosting = async (id: number): Promise<OfficerPosting> =>
   withMockCounts(await json<OfficerPosting>(`/api/officer/postings/${id}`))
@@ -1088,6 +1104,10 @@ export function createPosting(fields: NewPostingFields) {
   body.append('apply_end', fields.apply_end)
   body.append('notice_pdf', fields.notice_pdf)
   body.append('forms_pdf', fields.forms_pdf)
+  for (const form of fields.forms_pdfs || []) body.append('forms_pdfs', form)
+  if (fields.workflow_version !== undefined) body.append('workflow_version', String(fields.workflow_version))
+  if (fields.required_docs !== undefined) body.append('required_docs', JSON.stringify(fields.required_docs))
+  if (fields.guidance_text !== undefined) body.append('guidance_text', fields.guidance_text)
   return writePosting<OfficerPosting>('/api/officer/postings', { method: 'POST', body })
 }
 
@@ -1107,3 +1127,5 @@ export const closePosting = (id: number) =>
 /** 작성 중인 사업만 지울 수 있다. 올린 PDF도 함께 지워진다. */
 export const deletePosting = (id: number) =>
   writePosting<void>(`/api/officer/postings/${id}`, { method: 'DELETE' })
+
+export const fetchReasonExplanation = (id: number, role: string) => json<{ text: string; label: string; basis: string }>(`/api/officer/applications/${id}/reason-explanation?${query({ role })}`)

@@ -1,0 +1,190 @@
+{
+  "viewport": {
+    "width": 940,
+    "height": 1000
+  },
+  "date": "2026-11-15",
+  "posting_id": 2,
+  "application_id": 1,
+  "application_no": "JP-2026-000001",
+  "counts_before": {
+    "applications": 0,
+    "postings": 1
+  },
+  "counts_after": {
+    "applications": 1,
+    "postings": 2
+  },
+  "assertions": [
+    {
+      "name": "unconfirmed template publish rejected",
+      "passed": true,
+      "detail": 409
+    },
+    {
+      "name": "draft hidden from applicant",
+      "passed": true,
+      "detail": 404
+    },
+    {
+      "name": "three detected fields explicitly reviewed and confirmed",
+      "passed": true,
+      "detail": 3
+    },
+    {
+      "name": "managed program published through UI",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "three identity visits create zero applications",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "identity submit refresh reuses application",
+      "passed": true,
+      "detail": "JP-2026-000001"
+    },
+    {
+      "name": "other cookie context cannot read application",
+      "passed": true,
+      "detail": 403
+    },
+    {
+      "name": "owner cookie renders actual form image and locks identity autofill",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "unknown high-resolution synthetic image stays NEEDS_REVIEW",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "owner original preview remains inline",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "submission generates owner-readable written PDF archive",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "submitted generic document deletion blocked and archive unchanged",
+      "passed": true,
+      "detail": 409
+    },
+    {
+      "name": "submitted generic document reupload blocked and archive unchanged",
+      "passed": true,
+      "detail": 409
+    },
+    {
+      "name": "officer reasons show rule basis plus default-off automatic explanation",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "incompatible generic review detail remains unlinked",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "needs-check bulk selection remains blocked",
+      "passed": true,
+      "detail": 409
+    },
+    {
+      "name": "one applicant reaches officer needs-check queue",
+      "passed": true,
+      "detail": "JP-2026-000001"
+    }
+  ],
+  "shots": [
+    {
+      "name": "officer-step1",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-renewal-master/shots/officer-step1.png",
+      "url": "http://127.0.0.1:5183/officer/programs/new?mock=0"
+    },
+    {
+      "name": "officer-step2",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-renewal-master/shots/officer-step2.png",
+      "url": "http://127.0.0.1:5183/officer/programs/2?mock=0"
+    },
+    {
+      "name": "officer-step3",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-renewal-master/shots/officer-step3.png",
+      "url": "http://127.0.0.1:5183/officer/programs/2?mock=0"
+    },
+    {
+      "name": "officer-step4",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-renewal-master/shots/officer-step4.png",
+      "url": "http://127.0.0.1:5183/officer/programs/2?mock=0"
+    },
+    {
+      "name": "applicant-program-info",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-renewal-master/shots/applicant-program-info.png",
+      "url": "http://127.0.0.1:5183/programs/2"
+    },
+    {
+      "name": "applicant-identity",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-renewal-master/shots/applicant-identity.png",
+      "url": "http://127.0.0.1:5183/apply/programs/2/identity"
+    },
+    {
+      "name": "applicant-forms",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-renewal-master/shots/applicant-forms.png",
+      "url": "http://127.0.0.1:5183/apply/programs/2/forms"
+    },
+    {
+      "name": "applicant-upload",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-renewal-master/shots/applicant-upload.png",
+      "url": "http://127.0.0.1:5183/apply/programs/2/upload"
+    },
+    {
+      "name": "applicant-final",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-renewal-master/shots/applicant-final.png",
+      "url": "http://127.0.0.1:5183/apply/programs/2/final"
+    },
+    {
+      "name": "applicant-receipt",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-renewal-master/shots/applicant-receipt.png",
+      "url": "http://127.0.0.1:5183/apply/programs/2/complete"
+    },
+    {
+      "name": "applicant-mypage",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-renewal-master/shots/applicant-mypage.png",
+      "url": "http://127.0.0.1:5183/apply/programs/2/mypage"
+    },
+    {
+      "name": "officer-needs-check",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-renewal-master/shots/officer-needs-check.png",
+      "url": "http://127.0.0.1:5183/officer/programs/2?mock=0"
+    }
+  ],
+  "page_errors": [],
+  "request_failures": [
+    {
+      "path": "/api/applications/1/forms/files/original-hwp/options",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/api/applications/1/forms",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/api/applications/1/forms/layouts/program_form_1",
+      "error": "net::ERR_ABORTED"
+    }
+  ],
+  "errors": [],
+  "runtime_root": "/tmp/renewal-visual/e2e-final-safety-20261115",
+  "notes": [
+    "Final middleware/immutable-submit source was verified with the actual local API and UI.",
+    "Submitted document DELETE and reupload return409 and preserve exactly the same written PDF bytes.",
+    "Any ERR_ABORTED read requests are from the explicit refresh/reuse check; later owner API and form renders passed.",
+    "No real OCR/LLM calls; all documents and applicant values are synthetic."
+  ]
+}

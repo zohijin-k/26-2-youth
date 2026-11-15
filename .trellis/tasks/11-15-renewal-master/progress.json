@@ -1,0 +1,47 @@
+{
+  "branch": "feat/renewal-master",
+  "base": "7472697",
+  "commits": {
+    "1": "3d5a8d0",
+    "2": "b767bfd",
+    "3": "3cf8b9b",
+    "4": "97dd6d2",
+    "5": "36c70d9",
+    "6": "eebb349",
+    "7": "f1a1582",
+    "8": "876b00d",
+    "9": "03c40e1"
+  },
+  "active": "complete; ready for human review",
+  "remaining": [],
+  "prepared": {
+    "stage9": "/tmp/renewal-stage9.patch",
+    "visual": ".trellis/tasks/11-15-renewal-master/visual-e2e.mjs"
+  },
+  "known": [
+    "generic officer detail intentionally unlinked to preserve score sheet",
+    "legacy version0 direct API contracts preserved; normal browser uses version1",
+    "LLM defaultnone, no live compatibility verification"
+  ],
+  "expected_final": {
+    "engine": 1267,
+    "backend": 1412,
+    "node": 48,
+    "scenarios": 18,
+    "browser_assertions": 17
+  },
+  "report_commit": "HEAD",
+  "completed_stages": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ]
+}

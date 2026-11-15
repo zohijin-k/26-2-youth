@@ -5,34 +5,19 @@ import { useEffect, useState } from 'react'
 import {
   fetchFinalCheck,
   submitApplication,
-  type Blocker,
   type FinalCheck as FinalCheckData,
   type SubmitResult,
 } from '../../api.ts'
-import FileLink from '../../components/ApplicantFileLink.tsx'
-import StatusBadge from '../../components/ApplicantStatusBadge.tsx'
 import { Skeleton, SkeletonLine } from '../../components/Skeleton.tsx'
 import useDelayedFlag from '../../hooks/useDelayedFlag.ts'
 import ConfirmDialog from '../../components/ConfirmDialog.tsx'
+import MoreInfo from '../../components/MoreInfo.tsx'
+import MissingItems, { type ApplicantStage } from './MissingItems.tsx'
 import Notice from '../../components/Notice.tsx'
 import Spinner from '../../components/Spinner.tsx'
 import useBeforeUnload from '../../hooks/useBeforeUnload.ts'
 import { friendlyError } from '../../lib/error-copy.ts'
-import { formatDate } from '../../lib/format.ts'
 import './final-check.css'
-
-/** 남은 항목을 어느 화면에서 고치는지 기준으로 묶는다. 순서는 신청 순서대로. */
-type ApplicantStage = 'forms' | 'subsidy' | 'upload'
-
-const BLOCKER_GROUPS: { goto: ApplicantStage; title: string; action: string }[] = [
-  { goto: 'forms', title: '신청 서식', action: '서식 작성으로' },
-  { goto: 'subsidy', title: '지원 항목', action: '지원 항목으로' },
-  { goto: 'upload', title: '서류', action: '서류 업로드로' },
-]
-
-function applicantStage(goto: Blocker['goto']): ApplicantStage {
-  return goto === 'form1' || goto === 'consent' ? 'forms' : goto
-}
 
 export default function FinalCheck({
   applicationId,
@@ -78,68 +63,22 @@ export default function FinalCheck({
   if (error && !data) return <Notice tone="danger" role="alert">{error}<button type="button" className="btn" onClick={() => { setError(''); setReload((value) => value + 1) }}>다시 시도하기</button></Notice>
   if (!data) return showSkeleton ? (
     <Skeleton className="fcheck fcheck__skeleton">
-      <section className="fcheck__todo"><h3>제출 전에 채워야 할 항목 <span><SkeletonLine width="30px" /></span></h3><ul>{['신청 서식', '지원 항목', '서류'].map((label) => <li key={label}><span className="fcheck__todo-title">{label}</span><span className="fcheck__todo-items"><SkeletonLine width="74%" /></span><button type="button" className="btn btn--small" disabled aria-disabled="true">확인하기</button></li>)}</ul></section>
-      <section className="fcheck__box"><h3>신청하신 지원 항목과 지급 예정액</h3><table className="fcheck__docs"><thead><tr><th>항목</th><th>영수증 금액</th><th>지급 예정액</th><th>계산 근거</th></tr></thead><tbody>{[0, 1, 2].map((row) => <tr key={row}>{[0, 1, 2, 3].map((col) => <td data-label="항목" key={col}><SkeletonLine width={col === 3 ? '88%' : '64%'} /></td>)}</tr>)}</tbody></table></section>
-      <section className="fcheck__box"><h3>작성하신 내용</h3><dl className="fcheck__summary">{[0, 1, 2, 3, 4, 5].map((row) => <div key={row}><dt><SkeletonLine width="76%" /></dt><dd><SkeletonLine width="88%" /></dd></div>)}</dl></section>
-      <section className="fcheck__box"><h3>제출 서류 판독 결과</h3><table className="fcheck__docs"><thead><tr><th>파일</th><th>판독된 서류</th><th>발급일 입력값</th><th>판정</th><th>사유</th></tr></thead><tbody>{[0, 1, 2, 3].map((row) => <tr key={row}>{[0, 1, 2, 3, 4].map((col) => <td data-label="파일" key={col}><SkeletonLine width={col === 4 ? '84%' : '60%'} /></td>)}</tr>)}</tbody></table></section>
-      <div className="flow__actions"><button type="button" className="btn" disabled aria-disabled="true">이전</button><button type="button" className="btn btn--primary" disabled aria-disabled="true">최종 제출</button></div>
+      <section className="fcheck__box"><h3>신청한 지원 항목</h3><table className="fcheck__docs"><thead><tr><th>항목</th><th>영수증 금액</th><th>지급 예정액</th><th>계산 근거</th></tr></thead><tbody>{[0, 1, 2].map((row) => <tr key={row}>{[0, 1, 2, 3].map((col) => <td data-label="항목" key={col}><SkeletonLine width={col === 3 ? '88%' : '64%'} /></td>)}</tr>)}</tbody></table></section>
+      <section className="fcheck__box"><h3>작성한 내용 확인하기</h3><dl className="fcheck__summary">{[0, 1, 2, 3, 4, 5].map((row) => <div key={row}><dt><SkeletonLine width="76%" /></dt><dd><SkeletonLine width="88%" /></dd></div>)}</dl></section>
+      <div className="flow__actions"><button type="button" className="btn" disabled aria-disabled="true">이전</button><button type="button" className="btn btn--primary" disabled aria-disabled="true">제출하기</button></div>
     </Skeleton>
   ) : null
 
   return (
     <div className="fcheck">
       <h2>확인 및 제출</h2>
-      {attempted && !data.can_submit && <Notice tone="warning" role="alert" title={`남은 항목 ${data.blockers.length}건을 확인해 주세요.`}><a href="#fcheck-todo">보완할 항목으로 이동하기</a></Notice>}
-      {data.first_come && (
-        <section className="fcheck__queue">
-          <h3>이 사업은 선착순입니다</h3>
-          <p>
-            {data.first_come.notice} 지금 제출하시면{' '}
-            <strong>{data.first_come.position}번째</strong>로 접수됩니다.
-          </p>
-        </section>
-      )}
-
-      {data.warnings.length > 0 && !data.already_submitted && (
-        <div className="fcheck__warn">
-          {data.warnings.map((w) => (
-            <p key={w}>{w}</p>
-          ))}
-        </div>
-      )}
-
-      {!data.already_submitted && data.blockers.length > 0 && (
-        <section className="fcheck__todo" aria-labelledby="fcheck-todo">
-          <h3 id="fcheck-todo" tabIndex={-1}>
-            제출 전에 채워야 할 항목 <span>{data.blockers.length}건</span>
-          </h3>
-          <ul>
-            {BLOCKER_GROUPS.map((g) => {
-              const items = data.blockers.filter((b) => applicantStage(b.goto) === g.goto)
-              if (items.length === 0) return null
-              return (
-                <li key={g.goto}>
-                  <span className="fcheck__todo-title">{g.title}</span>
-                  <span className="fcheck__todo-items">
-                    {items.map((b) => (
-                      <span key={`${b.kind}-${b.target}`} title={b.message}>
-                        {b.kind === 'eligibility' ? `${b.label}: ${b.message}` : b.label}
-                      </span>
-                    ))}
-                  </span>
-                  <button type="button" className="btn btn--small" onClick={() => onGoto(g.goto)}>
-                    {g.action}
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        </section>
+      {/* 단계 표시로 미리 보러 온 경우: 아직 제출할 수 없다는 것만 한 줄로 알린다(남은 항목 목록은 제출을 눌렀을 때). */}
+      {!data.can_submit && !data.already_submitted && !attempted && (
+        <Notice tone="info" title="미리 보기 화면입니다.">서류 업로드까지 모두 마치면 여기서 제출할 수 있습니다.</Notice>
       )}
 
       {data.subsidy && data.subsidy.lines.length > 0 && (
-        <section className="fcheck__box">
-          <h3>신청하신 지원 항목과 지급 예정액</h3>
+        <MoreInfo variant="card" open summary="신청한 지원 항목" meta={`지급 예정 ${data.subsidy.total_granted.toLocaleString('ko-KR')}원`}>
           <table className="fcheck__docs">
             <thead>
               <tr>
@@ -176,11 +115,10 @@ export default function FinalCheck({
               </tr>
             </tbody>
           </table>
-        </section>
+        </MoreInfo>
       )}
 
-      <section className="fcheck__box">
-        <h3>작성하신 내용</h3>
+      <MoreInfo variant="card" open summary="작성한 내용 확인하기" meta={data.form_summary.some((f) => !f.value) ? `미입력 ${data.form_summary.filter((f) => !f.value).length}개` : '모두 입력'}>
         <dl className="fcheck__summary">
           {data.form_summary.map((f) => (
             <div key={f.label}>
@@ -189,48 +127,14 @@ export default function FinalCheck({
             </div>
           ))}
         </dl>
-      </section>
-
-      <section className="fcheck__box">
-        <h3>제출 서류 판독 결과</h3>
-        {data.documents.length === 0 ? (
-          <p className="fcheck__empty">아직 올린 서류가 없습니다.</p>
-        ) : (
-          <table className="fcheck__docs">
-            <thead>
-              <tr>
-                <th>파일</th>
-                <th>판독된 서류</th>
-                <th>발급일 입력값</th>
-                <th>판정</th>
-                <th>사유</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.documents.map((d) => {
-                const status = d.status ?? 'NEEDS_REVIEW'
-                return (
-                  <tr key={d.document_id}>
-                    <td data-label="파일">
-                      <FileLink url={d.file_url} name={d.file_name} format={d.file_format} />
-                    </td>
-                    <td data-label="판독된 서류">{d.detected_doc_type ?? '미판별'}</td>
-                    <td data-label="발급일 입력값">{d.declared_issue_date ? formatDate(d.declared_issue_date) : '-'}</td>
-                    <td data-label="판정">
-                      <StatusBadge status={status} audience="applicant" />
-                    </td>
-                    <td data-label="사유" className={d.findings.length ? 'fcheck__reason' : 'fcheck__none'}>
-                      {d.findings.map((f) => f.message).join(' / ') || '-'}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        )}
-      </section>
+      </MoreInfo>
 
       {error && <p className="fcheck__error" role="alert">{error}</p>}
+
+      {/* 서류 업로드에서 이미 막으므로 평소에는 나오지 않는다. 새로고침 등으로 바로 들어와 제출을 눌렀을 때만 남은 항목을 보여 준다. */}
+      {attempted && !data.can_submit && !data.already_submitted && (
+        <MissingItems id="fcheck-todo" title="아직 제출할 수 없습니다. 아래 항목을 마쳐 주세요." blockers={data.blockers} onGoto={onGoto} />
+      )}
 
       <div className="flow__actions">
         <button type="button" className="btn" onClick={onBack}>
@@ -242,7 +146,7 @@ export default function FinalCheck({
           disabled={data.already_submitted || busy}
           onClick={() => {
             setAttempted(true)
-            if (!data.can_submit) { document.getElementById('fcheck-todo')?.focus(); return }
+            if (!data.can_submit) { window.requestAnimationFrame(() => document.getElementById('fcheck-todo')?.focus()); return }
             setConfirming(true)
           }}
         >

@@ -37,6 +37,7 @@ export const FORM_FIELD_KEYS: Record<string, readonly string[]> = {
     "job.applicationMonth",
     "job.applicationDay",
     "job.signature",
+    "job.applicantName",
     "subsidy.interview.면접비",
     "subsidy.suit.면접정장비",
     "subsidy.photo.면접사진촬영비",
