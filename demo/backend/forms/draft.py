@@ -26,9 +26,10 @@ _AUTOFILL = {
 _CHOICE_PAIRS = {frozenset(pair) for pair in (("예", "아니오"), ("예", "아니요"), ("동의함", "동의하지않음"),
                                               ("있음", "없음"), ("해당", "해당없음"))}
 _CHOICE_WORDS = {word for pair in _CHOICE_PAIRS for word in pair}
-_SIGN_MARKS = {"(서명)", "(인)", "(서명또는인)"}
+_SIGN_MARKS = {"(서명)", "(인)", "(서명또는인)", "(서명/인)"}
 #: General administrative labels that mark a blank but never feed autofill.
-_PLAIN_LABELS = {"사업명", "은행명", "예금주", "계좌번호", "근무처", "근무처명", "소속", "직위", "신청인", "보호자"}
+_PLAIN_LABELS = {"사업명", "은행명", "예금주", "계좌번호", "근무처", "근무처명", "소속", "직위", "신청인", "보호자",
+                 "기간", "수령액", "회사명", "담당자"}
 _LABEL_WORDS = set(_AUTOFILL) | _PLAIN_LABELS
 _OPENERS = "(（["
 _BOX_CHARS = ("□", "☐", "▢")
