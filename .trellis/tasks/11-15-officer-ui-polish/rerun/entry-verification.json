@@ -1,0 +1,12 @@
+{
+  "checks": [
+    "login card has one input and one primary action",
+    "two Korean upload zones hide native chooser text and use drawer logout",
+    "drag/drop and keyboard picker accept valid PDF bytes with missing filename extension/MIME; form duplicates collapse",
+    "over-limit selection is rejected without replacing accepted forms",
+    "file chip removal immediately restores the required-form gate",
+    "drawer logout remains reachable by keyboard and Escape restores focus"
+  ],
+  "errors": [],
+  "result": "passed"
+}

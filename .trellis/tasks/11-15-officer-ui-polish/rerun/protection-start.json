@@ -1,0 +1,12 @@
+{
+  "demo/frontend/src/pages/officer/ReviewDetail.tsx": true,
+  "demo/frontend/src/pages/officer/DocumentViewer.tsx": true,
+  "demo/frontend/src/pages/officer/officer.css": true,
+  "demo/frontend/src/components/StatusBadge.tsx": true,
+  "demo/frontend/src/components/Skeleton.tsx": true,
+  "demo/frontend/src/components/skeleton.css": true,
+  "demo/frontend/src/components/FilePreview.tsx": true,
+  "demo/frontend/src/components/file-preview.css": true,
+  "demo/frontend/src/hooks/useDelayedFlag.ts": true,
+  "demo/frontend/src/pages/officer/format.ts": true
+}

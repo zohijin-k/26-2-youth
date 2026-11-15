@@ -1,0 +1,39 @@
+/* Entry surfaces are isolated from the legacy officer shell and job-package views. */
+.om.om-entry-upload{max-width:1000px}
+.om.om-entry-upload .om-head{margin-bottom:var(--sp-3)}
+.om.om-entry-upload .om-upload-steps{display:flex;flex-wrap:wrap;gap:var(--sp-2);list-style:none;margin:var(--sp-5) 0;padding:0}
+.om.om-entry-upload .om-upload-steps [aria-current=step]{color:var(--color-text-brand);border-color:var(--color-primary);background:var(--color-surface-brand)}
+.om.om-entry-upload .om-upload-zones{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-5)}
+.om.om-entry-upload .om-upload-slot{min-width:0}
+.om.om-entry-upload .om-upload-zone{box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--sp-3);width:100%;min-height:180px;padding:var(--sp-6);border:2px dashed var(--color-border-strong);border-radius:var(--radius-12);color:var(--color-text-brand);background:var(--color-surface-brand);font-size:var(--fs-16);text-align:center}
+.om.om-entry-upload .om-upload-zone strong{font-size:var(--fs-19)}
+.om.om-entry-upload .om-upload-zone span{color:var(--color-text-subtle);font-size:var(--fs-15)}
+.om.om-entry-upload .om-upload-zone:disabled{background:var(--color-surface-subtle);color:var(--color-text-muted)}
+.om.om-entry-upload .is-dragging .om-upload-zone{border-style:solid;border-color:var(--color-focus);background:var(--brand-10)}
+.om.om-entry-upload .om-upload-files{display:flex;flex-wrap:wrap;gap:var(--sp-2);list-style:none;padding:0;margin:var(--sp-3) 0 0}
+.om.om-entry-upload .om-upload-files .om-chip{max-width:100%;padding:var(--sp-1) var(--sp-2) var(--sp-1) var(--sp-3);gap:var(--sp-2)}
+.om.om-entry-upload .om-upload-files span{min-width:0;overflow-wrap:anywhere}
+.om.om-entry-upload .om-upload-remove{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:var(--control-sm);height:var(--control-sm);border:0;border-radius:var(--radius-pill);color:var(--color-text-brand);background:var(--color-surface);font-size:var(--fs-16)}
+.om.om-entry-upload .om-upload-limits{margin:0}
+.om.om-entry-upload .om-upload-supplemental{display:grid;gap:var(--sp-2);font-size:var(--fs-15);font-weight:var(--fw-medium)}
+.om.om-entry-upload .om-upload-actions{display:flex;justify-content:flex-end}
+.om.om-entry-upload .om-notice{margin:0}
+.om.om-entry-login{box-sizing:border-box;max-width:440px;margin:72px auto;padding:var(--sp-8);border:1px solid var(--color-border);border-radius:var(--radius-12);background:var(--color-surface);color:var(--color-text);font-size:var(--fs-16)}
+.om.om-entry-login form{gap:var(--sp-5)}
+.om.om-entry-login .officer-login__eyebrow{font-size:var(--fs-15);color:var(--color-text-muted)}
+.om.om-entry-login [role=alert]{color:var(--danger-60);font-size:var(--fs-15);margin:0}
+.om.om-entry-login .btn--primary{width:100%}
+.om.om-entry-list .plist__head{min-height:var(--control-md);margin-bottom:var(--sp-6)}
+.om.om-entry-list .plist__new{margin-left:var(--sp-3)}
+.om.om-entry-list .plist__grid{grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:var(--sp-5)}
+.om.om-entry-list .om-program-card{min-width:0;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-12)}
+.om.om-entry-list .om-program-top{padding:var(--sp-4) var(--sp-5) 0}
+.om.om-entry-list .om-program-top .om-menu{margin-left:auto}
+.om.om-entry-list .plist__card{box-sizing:border-box;min-height:160px;height:auto;padding:var(--sp-4) var(--sp-5) var(--sp-5);border:0;border-radius:0 0 var(--radius-12) var(--radius-12);background:transparent;color:var(--color-text);font-size:var(--fs-16);line-height:var(--lh-base);gap:var(--sp-2)}
+.om.om-entry-list .plist__card:hover{background:var(--color-surface-brand)}
+.om.om-entry-list .plist__name{font-size:var(--fs-19);line-height:var(--lh-base);margin:0}
+.om.om-entry-list .plist__period{color:var(--color-text-muted);font-size:var(--fs-15);margin:0}
+.om.om-entry-list .plist__stats{gap:var(--sp-4);flex-wrap:wrap;border-top:1px solid var(--color-divider);padding-top:var(--sp-3);margin-top:var(--sp-3);font-size:var(--fs-15);color:var(--color-text-subtle)}
+.om.om-entry-list .plist__stats strong{font-size:var(--fs-16);color:var(--color-text)}
+.om.om-entry-list .om-program-pending,.om.om-entry-list .om-program-pending strong{color:var(--warning-60)}
+@media(max-width:700px){.om.om-entry-upload .om-upload-zones{grid-template-columns:1fr}.om.om-entry-login{margin:var(--sp-6) var(--sp-4)}.om.om-entry-list .plist__new{margin-left:0}}

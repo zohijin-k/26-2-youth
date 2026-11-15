@@ -1,0 +1,44 @@
+[
+  {
+    "stage": 0,
+    "result": "통과",
+    "commit": null,
+    "new_tests": 0,
+    "notes": "main b654752; 보호 해시 일치; 이전 화면 8개; A/B/C/D 기준선 통과"
+  },
+  {
+    "stage": 1,
+    "result": "통과",
+    "commit": "f276db5",
+    "new_tests": 9,
+    "notes": "A/B/C/D 통과; 프런트61개; lint/build 경고0"
+  },
+  {
+    "stage": 2,
+    "result": "통과",
+    "commit": "0f8a1e8",
+    "new_tests": 5,
+    "notes": "A/B/C/D 통과; 프런트66개; 키보드·근거 브라우저5그룹"
+  },
+  {
+    "stage": 3,
+    "result": "실패·복원",
+    "commit": null,
+    "new_tests": 0,
+    "notes": "디스크 공간 부족(ENOSPC)으로 실패; failed-stage3.patch 보관 후 복원"
+  },
+  {
+    "stage": 4,
+    "result": "통과",
+    "commit": "266372d",
+    "new_tests": 0,
+    "notes": "A/B/C/D 통과; 프런트66개; 종단18건·작업 공간4그룹; 기존 픽셀 차이0"
+  },
+  {
+    "stage": 5,
+    "result": "통과",
+    "commit": "이 보고서가 포함된 문서 커밋(HEAD)",
+    "new_tests": 0,
+    "notes": "최종 A/B/C/D 통과; 문서·보고서·캡처·실패 패치 기록"
+  }
+]

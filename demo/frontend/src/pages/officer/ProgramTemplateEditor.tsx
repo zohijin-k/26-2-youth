@@ -5,6 +5,7 @@ import {
   type AutofillSource, type FieldKind, type ManagedFormField, type ManagedFormLayout,
   type ManagedProgramData, type ManagedProgramForm,
 } from '../../program-workspace-api.ts'
+import { OfficerConfirm, OfficerMenu } from './OfficerModern.tsx'
 import { boundedBox, boxPercent, movedBox, type PdfBox } from '../../lib/form-box.ts'
 
 const KIND_LABELS: Record<FieldKind, string> = { text: '문자', number: '숫자·금액', date: '날짜', check: '체크', radio: '하나 선택', signature: '서명' }
@@ -13,6 +14,7 @@ const fieldKind = (field: ManagedFormField): FieldKind => field.field_type || (f
 const pageUrl = (postingId: number, formId: number, page: number) => `/api/officer/postings/${postingId}/workspace/forms/${formId}/pages/${page}.png`
 
 interface Props {
+  modern?: boolean
   postingId: number
   forms: ManagedProgramForm[]
   readOnly: boolean
@@ -24,7 +26,7 @@ interface Props {
 
 type Drag = { mode: 'new' | 'move' | 'resize'; key: string; x: number; y: number; box: PdfBox }
 
-export default function ProgramTemplateEditor({ postingId, forms, readOnly, onChanged, onDirty, onBusy, focusField }: Props) {
+export default function ProgramTemplateEditor({ modern = false, postingId, forms, readOnly, onChanged, onDirty, onBusy, focusField }: Props) {
   const [formId, setFormId] = useState<number | null>(focusField?.formId || forms[0]?.id || null)
   const form = forms.find((item) => item.id === formId) || forms[0]
   const [layout, setLayout] = useState<ManagedFormLayout>(form?.layout || {})
@@ -35,6 +37,8 @@ export default function ProgramTemplateEditor({ postingId, forms, readOnly, onCh
   const [drawing, setDrawing] = useState<PdfBox | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [failedAction, setFailedAction] = useState<'draft' | 'save' | 'confirm' | null>(null)
+  const [confirmation, setConfirmation] = useState<'draft' | 'delete' | 'discard' | null>(null)
   const canvas = useRef<HTMLDivElement>(null)
   const drag = useRef<Drag | null>(null)
   const counter = useRef(0)
@@ -126,6 +130,7 @@ export default function ProgramTemplateEditor({ postingId, forms, readOnly, onCh
     if (!form || disabled) return
     setBusy(true)
     setError('')
+    setFailedAction(null)
     try {
       let next: ManagedProgramData
       if (action === 'draft') next = await draftProgramForm(postingId, form.id)
@@ -141,7 +146,7 @@ export default function ProgramTemplateEditor({ postingId, forms, readOnly, onCh
       }
       if (mounted.current) { onChanged(next); setDirty(false) }
     } catch (problem: unknown) {
-      if (mounted.current) setError(problem instanceof Error ? problem.message : '서식 틀을 저장하지 못했습니다.')
+      if (mounted.current) { setError(problem instanceof Error ? problem.message : '서식 틀을 저장하지 못했습니다.'); setFailedAction(action) }
     } finally { if (mounted.current) setBusy(false) }
   }
   const updateCoordinate = (index: number, value: string) => {
@@ -154,28 +159,45 @@ export default function ProgramTemplateEditor({ postingId, forms, readOnly, onCh
   }
 
   if (!form) return <p className="managed-program__notice">기본 정보에서 서식 PDF를 먼저 올려 주세요.</p>
-  return <section className="template-editor" aria-label="서식 틀 확인 및 수정">
+  return <section className={`template-editor${modern ? ' template-editor--modern' : ''}`} aria-label="서식 틀 확인 및 수정">
     <div className="template-editor__toolbar">
       <label>서식 <select value={form.id} disabled={busy || dirty} onChange={(event) => setFormId(Number(event.target.value))}>{forms.map((item) => <option key={item.id} value={item.id}>{item.file_name}{item.confirmed ? ' · 확정' : ' · 미확정'}</option>)}</select></label>
       <span role="status">{dirty ? '수정 중 · 미확정' : form.confirmed ? '틀 확정 완료' : '미확정'}</span>
-      <button type="button" className="btn" disabled={disabled || dirty} onClick={() => void run('draft')}>{entries.length ? '자동 초안 다시 만들기' : '자동 초안 만들기'}</button>
-      <button type="button" className="btn" disabled={disabled || !dirty} onClick={() => void run('save')}>틀 저장</button>
-      <button type="button" className="btn btn--primary" disabled={disabled || !canConfirm || (!dirty && form.confirmed)} onClick={() => void run('confirm')}>틀 확정</button>
+      {modern ? <>
+        <label>쪽 <select value={page} onChange={(event) => { setPage(Number(event.target.value)); setSelected('') }}>{pages.map((_, index) => <option key={index} value={index}>{index + 1} / {pages.length}</option>)}</select></label>
+        <button type="button" className="btn" aria-pressed={tool === 'add'} disabled={disabled || entries.length >= 500 || !dimensions} onClick={() => setTool('add')}>칸 추가</button>
+        <button type="button" className="btn template-editor__confirm" disabled={disabled || !canConfirm || (!dirty && form.confirmed)} onClick={() => void run('confirm')}>서식 확정</button>
+        <OfficerMenu label="서식 더보기" disabled={busy} actions={[
+          { label: entries.length ? '자동 초안 다시 만들기' : '자동 초안 만들기', disabled: disabled || dirty, onSelect: () => entries.length ? setConfirmation('draft') : void run('draft') },
+          { label: '칸 선택·이동', disabled, onSelect: () => setTool('select') },
+          { label: '서식 임시 저장', disabled: disabled || !dirty, onSelect: () => void run('save') },
+          { label: '저장 전 수정 취소', disabled: disabled || !dirty, onSelect: () => setConfirmation('discard') },
+        ]} />
+      </> : <>
+        <button type="button" className="btn" disabled={disabled || dirty} onClick={() => void run('draft')}>{entries.length ? '자동 초안 다시 만들기' : '자동 초안 만들기'}</button>
+        <button type="button" className="btn" disabled={disabled || !dirty} onClick={() => void run('save')}>틀 저장</button>
+        <button type="button" className="btn btn--primary" disabled={disabled || !canConfirm || (!dirty && form.confirmed)} onClick={() => void run('confirm')}>틀 확정</button>
+      </>}
     </div>
-    <p className="pnew__note">자동 초안은 담당자 확인이 필요합니다. 칸을 선택해 라벨·종류·필수를 고친 뒤 확인 완료를 눌러 주세요. 수정한 틀은 다시 확정해야 합니다.</p>
-    {dirty && <p className="pnew__note">다른 서식을 열기 전에 틀을 저장해 주세요. <button type="button" className="btn" disabled={busy} onClick={() => { setLayout(form.layout); setDirty(false); setSelected('') }}>저장 전 수정 취소</button></p>}
-    {error && <p className="pnew__server-error" role="alert">{error}</p>}
-    <div className="template-editor__review" aria-label="확인 필요 입력칸"><strong>확인 필요 {pending.length}개</strong>
+    {modern ? <>
+      <p className="pnew__note">입력칸을 하나씩 확인한 뒤 서식을 확정해 주세요.</p>
+      <details className="template-editor__help"><summary>도움말</summary><p>칸을 선택해 이름·종류·필수를 고치고 확인 완료를 누릅니다. 서식 확정은 수정 내용 저장과 확정을 함께 처리합니다. 칸 추가를 누른 뒤 쪽 위에서 끌어 새 입력칸을 만듭니다. 다른 서식으로 옮기기 전에는 더보기에서 임시 저장할 수 있습니다.</p></details>
+    </> : <>
+      <p className="pnew__note">자동 초안은 담당자 확인이 필요합니다. 칸을 선택해 라벨·종류·필수를 고친 뒤 확인 완료를 눌러 주세요. 수정한 틀은 다시 확정해야 합니다.</p>
+      {dirty && <p className="pnew__note">다른 서식을 열기 전에 틀을 저장해 주세요. <button type="button" className="btn" disabled={busy} onClick={() => { setLayout(form.layout); setDirty(false); setSelected('') }}>저장 전 수정 취소</button></p>}
+    </>}
+    {error && <p className="pnew__server-error" role="alert">{error}<button type="button" className="btn" disabled={disabled} onClick={() => void run(failedAction || (canConfirm ? 'confirm' : 'save'))}>다시 시도</button></p>}
+    {!modern && <div className="template-editor__review" aria-label="확인 필요 입력칸"><strong>확인 필요 {pending.length}개</strong>
       {pending.length > 0 && <ul>{pending.map(([key, field]) => <li key={key}><button type="button" onClick={() => { setSelected(key); setPage(field.page) }}>{field.label || '입력칸'} · {field.page + 1}쪽</button></li>)}</ul>}
       {!entries.length && <p>자동 초안 없음 → 직접 추가. 쪽 위에서 끌어 입력칸을 만들 수 있습니다.</p>}
-    </div>
+    </div>}
     <div className="template-editor__layout">
       <div className="template-editor__document">
-        <div className="template-editor__toolbar">
+        {!modern && <div className="template-editor__toolbar">
           <label>쪽 <select value={page} onChange={(event) => { setPage(Number(event.target.value)); setSelected('') }}>{pages.map((_, index) => <option key={index} value={index}>{index + 1} / {pages.length}</option>)}</select></label>
           <button type="button" className="btn" aria-pressed={tool === 'select'} onClick={() => setTool('select')}>칸 선택·이동</button>
           <button type="button" className="btn" aria-pressed={tool === 'add'} disabled={disabled || entries.length >= 500 || !dimensions} onClick={() => setTool('add')}>끌어서 새 칸 추가</button>
-        </div>
+        </div>}
         {dimensions ? <div ref={canvas} className={`template-editor__page${tool === 'add' ? ' is-drawing' : ''}`} style={{ aspectRatio: `${dimensions.width} / ${dimensions.height}` }} onPointerDown={(event) => start(event, 'new')} onPointerMove={move} onPointerUp={end} onPointerCancel={() => { drag.current = null; setDrawing(null) }}>
           <img src={pageUrl(postingId, form.id, page)} alt={`${form.file_name} ${page + 1}쪽`} draggable={false} />
           {entries.filter(([, field]) => field.page === page).map(([key, field]) => <div key={key} role="button" tabIndex={0} aria-label={`${field.label || '입력칸'}${field.needs_review !== false ? ' · 확인 필요' : ''}`} aria-pressed={selected === key} className={`template-editor__box${field.needs_review !== false ? ' needs-review' : ''}${selected === key ? ' is-selected' : ''}`} style={boxPercent(field.box, dimensions)} onPointerDown={(event) => start(event, 'move', key)} onClick={() => setSelected(key)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelected(key) } }}>
@@ -196,11 +218,17 @@ export default function ProgramTemplateEditor({ postingId, forms, readOnly, onCh
           {(fieldKind(current) === 'radio' || fieldKind(current) === 'check') && <label>선택 묶음 이름<input maxLength={80} value={current.group || ''} onChange={(event) => change(selected, { group: event.target.value })} /></label>}
           <div className="template-editor__coordinates">{['왼쪽', '위쪽', '오른쪽', '아래쪽'].map((label, index) => <label key={label}>{label}<input type="number" step="0.5" min={0} max={index % 2 ? dimensions?.height : dimensions?.width} value={Number(current.box[index].toFixed(2))} onChange={(event) => updateCoordinate(index, event.target.value)} /></label>)}</div>
           <p className="pnew__note">PDF 포인트 단위입니다. 상자를 끌어 이동하거나 오른쪽 아래 모서리로 크기를 바꿀 수 있습니다.</p>
-          <button type="button" className="btn btn--primary" disabled={!current.label?.trim() || current.needs_review === false} onClick={() => change(selected, { needs_review: false })}>이 칸 확인 완료</button>
-          <button type="button" className="btn btn--danger" onClick={() => { const next = { ...fields }; delete next[selected]; replace({ ...layout, fields: next }); setSelected('') }}>입력칸 삭제</button>
+          <button type="button" className={modern ? 'btn' : 'btn btn--primary'} disabled={!current.label?.trim() || current.needs_review === false} onClick={() => change(selected, { needs_review: false })}>이 칸 확인 완료</button>
+          {modern ? <OfficerMenu label="입력칸 더보기" disabled={disabled} actions={[{ label: '입력칸 삭제', danger: true, onSelect: () => setConfirmation('delete') }]} /> : <button type="button" className="btn btn--danger" onClick={() => { const next = { ...fields }; delete next[selected]; replace({ ...layout, fields: next }); setSelected('') }}>입력칸 삭제</button>}
         </fieldset> : <p className="pnew__note">PDF 위의 칸이나 목록에서 수정할 칸을 선택해 주세요.</p>}
       </aside>
     </div>
+    {modern && confirmation && <OfficerConfirm title={confirmation === 'draft' ? '자동 초안 다시 만들기' : confirmation === 'delete' ? '입력칸 삭제' : '저장 전 수정 취소'} confirmLabel={confirmation === 'draft' ? '다시 만들기' : confirmation === 'delete' ? '삭제' : '수정 취소'} onClose={() => setConfirmation(null)} onConfirm={() => {
+      if (confirmation === 'draft') void run('draft')
+      else if (confirmation === 'delete') { const next = { ...fields }; delete next[selected]; replace({ ...layout, fields: next }); setSelected('') }
+      else { setLayout(form.layout); setDirty(false); setSelected('') }
+      setConfirmation(null)
+    }}>{confirmation === 'draft' ? '현재 서식의 입력칸을 자동 초안으로 바꿀까요? 다시 항목별 확인이 필요합니다.' : confirmation === 'delete' ? '선택한 입력칸을 삭제할까요?' : '저장하지 않은 서식 수정을 취소할까요?'}</OfficerConfirm>}
   </section>
 }
 

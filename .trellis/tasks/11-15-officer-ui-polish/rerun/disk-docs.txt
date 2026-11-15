@@ -1,0 +1,129 @@
+gate-start
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+engine-before
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+engine-after
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+backend-before
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+backend-after
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p11_criteria_scenarios-before
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p11_criteria_scenarios-after
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p12_subsidy_criteria_scenarios-before
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p12_subsidy_criteria_scenarios-after
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p13_household_scenarios-before
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p13_household_scenarios-after
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p14_pdf_forms_scenarios-before
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p14_pdf_forms_scenarios-after
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p15_jbai_scenarios-before
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p15_jbai_scenarios-after
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p16_job_docs_scenarios-before
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p16_job_docs_scenarios-after
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p17_own_scenarios-before
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p17_own_scenarios-after
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p18_applicant_precheck_scenarios-before
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p18_applicant_precheck_scenarios-after
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p19_nhis_history_scenarios-before
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p19_nhis_history_scenarios-after
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p20_nhis_continuation_scenarios-before
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p20_nhis_continuation_scenarios-after
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p2_scenarios-before
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p2_scenarios-after
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p3_scenarios-before
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p3_scenarios-after
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p4_scenarios-before
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p4_scenarios-after
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p5_scenarios-before
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p5_scenarios-after
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p6_scenarios-before
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p6_scenarios-after
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p7_scenarios-before
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p7_scenarios-after
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p8_localocr_scenarios-before
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p8_localocr_scenarios-after
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p9_identity_scenarios-before
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+run_p9_identity_scenarios-after
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+frontend-before
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /
+frontend-after
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    30Gi    28%    459k  319M    0%   /

@@ -1,0 +1,56 @@
+[
+  {
+    "foreground": "--color-text",
+    "background": "--color-surface",
+    "ratio": 16.18,
+    "pass": true
+  },
+  {
+    "foreground": "--color-text-muted",
+    "background": "--color-surface",
+    "ratio": 6.3,
+    "pass": true
+  },
+  {
+    "foreground": "--color-text-subtle",
+    "background": "--color-bg",
+    "ratio": 8.14,
+    "pass": true
+  },
+  {
+    "foreground": "--color-text-brand",
+    "background": "--color-surface-brand",
+    "ratio": 10.23,
+    "pass": true
+  },
+  {
+    "foreground": "--color-text-on-primary",
+    "background": "--color-primary",
+    "ratio": 11.18,
+    "pass": true
+  },
+  {
+    "foreground": "--warning-60",
+    "background": "--warning-5",
+    "ratio": 5.29,
+    "pass": true
+  },
+  {
+    "foreground": "--success-60",
+    "background": "--success-5",
+    "ratio": 5.26,
+    "pass": true
+  },
+  {
+    "foreground": "--danger-60",
+    "background": "--danger-5",
+    "ratio": 5.31,
+    "pass": true
+  },
+  {
+    "foreground": "--color-text-muted",
+    "background": "--color-surface-subtle",
+    "ratio": 5.77,
+    "pass": true
+  }
+]

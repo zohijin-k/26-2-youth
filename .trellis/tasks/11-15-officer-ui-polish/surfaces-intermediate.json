@@ -1,0 +1,142 @@
+{
+  "phase": "intermediate",
+  "surfaces": [
+    {
+      "name": "login",
+      "path": "/officer/login",
+      "buttons": 2,
+      "min_font": 15,
+      "overflow": false,
+      "widths": [
+        {
+          "width": 1280,
+          "overflow": false
+        },
+        {
+          "width": 1024,
+          "overflow": false
+        }
+      ]
+    },
+    {
+      "name": "upload",
+      "path": "/officer/programs/new?mock=0",
+      "buttons": 6,
+      "min_font": 14,
+      "overflow": false,
+      "widths": [
+        {
+          "width": 1280,
+          "overflow": false
+        },
+        {
+          "width": 1024,
+          "overflow": false
+        }
+      ]
+    },
+    {
+      "name": "program-list",
+      "path": "/officer?mock=0",
+      "buttons": 11,
+      "min_font": 14,
+      "overflow": false,
+      "widths": [
+        {
+          "width": 1280,
+          "overflow": false
+        },
+        {
+          "width": 1024,
+          "overflow": false
+        }
+      ]
+    },
+    {
+      "name": "preview",
+      "path": "/officer/programs/2?mock=0&tab=settings",
+      "buttons": 18,
+      "min_font": 14,
+      "overflow": false,
+      "widths": [
+        {
+          "width": 1280,
+          "overflow": false
+        },
+        {
+          "width": 1024,
+          "overflow": false
+        }
+      ]
+    },
+    {
+      "name": "workspace",
+      "path": "/officer/programs/2?mock=0",
+      "buttons": 9,
+      "min_font": 13,
+      "overflow": false,
+      "widths": [
+        {
+          "width": 1280,
+          "overflow": false
+        },
+        {
+          "width": 1024,
+          "overflow": false
+        }
+      ]
+    },
+    {
+      "name": "generic-review",
+      "path": "/officer/programs/2/applications/1?mock=0",
+      "buttons": 10,
+      "min_font": 11.6667,
+      "overflow": false,
+      "widths": [
+        {
+          "width": 1280,
+          "overflow": false
+        },
+        {
+          "width": 1024,
+          "overflow": false
+        }
+      ]
+    },
+    {
+      "name": "job-list",
+      "path": "/officer/province?mock=1",
+      "buttons": 26,
+      "min_font": 12,
+      "overflow": false,
+      "widths": [
+        {
+          "width": 1280,
+          "overflow": false
+        },
+        {
+          "width": 1024,
+          "overflow": true
+        }
+      ]
+    },
+    {
+      "name": "job-review",
+      "path": "/officer/programs/1/province/review/901609?mock=1",
+      "buttons": 17,
+      "min_font": 11.5,
+      "overflow": false,
+      "widths": [
+        {
+          "width": 1280,
+          "overflow": false
+        },
+        {
+          "width": 1024,
+          "overflow": true
+        }
+      ]
+    }
+  ],
+  "errors": []
+}

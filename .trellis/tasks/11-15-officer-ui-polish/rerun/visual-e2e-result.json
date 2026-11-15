@@ -1,0 +1,243 @@
+{
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "applicant_viewport": {
+    "width": 940,
+    "height": 1000
+  },
+  "date": "2026-11-15",
+  "posting_id": 9,
+  "application_id": 5,
+  "application_no": "JP-2026-000005",
+  "job_application_id": null,
+  "job_application_no": null,
+  "counts_before": {
+    "applications": 4,
+    "postings": 8
+  },
+  "counts_after": {
+    "applications": 5,
+    "postings": 9
+  },
+  "assertions": [
+    {
+      "name": "unconfirmed analysis and form template cannot publish",
+      "passed": true,
+      "detail": 409
+    },
+    {
+      "name": "pending sidebar selects the matching form field",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "confirmed form still requires every notice candidate review",
+      "passed": true,
+      "detail": 409
+    },
+    {
+      "name": "unsaved reviewed draft publishes through save, fresh blockers, then publish",
+      "passed": true,
+      "detail": [
+        "PUT analysis",
+        "GET workspace",
+        "POST publish"
+      ]
+    },
+    {
+      "name": "reviewed program published through the preview UI",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "three identity visits create zero applications",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "identity submit refresh reuses application",
+      "passed": true,
+      "detail": "JP-2026-000005"
+    },
+    {
+      "name": "other cookie context cannot read application",
+      "passed": true,
+      "detail": 403
+    },
+    {
+      "name": "owner cookie renders actual form image and locks identity autofill",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "unknown high-resolution synthetic image stays NEEDS_REVIEW",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "owner original preview remains inline",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "submission generates owner-readable written PDF archive",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "submitted generic document deletion blocked and archive unchanged",
+      "passed": true,
+      "detail": 409
+    },
+    {
+      "name": "submitted generic document reupload blocked and archive unchanged",
+      "passed": true,
+      "detail": 409
+    },
+    {
+      "name": "unchecked individual and bulk final selection both rejected",
+      "passed": true,
+      "detail": 409
+    },
+    {
+      "name": "generic written original renders on first paint without viewer zoom",
+      "passed": true,
+      "detail": {
+        "rendered": {
+          "width": 1240,
+          "height": 1755
+        },
+        "page_image_url": "/api/officer/programs/9/applications/5/documents/-5/page.png",
+        "source_file_format": "pdf",
+        "original_bytes_unchanged": true,
+        "zoom_actions": 0
+      }
+    },
+    {
+      "name": "all original and checklist confirmations permit final selection",
+      "passed": true,
+      "detail": 3
+    },
+    {
+      "name": "applicant metadata and form layouts exclude internal analysis evidence",
+      "passed": true,
+      "detail": true
+    }
+  ],
+  "shots": [
+    {
+      "name": "officer-login",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-officer-ui-polish/rerun/shots/after-journey/officer-login.png",
+      "url": "http://127.0.0.1:5187/officer/login?returnTo=%2Fofficer%2Fprograms%2Fnew%3Fmock%3D0"
+    },
+    {
+      "name": "officer-one-shot-upload",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-officer-ui-polish/rerun/shots/after-journey/officer-one-shot-upload.png",
+      "url": "http://127.0.0.1:5187/officer/programs/new?mock=0"
+    },
+    {
+      "name": "officer-analyzed-preview",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-officer-ui-polish/rerun/shots/after-journey/officer-analyzed-preview.png",
+      "url": "http://127.0.0.1:5187/officer/programs/9?mock=0&tab=settings"
+    },
+    {
+      "name": "officer-editable-preview",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-officer-ui-polish/rerun/shots/after-journey/officer-editable-preview.png",
+      "url": "http://127.0.0.1:5187/officer/programs/9?mock=0&tab=settings"
+    },
+    {
+      "name": "officer-program-published",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-officer-ui-polish/rerun/shots/after-journey/officer-program-published.png",
+      "url": "http://127.0.0.1:5187/officer/programs/9?mock=0&tab=settings"
+    },
+    {
+      "name": "applicant-program-info",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-officer-ui-polish/rerun/shots/after-journey/applicant-program-info.png",
+      "url": "http://127.0.0.1:5187/programs/9"
+    },
+    {
+      "name": "applicant-identity",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-officer-ui-polish/rerun/shots/after-journey/applicant-identity.png",
+      "url": "http://127.0.0.1:5187/apply/programs/9/identity"
+    },
+    {
+      "name": "applicant-forms",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-officer-ui-polish/rerun/shots/after-journey/applicant-forms.png",
+      "url": "http://127.0.0.1:5187/apply/programs/9/forms"
+    },
+    {
+      "name": "applicant-upload",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-officer-ui-polish/rerun/shots/after-journey/applicant-upload.png",
+      "url": "http://127.0.0.1:5187/apply/programs/9/upload"
+    },
+    {
+      "name": "applicant-final",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-officer-ui-polish/rerun/shots/after-journey/applicant-final.png",
+      "url": "http://127.0.0.1:5187/apply/programs/9/final"
+    },
+    {
+      "name": "applicant-receipt",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-officer-ui-polish/rerun/shots/after-journey/applicant-receipt.png",
+      "url": "http://127.0.0.1:5187/apply/programs/9/complete"
+    },
+    {
+      "name": "applicant-mypage",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-officer-ui-polish/rerun/shots/after-journey/applicant-mypage.png",
+      "url": "http://127.0.0.1:5187/apply/programs/9/mypage"
+    },
+    {
+      "name": "officer-program-applications",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-officer-ui-polish/rerun/shots/after-journey/officer-program-applications.png",
+      "url": "http://127.0.0.1:5187/officer/programs/9?mock=0"
+    },
+    {
+      "name": "officer-generic-review-detail",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-officer-ui-polish/rerun/shots/after-journey/officer-generic-review-detail.png",
+      "url": "http://127.0.0.1:5187/officer/programs/9/applications/5?mock=0"
+    },
+    {
+      "name": "officer-generic-written-form",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-officer-ui-polish/rerun/shots/after-journey/officer-generic-written-form.png",
+      "url": "http://127.0.0.1:5187/officer/programs/9/applications/5?mock=0"
+    },
+    {
+      "name": "officer-generic-final-selection",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-15-officer-ui-polish/rerun/shots/after-journey/officer-generic-final-selection.png",
+      "url": "http://127.0.0.1:5187/officer/programs/9/applications/5?mock=0"
+    }
+  ],
+  "page_errors": [],
+  "request_failures": [
+    {
+      "path": "/api/officer/session",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/api/officer/session",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/api/officer/session",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/api/officer/session",
+      "error": "net::ERR_ABORTED"
+    }
+  ],
+  "errors": [],
+  "mock_api_requests": [],
+  "current_stage": "officer-generic-final-selection",
+  "raster_check": {
+    "rendered": {
+      "width": 1240,
+      "height": 1755
+    },
+    "page_image_url": "/api/officer/programs/9/applications/5/documents/-5/page.png",
+    "source_file_format": "pdf",
+    "original_bytes_unchanged": true,
+    "zoom_actions": 0
+  }
+}

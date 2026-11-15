@@ -1,0 +1,18 @@
+{
+  "job-list": {
+    "different_pixels": 0,
+    "size": [
+      1440,
+      900
+    ],
+    "max_channel_difference": 0
+  },
+  "job-review": {
+    "different_pixels": 0,
+    "size": [
+      1440,
+      900
+    ],
+    "max_channel_difference": 0
+  }
+}

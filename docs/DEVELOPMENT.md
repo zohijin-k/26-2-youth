@@ -72,6 +72,8 @@ cd ../..
 python -m uvicorn demo.backend.main:app --env-file .env --reload --port 8000
 ```
 
+담당자 인증 설정을 읽도록 `--env-file .env` 옵션을 유지해 주세요. 환경 설정을 불러오지 않으면 담당자 로그인이 차단됩니다.
+
 ```bash
 # 터미널 2 — 저장소 루트에서
 cd demo/frontend

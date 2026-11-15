@@ -1,0 +1,9 @@
+{
+  "checks": [
+    "program row menu opens the selected business info",
+    "business drawer opens the new upload screen",
+    "list primary action opens upload and modern logout ownership survives navigation"
+  ],
+  "errors": [],
+  "result": "passed"
+}

@@ -1,0 +1,52 @@
+{
+  "demo/frontend/src/pages/officer/ReviewDetail.tsx": {
+    "expected": "fb45d687461691e540c86ce559ed926a6c8f35c90e8a7fe3219e177a673465e8",
+    "actual": "fb45d687461691e540c86ce559ed926a6c8f35c90e8a7fe3219e177a673465e8",
+    "match": true
+  },
+  "demo/frontend/src/pages/officer/DocumentViewer.tsx": {
+    "expected": "743870919760fb66cb5da148809fe9273f316942041fb9f15e8ab0f3b99b04b3",
+    "actual": "743870919760fb66cb5da148809fe9273f316942041fb9f15e8ab0f3b99b04b3",
+    "match": true
+  },
+  "demo/frontend/src/pages/officer/officer.css": {
+    "expected": "801eb938e3a60b706b536d83f621953c44f00e69375def15cb5d5127bedd2bb1",
+    "actual": "801eb938e3a60b706b536d83f621953c44f00e69375def15cb5d5127bedd2bb1",
+    "match": true
+  },
+  "demo/frontend/src/components/StatusBadge.tsx": {
+    "expected": "4d96718ef598684c30544170b32da535a291f6f4032781575307d23cf0dec39f",
+    "actual": "4d96718ef598684c30544170b32da535a291f6f4032781575307d23cf0dec39f",
+    "match": true
+  },
+  "demo/frontend/src/components/Skeleton.tsx": {
+    "expected": "87d7f4e43442cb972cda453549276b9f2f0485de70dcb84c9c3c20cc682b5520",
+    "actual": "87d7f4e43442cb972cda453549276b9f2f0485de70dcb84c9c3c20cc682b5520",
+    "match": true
+  },
+  "demo/frontend/src/components/skeleton.css": {
+    "expected": "356bec49f8c493749603b6971c54c9ab84025a95112cf61022ae45c93753b31c",
+    "actual": "356bec49f8c493749603b6971c54c9ab84025a95112cf61022ae45c93753b31c",
+    "match": true
+  },
+  "demo/frontend/src/components/FilePreview.tsx": {
+    "expected": "54bff71328622a32a24cb96ad3a9eee8b18fbcb5f673c279347bda8331091cd8",
+    "actual": "54bff71328622a32a24cb96ad3a9eee8b18fbcb5f673c279347bda8331091cd8",
+    "match": true
+  },
+  "demo/frontend/src/components/file-preview.css": {
+    "expected": "22259eda1367855e6afd95775b59b12dca10fe44750f729dcbf88bfac69179c2",
+    "actual": "22259eda1367855e6afd95775b59b12dca10fe44750f729dcbf88bfac69179c2",
+    "match": true
+  },
+  "demo/frontend/src/hooks/useDelayedFlag.ts": {
+    "expected": "c235d25726f3e61ed41c6559b515ae06f6afc7f5f3a52183070af4ce64fec37d",
+    "actual": "c235d25726f3e61ed41c6559b515ae06f6afc7f5f3a52183070af4ce64fec37d",
+    "match": true
+  },
+  "demo/frontend/src/pages/officer/format.ts": {
+    "expected": "db73cf13aeafa77ca24232e3cc3499bcbb4f1a770c46c8421ae9c649b3e3a4d1",
+    "actual": "db73cf13aeafa77ca24232e3cc3499bcbb4f1a770c46c8421ae9c649b3e3a4d1",
+    "match": true
+  }
+}

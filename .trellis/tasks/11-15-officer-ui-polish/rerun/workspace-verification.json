@@ -1,0 +1,27 @@
+{
+  "checks": [
+    "settings chip arrow navigation moves focus to loaded preview heading",
+    "debounced search removes invisible bulk selections",
+    "generic row menu Escape restores opener focus",
+    "review footer fits 900px at all three required widths"
+  ],
+  "geometry": [
+    {
+      "width": 1440,
+      "footer_bottom": 823.9375,
+      "horizontal_overflow": false
+    },
+    {
+      "width": 1280,
+      "footer_bottom": 823.9375,
+      "horizontal_overflow": false
+    },
+    {
+      "width": 1024,
+      "footer_bottom": 823.9375,
+      "horizontal_overflow": false
+    }
+  ],
+  "errors": [],
+  "result": "passed"
+}

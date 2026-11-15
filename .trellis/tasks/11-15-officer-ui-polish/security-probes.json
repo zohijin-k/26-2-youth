@@ -1,0 +1,14 @@
+{
+  "draft_notice_without_cookie": {
+    "open": false,
+    "status": 404,
+    "observation": "X"
+  },
+  "preview_false_omits_entered_values": {
+    "observation": "O",
+    "before_sha256": "870e54e091ccdb921e114647d3d1781591f62346511c3dd88a43ba8f39b9a861",
+    "after_sha256": "870e54e091ccdb921e114647d3d1781591f62346511c3dd88a43ba8f39b9a861",
+    "persisted_synthetic_text": true,
+    "status": 200
+  }
+}
