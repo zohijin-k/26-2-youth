@@ -23,6 +23,7 @@ import {
 } from '../../api.ts'
 import useBeforeUnload from '../../hooks/useBeforeUnload.ts'
 import { friendlyError } from '../../lib/error-copy.ts'
+import MoreInfo from '../../components/MoreInfo.tsx'
 import Notice from '../../components/Notice.tsx'
 import './subsidy-items.css'
 
@@ -94,7 +95,7 @@ function ItemCard({
       </div>
 
       <p className="sitem__desc">{item.description}</p>
-      <p className="sitem__note">{item.note}</p>
+      {item.note && <MoreInfo summary="자세히 보기" className="sitem__more"><p>{item.note}</p></MoreInfo>}
 
       {picked && (
         <div className="sitem__body">
@@ -210,7 +211,7 @@ export default function SubsidyItems({
   if (error && !state) return <Notice tone="danger" role="alert">{error}<button type="button" className="btn" onClick={() => { setError(''); setAttempt((value) => value + 1) }}>다시 시도하기</button></Notice>
   if (!state) return showSkeleton ? (
     <Skeleton className="subsidy subsidy__skeleton">
-      <section className="subsidy__intro"><h3>지원받을 항목을 선택해 주세요 (복수 선택 가능)</h3><SkeletonLine width="82%" /></section>
+      <section className="subsidy__intro"><h3>지원받을 항목을 고르세요</h3><SkeletonLine width="82%" /></section>
       <ul className="sitems subsidy__skeleton-grid">
         {[0, 1, 2, 3].map((item) => <li className="sitem" key={item}>
           <div className="sitem__head"><SkeletonBlock className="subsidy__check" /><SkeletonLine width="42%" /><SkeletonLine width="24%" /></div>
@@ -226,10 +227,11 @@ export default function SubsidyItems({
 
   return (
     <div className="subsidy" id="subsidy-items">
-      <p className="field__hint" role="status" aria-live="polite">{busy ? '저장 중…' : error ? '저장하지 못했습니다' : edited ? '저장했습니다' : '항목을 선택하면 자동으로 저장합니다.'}</p>
       <section className="subsidy__intro">
-        <h2>지원받을 항목을 선택해 주세요 (복수 선택 가능)</h2>
-        <p>{state.notice}</p>
+        <h2>지원받을 항목을 고르세요</h2>
+        <p className="subsidy__lead">여러 개를 함께 고를 수 있습니다. 고른 항목에 따라 올릴 서류가 정해집니다.</p>
+        <p className="subsidy__save" role="status" aria-live="polite">{busy ? '저장 중…' : error ? '저장하지 못했습니다' : edited ? '저장했습니다' : '고르면 자동으로 저장됩니다.'}</p>
+        {state.notice && <MoreInfo summary="지급 방법 보기"><p>{state.notice}</p></MoreInfo>}
       </section>
 
       <ul className="sitems">

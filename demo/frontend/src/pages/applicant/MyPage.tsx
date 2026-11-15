@@ -14,7 +14,6 @@ import { useEffect, useState } from 'react'
 
 import { fetchStatus, type ApplicationStatus } from '../../api.ts'
 import FileLink from '../../components/ApplicantFileLink.tsx'
-import StatusBadge from '../../components/ApplicantStatusBadge.tsx'
 import { Skeleton, SkeletonLine } from '../../components/Skeleton.tsx'
 import useDelayedFlag from '../../hooks/useDelayedFlag.ts'
 import Icon from '../../components/Icon.tsx'
@@ -47,8 +46,8 @@ export default function MyPage({ applicationId }: { applicationId: number }) {
       </ol>
       <p className="mypage__notice"><SkeletonLine width="74%" /></p>
       <section className="mypage__box"><h3>신청한 지원 항목</h3><table className="mypage__docs"><thead><tr><th>항목</th><th>영수증 금액</th><th>지급 예정액</th><th>계산 근거</th></tr></thead><tbody>{[0, 1].map((row) => <tr key={row}>{[0, 1, 2, 3].map((col) => <td data-label="항목" key={col}><SkeletonLine width={col === 3 ? '88%' : '64%'} /></td>)}</tr>)}</tbody></table></section>
-      <section className="mypage__box"><h3>제출한 서류</h3><table className="mypage__docs"><thead><tr><th>파일</th><th>판독된 서류</th><th>판정</th><th>내용</th></tr></thead><tbody>{[0, 1, 2].map((row) => <tr key={row}>{[0, 1, 2, 3].map((col) => <td data-label="파일" key={col}><SkeletonLine width={col === 3 ? '88%' : '64%'} /></td>)}</tr>)}</tbody></table></section>
-      <section className="mypage__box"><h3>동의 이력</h3><ul className="mypage__consents">{[0, 1, 2].map((row) => <li key={row}><SkeletonLine width="35%" /><SkeletonLine width="20%" /><SkeletonLine width="30%" /></li>)}</ul></section>
+      <section className="mypage__box"><h3>제출한 서류</h3><ul className="mypage__files">{[0, 1, 2].map((row) => <li key={row}><SkeletonLine width="48%" /></li>)}</ul></section>
+      <section className="mypage__box"><h3>동의 이력</h3><table className="mypage__docs mypage__consents"><thead><tr><th>항목</th><th>동의 여부</th><th>일시</th></tr></thead><tbody>{[0, 1, 2].map((row) => <tr key={row}><td data-label="항목"><SkeletonLine width="70%" /></td><td data-label="동의 여부"><SkeletonLine width="60%" /></td><td data-label="일시"><SkeletonLine width="80%" /></td></tr>)}</tbody></table></section>
     </Skeleton>
   ) : null
 
@@ -74,20 +73,14 @@ export default function MyPage({ applicationId }: { applicationId: number }) {
         ))}
       </ol>
 
-      <p className="mypage__notice">{data.result_notice}</p>
-
-      {/* 선착순 접수 순번 (R6). 점수제 사업에서는 서버가 null을 준다. */}
-      {data.first_come && (
-        <section className="mypage__queue">
-          <strong>접수 순번 {data.first_come.position}번</strong>
-          {data.first_come.quota !== null && (
-            <span>
-              총 지원규모 {data.first_come.quota.toLocaleString('ko-KR')}건 · 남은 규모{' '}
-              {(data.first_come.remaining ?? 0).toLocaleString('ko-KR')}건
-            </span>
-          )}
-          <span className="mypage__queue-note">{data.first_come.notice}</span>
-        </section>
+      {/* 심사 안내는 접지 않고 바로 보인다. 접수 순번은 혼란을 주므로 보이지 않는다(서버 안내 문구에도 순번이 있어 쓰지 않는다). */}
+      {(data.result_notice || data.first_come?.quota != null) && (
+        <Notice tone="info" title="심사 안내" className="mypage__guide">
+          <ul>
+            {data.result_notice && <li>{data.result_notice}</li>}
+            {data.first_come?.quota != null && <li>총 지원규모 {data.first_come.quota.toLocaleString('ko-KR')}건</li>}
+          </ul>
+        </Notice>
       )}
 
       {/* 7일 보완 기한 카운트다운 (E12). 미보완 시 후순위자에게 자리가 넘어간다. */}
@@ -109,22 +102,14 @@ export default function MyPage({ applicationId }: { applicationId: number }) {
             </span>
           </div>
           <p>{data.supplement.notice}</p>
-          {data.supplement.targets.length > 0 && (
-            <ul className="mypage__supplement-list">
-              {data.supplement.targets.map((t) => (
-                <li key={t.label}>
-                  <strong>{t.label}</strong> — {t.reason}
-                </li>
-              ))}
-            </ul>
-          )}
+          <p>보완할 서류는 따로 안내해 드립니다.</p>
         </section>
       )}
 
       {/* 항목별 지급 예정액. 점수와 달리 이 값은 신청자에게 보여 주는 것이 맞다. */}
       {data.subsidy && data.subsidy.lines.length > 0 && (
         <section className="mypage__box">
-          <h3>신청한 지원 항목</h3>
+          <h3>신청한 지원 항목<span className="mypage__count">지급 예정 {data.subsidy.total_granted.toLocaleString('ko-KR')}원</span></h3>
           <table className="mypage__docs">
             <thead>
               <tr>
@@ -163,56 +148,44 @@ export default function MyPage({ applicationId }: { applicationId: number }) {
       )}
 
       <section className="mypage__box">
-        <h3>제출한 서류</h3>
-        <table className="mypage__docs">
-          <thead>
-            <tr>
-              <th>파일</th>
-              <th>판독된 서류</th>
-              <th>판정</th>
-              <th>내용</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.documents.map((d) => {
-              const status = d.status ?? 'NEEDS_REVIEW'
-              return (
-                <tr key={d.document_id}>
-                  <td data-label="파일">
-                    <FileLink url={d.file_url} name={d.file_name} format={d.file_format} />
-                  </td>
-                  <td data-label="판독된 서류">{d.detected_doc_type ?? '미판별'}</td>
-                  <td data-label="판정">
-                    <StatusBadge status={status} audience="applicant" />
-                  </td>
-                  <td data-label="내용" className="mypage__extract">
-                    {Object.entries(d.extracted)
-                      .map(([k, v]) => `${k} ${v}`)
-                      .join(' · ') || '-'}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+        <h3>제출한 서류<span className="mypage__count">{data.documents.length}건</span></h3>
+        {/* 신청자에게는 낸 파일만 보여 준다. 자동 판독 결과(서류 종류·읽은 값·판정)는 보이지 않는다. 미비 서류는 담당자 확인 뒤 따로 안내한다. */}
+        {data.documents.length === 0 ? <p className="mypage__empty">아직 제출한 서류가 없습니다.</p> : (
+          <ul className="mypage__files">
+            {data.documents.map((d) => (
+              <li key={d.document_id}><FileLink url={d.file_url} name={d.file_name} format={d.file_format} /></li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className="mypage__box">
-        <h3>동의 이력</h3>
-        {data.consents.length === 0 && <p className="mypage__empty">아직 동의한 항목이 없습니다.</p>}
-        <ul className="mypage__consents">
-          {data.consents.map((c) => (
-            <li key={c.consent_type}>
-              <span>{c.label}</span>
-              <span>{c.agreed ? '동의함' : '동의하지 않음'}</span>
-              <span className="mypage__time">
-                {formatDateTime(c.agreed_at)}
-                {c.signature_kind === 'electronic' && ' · 전자서명'}
-                {c.signature_kind === 'handwritten' && ' · 자필서명 스캔'}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <h3>동의 이력<span className="mypage__count">{data.consents.length}건</span></h3>
+        {/* 다른 목록과 같은 표: 칸 위치가 글자 길이와 상관없이 줄마다 같고, 폰에서는 줄마다 이름표가 붙은 카드가 된다. */}
+        {data.consents.length === 0 ? <p className="mypage__empty">아직 동의한 항목이 없습니다.</p> : (
+          <table className="mypage__docs mypage__consents">
+            <thead>
+              <tr>
+                <th>항목</th>
+                <th>동의 여부</th>
+                <th>일시</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.consents.map((c) => (
+                <tr key={c.consent_type}>
+                  <td data-label="항목">{c.label}</td>
+                  <td data-label="동의 여부" className={c.agreed ? 'mypage__agreed' : 'mypage__declined'}>{c.agreed ? '동의함' : '동의하지 않음'}</td>
+                  <td data-label="일시" className="mypage__time">
+                    {formatDateTime(c.agreed_at)}
+                    {c.signature_kind === 'electronic' && ' · 전자서명'}
+                    {c.signature_kind === 'handwritten' && ' · 자필서명 스캔'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </section>
     </div>
   )

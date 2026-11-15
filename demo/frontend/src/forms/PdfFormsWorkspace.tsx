@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 
 import {
   fetchFormLayout,
@@ -23,6 +23,7 @@ import { EMPTY_FORM1, type Form1Value } from './form1-model.ts'
 import { JOB_PACKAGE_SELF_CHECK_ITEMS, type SelfCheckAnswers } from './form2-model.ts'
 import ConfirmDialog from '../components/ConfirmDialog.tsx'
 import Notice from '../components/Notice.tsx'
+import MoreInfo from '../components/MoreInfo.tsx'
 import Icon from '../components/Icon.tsx'
 import Spinner from '../components/Spinner.tsx'
 import { friendlyError } from '../lib/error-copy.ts'
@@ -49,6 +50,8 @@ interface Props {
   error: string
   readOnly?: boolean
   onProgress: (completed: number, total: number) => void
+  /** 제목 아래 한 줄로 보이는 저장 상태. 없으면 자동 저장 안내를 보인다. */
+  saveStatus?: ReactNode
 }
 
 function truthy(value: unknown): boolean {
@@ -122,7 +125,7 @@ export function ApplicantFormsBulkMenu({ applicationId, refreshKey }: { applicat
   }, [applicationId, refreshKey])
 
   return (
-    <details className="pdf-forms__bulk-menu"><summary className="btn"><DownloadIcon /> 다운로드 <span aria-hidden="true">▾</span></summary>
+    <details className="pdf-forms__bulk-menu"><summary className="btn btn--small"><DownloadIcon /> 다운로드 <span aria-hidden="true">▾</span></summary>
       <a href={`/api/applications/${applicationId}/forms/files/written.pdf`}><DownloadIcon /> <span>PDF 다운로드</span></a>
       {hwp.url && hwp.label && <a href={hwp.url}><DownloadIcon /> <span>HWP 다운로드</span></a>}
     </details>
@@ -138,7 +141,7 @@ function DownloadIcon() {
 export default function PdfFormsWorkspace({
   applicationId, identity, form1, answers, consent, generic = false,
   checkResult, onForm1, onAnswers, onConsent,
-  onFlush, onChangedSubsidy, onContinue, continuing, error, readOnly = false, onProgress,
+  onFlush, onChangedSubsidy, onContinue, continuing, error, readOnly = false, onProgress, saveStatus,
 }: Props) {
   const [formNos, setFormNos] = useState<string[]>([])
   const [layouts, setLayouts] = useState<Record<string, FormLayout>>({})
@@ -686,7 +689,7 @@ export default function PdfFormsWorkspace({
       <header className="pdf-forms__intro">
         <div>
           <h2>신청 서식 작성</h2>
-          <p>원본 서식 위에 직접 입력합니다. 작성 내용은 자동 저장됩니다.</p>
+          <p className="pdf-forms__save" role="status" aria-live="polite">{saveStatus ?? '작성 내용은 자동으로 저장됩니다.'}</p>
         </div>
         <ApplicantFormsBulkMenu applicationId={applicationId} refreshKey={thumbnailVersion} />
       </header>
@@ -715,17 +718,28 @@ export default function PdfFormsWorkspace({
       </ul>
 
       {!generic && (
-        <section className="pdf-forms__selfcheck" id="workspace-selfcheck">
+        <section className="pdf-forms__card" id="workspace-selfcheck">
           <h3>지원 자격 확인</h3>
           {selfCheckItems.map((item) => (
-            <fieldset key={item.no}>
+            <fieldset key={item.no} className="pdf-forms__question">
               <legend>{splitEmphasis(item.question).map((part, index) => part.strong ? <strong key={index}>{part.text}</strong> : part.text)}</legend>
-              {(['예', '아니오'] as const).map((answer) => (
-                <label key={answer}>
-                  <input type="radio" disabled={readOnly} name={`job-selfcheck-${item.no}`} checked={answers[item.no] === answer} onChange={() => onAnswers({ ...answers, [item.no]: answer })} />
-                  {answer}
-                </label>
-              ))}
+              <div className="segmented pdf-forms__answers">
+                {(['예', '아니오'] as const).map((answer) => (
+                  <label key={answer} className="segmented__option">
+                    <input type="radio" disabled={readOnly} name={`job-selfcheck-${item.no}`} checked={answers[item.no] === answer} onChange={() => onAnswers({ ...answers, [item.no]: answer })} />
+                    <span>{answers[item.no] === answer && <Icon name="check" size={18} />}{answer}</span>
+                  </label>
+                ))}
+              </div>
+              {item.note && <MoreInfo summary="기준 보기"><p>{item.note}</p></MoreInfo>}
+              {/* "아니오"면 이 자리에서 바로 신청할 수 없다는 것과 이유를 알린다. 문구는 사업계획서 기준(form2-model.ts) 그대로다. */}
+              {answers[item.no] === '아니오' && (
+                <Notice tone="danger" role="alert" title="지원 자격이 확인되지 않습니다." className="pdf-forms__ineligible">
+                  <p>{item.ineligibleReason}</p>
+                  {item.alternative && <p>{item.alternative}</p>}
+                  <p>잘못 고르셨다면 "예"를 눌러 주세요.</p>
+                </Notice>
+              )}
             </fieldset>
           ))}
         </section>
@@ -742,12 +756,11 @@ export default function PdfFormsWorkspace({
         {!generic && (!form1.accountHolder || !form1.bankbookFileName) && <a href="#workspace-account">예금주와 통장 사본 첨부하기</a>}
         {selfCheckItems.some((item) => !answers[item.no]) && <a href="#workspace-selfcheck">지원 자격 확인 문항 작성하기</a>}
       </Notice>}
-      <div className="flow__actions">
-        <button type="button" className="btn" onClick={() => window.scrollTo({ top: 0 })}>서식 목록</button>
-        {!readOnly && <button type="button" className="btn btn--primary" disabled={continuing || saving || accountBusy} onClick={submitWorkspace}>
+      {!readOnly && <div className="flow__actions">
+        <button type="button" className="btn btn--primary" disabled={continuing || saving || accountBusy} onClick={submitWorkspace}>
           {continuing && <Spinner />}{continuing ? '저장하는 중' : generic ? '서류 업로드로' : '지원 항목 선택하기'}
-        </button>}
-      </div>
+        </button>
+      </div>}
 
       {active && currentLayout && (
         <Modal

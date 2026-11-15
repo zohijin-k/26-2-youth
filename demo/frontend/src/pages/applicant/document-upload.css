@@ -1,25 +1,27 @@
 .dupload { display: grid; gap: var(--sp-6); }
 .dupload__progress { display: grid; gap: var(--sp-2); }
 .dupload__count { white-space: nowrap; }
+.dupload > h2 { margin: 0; }
 .dupload__progress strong { color: var(--color-text-brand); }
+.dupload__count { font-size: var(--fs-17); }
 .dupload__progress-hint { display: block; color: var(--color-text-subtle); font-size: var(--fs-15); }
 .dslots { display: grid; gap: var(--sp-5); padding: 0; margin: 0; list-style: none; }
 .dslot { min-width: 0; scroll-margin-top: var(--sp-6); padding: var(--sp-6); border: 1px solid var(--color-border); border-radius: var(--radius-12); background: var(--color-surface); }
 .dslot__head { display: flex; align-items: start; justify-content: space-between; gap: var(--sp-4); }
 .dslot__title, .dslot__head-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
 .dslot__label { font-size: var(--fs-19); font-weight: var(--fw-bold); }
-.dslot__req { font-size: var(--fs-13); font-weight: var(--fw-bold); color: var(--color-text-brand); }
-.dslot__info { display: grid; place-items: center; width: var(--control-sm); height: var(--control-sm); padding: 0; border: 0; border-radius: var(--radius-6); background: transparent; color: var(--color-text-brand); cursor: pointer; }
-.dslot__info:hover { background: var(--brand-5); }
+.dslot__title .field__req { margin-left: 0; }
 .dslot__issuer, .dfinding__link { display: inline-flex; align-items: center; gap: var(--sp-1); min-height: var(--control-sm); font-size: var(--fs-15); }
-.dslot__criteria, .dslot__formats, .dslot__gate { margin: var(--sp-2) 0; font-size: var(--fs-15); color: var(--color-text-subtle); }
-.dslot__formats { margin-top: var(--sp-4); }
-.dslot__action { display: flex; flex-wrap: wrap; align-items: end; gap: var(--sp-4); padding-top: var(--sp-4); }
+.dslot__criteria { margin: var(--sp-2) 0 0; font-size: var(--fs-16); font-weight: var(--fw-medium); }
+.dslot__gate { margin: 0; font-size: var(--fs-15); color: var(--color-text-subtle); }
+.dslot__more { margin-top: var(--sp-1); }
+/* 올리기 전: 날짜(있으면) → 큰 "파일 선택" 단추를 위에서 아래로. */
+.dslot__action { display: grid; justify-items: start; gap: var(--sp-4); margin-top: var(--sp-3); padding-top: var(--sp-4); border-top: 1px solid var(--color-divider); }
 .dslot__file { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .dslot__declared { display: grid; gap: var(--sp-2); min-width: 0; margin: 0; padding: 0; border: 0; }
-.dslot__declared-label { font-size: var(--fs-15); font-weight: var(--fw-bold); margin-bottom: var(--sp-2); }
-.dslot__date-warning { flex-basis: 100%; margin: 0; color: var(--warning-60); font-size: var(--fs-15); }
-.dslot__gate { flex-basis: 100%; }
+.dslot__declared-label { float: left; width: 100%; margin-bottom: var(--sp-2); padding: 0; font-size: var(--fs-16); font-weight: var(--fw-bold); }
+.dslot__declared-label + * { clear: both; }
+.dslot__date-warning { margin: 0; color: var(--warning-60); font-size: var(--fs-15); }
 .dslot__files-menu { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3); }
 .dslot__files-menu a { display: inline-flex; align-items: center; min-height: var(--control-sm); padding: 0 var(--sp-3); }
 .dresult { margin-top: var(--sp-4); padding-top: var(--sp-4); border-top: 1px solid var(--color-divider); }
@@ -49,11 +51,11 @@
 .upload-pending__file img { width: 56px; max-height: 76px; object-fit: contain; }
 .upload-pending p { margin: 0; font-size: var(--fs-15); color: var(--color-text-subtle); }
 .upload-pending .btn { justify-self: start; }
-.dupload__online, .dupload__unassigned { padding-top: var(--sp-5); border-top: 1px solid var(--color-divider); }
-.dupload__online h3, .dupload__unassigned h3 { margin-bottom: var(--sp-3); }
-.dupload__online ul, .dupload__unassigned ul { margin: 0; padding-left: var(--sp-5); }
+.dupload__unassigned { padding-top: var(--sp-5); border-top: 1px solid var(--color-divider); }
+.dupload__unassigned h3 { margin-bottom: var(--sp-3); }
+.dupload__unassigned ul { margin: 0; padding-left: var(--sp-5); }
 .dupload__unassigned li { margin-bottom: var(--sp-3); }
 .dupload__form-page { display: block; width: 100%; }
 .dupload__skeleton-list { display: grid; gap: var(--sp-5); }
 @media (max-width: 900px) { .dresult__file { flex-wrap: wrap; } .dresult__actions { flex-basis: 100%; } }
-@media (max-width: 600px) { .dslot { padding: var(--sp-4); } .dslot__head { flex-direction: column; gap: var(--sp-2); } .dslot__action { display: grid; grid-template-columns: minmax(0, 1fr); } .dresult__body { min-width: 0; } }
+@media (max-width: 600px) { .dslot { padding: var(--sp-4); } .dslot__head { flex-direction: column; gap: var(--sp-2); } .dslot__action { justify-items: stretch; } .dresult__body { min-width: 0; } }
