@@ -1,0 +1,392 @@
+diff --git a/demo/frontend/src/pages/officer/OfficerSession.tsx b/demo/frontend/src/pages/officer/OfficerSession.tsx
+index 520808d..8a0dc45 100644
+--- a/demo/frontend/src/pages/officer/OfficerSession.tsx
++++ b/demo/frontend/src/pages/officer/OfficerSession.tsx
+@@ -1,6 +1,9 @@
+ import { useEffect, useState, type ReactNode, type FormEvent } from 'react'
+ import { officerLoginUrl, officerReturnPath } from '../../officer-session.ts'
+ import './officer-session.css'
++import './officer-modern-tokens.css'
++import './officer-modern.css'
++import './officer-entry-modern.css'
+
+ export default function OfficerSession({ children }: { children: ReactNode }) {
+   const mock = new URLSearchParams(window.location.search).get('mock') === '1'
+@@ -34,7 +37,7 @@ export default function OfficerSession({ children }: { children: ReactNode }) {
+           }
+           else expired()
+         }
+-      }).catch(() => { if (active) setError('서버에 연결하지 못했습니다. 새로고침해 주세요.') })
++      }).catch(() => { if (active) setError('서버에 연결하지 못했습니다. 다시 시도해 주세요.') })
+     }
+     return () => { active = false; clearTimeout(expiryTimer); window.removeEventListener('officer-session-expired', expired) }
+   }, [mock, loginPage])
+@@ -51,20 +54,19 @@ export default function OfficerSession({ children }: { children: ReactNode }) {
+       setPassword('')
+       if (!response.ok) { setError(body?.detail || '로그인하지 못했습니다.'); return }
+       window.location.replace(officerReturnPath(new URLSearchParams(window.location.search).get('returnTo')))
+-    } catch { setError('서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.') }
++    } catch { setError('서버에 연결하지 못했습니다. 다시 시도해 주세요.') }
+     finally { setBusy(false) }
+   }
+-  if (loginPage) return <main className="officer-login"><form onSubmit={(event) => void login(event)}>
++  if (loginPage) return <main className="om officer-login om-entry-login"><form onSubmit={(event) => void login(event)}>
+     <span className="officer-login__eyebrow">전북 청년정책 · 담당자</span>
+-    <h1>담당자 로그인</h1><p>사업 관리와 신청서류 검토를 시작합니다.</p>
++    <h1>담당자 로그인</h1>
+     <label htmlFor="officer-password">담당자 비밀번호</label>
+     <input id="officer-password" type="password" autoComplete="current-password" required autoFocus value={password}
+       disabled={busy} onChange={(event) => setPassword(event.target.value)} />
+     {error && <p role="alert">{error}</p>}
+     <button className="btn btn--primary" disabled={busy} type="submit">{busy ? '확인 중' : '로그인'}</button>
+-    <small>역할과 지역은 로그인한 뒤 선택합니다.</small>
+   </form></main>
+-  if (!ready) return <main className="officer-login" role={error ? 'alert' : 'status'}>{error || '담당자 세션을 확인하고 있습니다.'}</main>
++  if (!ready) return <main className="om officer-login om-entry-login"><p role={error ? 'alert' : 'status'}>{error || '담당자 세션을 확인하고 있습니다.'}</p><button type="button" className="btn" onClick={() => window.location.reload()}>다시 시도</button></main>
+   return <><div className="officer-session-bar"><span>담당자 로그인됨</span><button type="button" className="btn" onClick={() => {
+     void fetch('/api/officer/logout', { method: 'POST', credentials: 'same-origin' }).then(() => window.location.replace('/officer/login'))
+   }}>로그아웃</button></div>{children}</>
+diff --git a/demo/frontend/src/pages/officer/OneShotNewProgram.tsx b/demo/frontend/src/pages/officer/OneShotNewProgram.tsx
+index c31fae0..f390370 100644
+--- a/demo/frontend/src/pages/officer/OneShotNewProgram.tsx
++++ b/demo/frontend/src/pages/officer/OneShotNewProgram.tsx
+@@ -1,36 +1,103 @@
+-import { useState, type FormEvent } from 'react'
++import { useEffect, useRef, useState, type FormEvent } from 'react'
+ import type { OfficerPosting } from '../../api.ts'
+ import { analyzeProgram } from '../../notice-draft-api.ts'
++import { OfficerDrawer } from './OfficerModern.tsx'
+ import './officer.css'
+ import './new-program.css'
+-import './program-preview.css'
++import './officer-entry-modern.css'
+
++const STEPS = ['올리기', '분석', '예시 페이지 수정', '게시']
++const MAX_BYTES = 20 * 1024 * 1024
++function fileSize(bytes: number): string {
++  return bytes < 1024 * 1024 ? `${Math.max(1, Math.ceil(bytes / 1024))}KB` : `${(bytes / 1024 / 1024).toFixed(1)}MB`
++}
++function fileProblem(files: File[]): string {
++  if (files.some((file) => !/\.pdf$/i.test(file.name))) return 'PDF 파일을 선택해 주세요.'
++  if (files.some((file) => !file.size)) return '내용이 없는 파일입니다. 다시 선택해 주세요.'
++  if (files.some((file) => file.size > MAX_BYTES)) return '파일당 20MB 이하인 PDF를 선택해 주세요.'
++  return ''
++}
++function uniqueFiles(files: File[]): File[] {
++  const seen = new Set<string>()
++  return files.filter((file) => {
++    const key = `${file.name}\u0000${file.size}\u0000${file.lastModified}`
++    if (seen.has(key)) return false
++    seen.add(key); return true
++  })
++}
+ export default function OneShotNewProgram({ onCancel, onCreated }: { onCancel: () => void; onCreated: (posting: OfficerPosting) => void }) {
+   const [notice, setNotice] = useState<File | null>(null)
+   const [forms, setForms] = useState<File[]>([])
+   const [supplemental, setSupplemental] = useState('')
+   const [busy, setBusy] = useState(false)
+   const [error, setError] = useState('')
++  const [startedAt, setStartedAt] = useState<number | null>(null)
++  const [elapsed, setElapsed] = useState(0)
++  const [dragging, setDragging] = useState<'notice' | 'forms' | null>(null)
++  const mounted = useRef(true)
++  useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
++  const noticeInput = useRef<HTMLInputElement>(null)
++  const formsInput = useRef<HTMLInputElement>(null)
+   const mock = new URLSearchParams(window.location.search).get('mock') === '1'
+-  if (mock) return <main className="pnew one-shot-upload"><h1 className="pnew__title">합성 목업</h1><p>목업에서는 신청 목록과 심사 예시를 확인할 수 있습니다.</p><button className="btn" onClick={onCancel}>사업 목록</button></main>
++  useEffect(() => {
++    if (!busy || startedAt === null) return
++    const timer = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000)
++    return () => clearInterval(timer)
++  }, [busy, startedAt])
++  const choose = (kind: 'notice' | 'forms', incoming: File[]) => {
++    if (busy || !incoming.length) return
++    const next = kind === 'forms' ? uniqueFiles([...forms, ...incoming]) : incoming
++    const problem = kind === 'notice' && incoming.length !== 1 ? '공고문 PDF는 1개만 선택해 주세요.'
++      : next.length > 10 ? '서식 PDF는 10개까지 선택할 수 있습니다.' : fileProblem(incoming)
++    if (problem) { setError(problem); return }
++    if (kind === 'notice') setNotice(incoming[0])
++    else setForms(next)
++    setError('')
++  }
+   const submit = async (event: FormEvent) => {
+     event.preventDefault()
+     if (!notice || !forms.length || busy) return
+-    setBusy(true); setError('')
+-    try { const data = await analyzeProgram(notice, forms, supplemental); onCreated(data.posting) }
+-    catch (problem: unknown) { setError(problem instanceof Error ? problem.message : '파일을 분석하지 못했습니다.'); setBusy(false) }
++    setBusy(true); setError(''); setElapsed(0); setStartedAt(Date.now())
++    try { const data = await analyzeProgram(notice, forms, supplemental); if (mounted.current) onCreated(data.posting) }
++    catch (problem: unknown) { if (mounted.current) { setError(problem instanceof Error ? problem.message : '파일을 분석하지 못했습니다.'); setBusy(false) } }
++  }
++  const zone = (kind: 'notice' | 'forms', label: string, files: File[]) => {
++    const input = kind === 'notice' ? noticeInput : formsInput
++    return <div className={`om-upload-slot${dragging === kind ? ' is-dragging' : ''}`}
++      onDragOver={(event) => { event.preventDefault(); if (!busy) setDragging(kind) }}
++      onDragLeave={(event) => { if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) setDragging(null) }}
++      onDrop={(event) => { event.preventDefault(); setDragging(null); choose(kind, Array.from(event.dataTransfer.files)) }}>
++      <input ref={input} id={kind === 'notice' ? 'program-notice' : 'program-forms'} type="file" accept="application/pdf,.pdf"
++        multiple={kind === 'forms'} hidden disabled={busy} aria-label={label} onChange={(event) => {
++          choose(kind, Array.from(event.target.files || [])); event.target.value = ''
++        }} />
++      <button type="button" className="om-upload-zone" disabled={busy} onClick={() => input.current?.click()}>
++        <strong>{label}</strong><span>파일 선택 또는 여기로 끌어놓기</span><small>{kind === 'notice' ? 'PDF 1개' : 'PDF 1~10개'}</small>
++      </button>
++      {!!files.length && <ul className="om-upload-files" aria-label={`${label} 선택한 파일`}>{files.map((file, index) => <li key={`${file.name}-${file.size}-${file.lastModified}`} className="om-chip">
++        <span>{file.name} · {fileSize(file.size)}</span><button type="button" className="om-upload-remove" disabled={busy} aria-label={`${file.name} 선택 취소`} onClick={() => {
++          if (kind === 'notice') setNotice(null)
++          else setForms((current) => current.filter((_, at) => at !== index))
++        }}>✕</button>
++      </li>)}</ul>}
++    </div>
+   }
+-  return <main className="pnew one-shot-upload"><button className="pnew__back" onClick={onCancel} disabled={busy}>사업 목록</button>
+-    <p className="program-preview__eyebrow">올리기 → 분석 → 예시 페이지 수정 → 게시</p><h1 className="pnew__title">새 사업 올리기</h1>
+-    <p className="pnew__lead">공고문과 서식을 한 번에 올려 주세요. 초안을 확인하고 신청자가 볼 화면에서 직접 수정합니다.</p>
+-    <form className="pnew__form" onSubmit={(event) => void submit(event)}>
+-      <label className="pnew__field">공고문 PDF<input id="program-notice" className="pnew__input" type="file" accept="application/pdf,.pdf" required disabled={busy} onChange={(event) => setNotice(event.target.files?.[0] || null)} /></label>
+-      <label className="pnew__field">서식 PDF (여러 개 가능)<input id="program-forms" className="pnew__input" type="file" accept="application/pdf,.pdf" multiple required disabled={busy} onChange={(event) => setForms(Array.from(event.target.files || []))} /></label>
+-      <p className="pnew__note">서식 1~10개, 파일당 20MB·20쪽 이하, 암호 없는 PDF를 올려 주세요.</p>
+-      {!!forms.length && <ul>{forms.map((file, index) => <li key={index}>{file.name}</li>)}</ul>}
+-      <label className="pnew__field">부가 설명문 (선택)<textarea id="program-supplemental" className="pnew__input" maxLength={4000} value={supplemental} disabled={busy} onChange={(event) => setSupplemental(event.target.value)} /></label>
+-      <p className="pnew__note">{supplemental.length} / 4,000자 · 공고문에 덧붙일 공개 안내를 입력해 주세요.</p>
+-      {error && <p role="alert" className="pnew__server-error">{error}</p>}
+-      <div className="pnew__actions"><button className="btn" type="button" onClick={onCancel} disabled={busy}>취소</button><button className="btn btn--primary" type="submit" disabled={busy || !notice || !forms.length}>{busy ? '공고문과 서식을 분석하고 있습니다…' : '분석하기'}</button></div>
+-    </form></main>
++  return <main className="om om-page om-entry-upload pnew one-shot-upload">
++    <header className="om-head"><OfficerDrawer current="new" onList={onCancel} disabled={busy} /><h1 className="pnew__title">새 사업 올리기</h1></header>
++    {mock ? <p className="om-notice">목업에서는 신청 목록과 심사 예시를 확인할 수 있습니다.</p> : <>
++      <p className="om-subtle">공고문과 서식을 올린 뒤, 신청자가 볼 화면에서 내용을 확인합니다.</p>
++      <ol className="om-upload-steps" aria-label="사업 게시 진행 단계">{STEPS.map((step, index) => <li key={step} className="om-chip" aria-current={index === (busy ? 1 : 0) ? 'step' : undefined}>{index + 1} {step}</li>)}</ol>
++      <form className="om-card om-stack" onSubmit={(event) => void submit(event)}>
++        <div className="om-upload-zones">{zone('notice', '공고문 PDF', notice ? [notice] : [])}{zone('forms', '서식 PDF', forms)}</div>
++        <p className="om-subtle om-upload-limits">서식 1~10개 · 파일당 20MB·20쪽 이하 · 암호 없는 PDF</p>
++        <label className="om-upload-supplemental" htmlFor="program-supplemental">부가 설명문 (선택)
++          <textarea id="program-supplemental" maxLength={4000} rows={3} value={supplemental} disabled={busy} onChange={(event) => setSupplemental(event.target.value)} />
++        </label>
++        <small>{supplemental.length.toLocaleString('ko-KR')} / 4,000자 · 공고문에 덧붙일 공개 안내</small>
++        {error && <p role="alert" className="om-notice">{error}</p>}
++        {busy && <p role="status" className="om-notice">파일을 올리고 분석하고 있습니다. {elapsed}초 경과</p>}
++        <div className="om-upload-actions"><button className="btn btn--primary" type="submit" disabled={busy || !notice || !forms.length}>{busy ? '분석 중…' : error ? '다시 시도' : '분석하기'}</button></div>
++      </form>
++    </>}
++  </main>
+ }
+diff --git a/demo/frontend/src/pages/officer/ProgramList.tsx b/demo/frontend/src/pages/officer/ProgramList.tsx
+index b54485f..c3d50a9 100644
+--- a/demo/frontend/src/pages/officer/ProgramList.tsx
++++ b/demo/frontend/src/pages/officer/ProgramList.tsx
+@@ -1,123 +1,60 @@
+-/**
+- * 사업 목록 — 담당자가 처음 보는 화면.
+- *
+- * 카드 하나가 사업 하나다. 작성 중인 사업이 맨 앞에 오고, 카드를 누르면 그 사업의
+- * 작업 공간으로 들어간다. 기본 사업의 작업 공간은 접수 목록이다.
+- */
+ import { useEffect, useState } from 'react'
+-
+ import { fetchOfficerPostings, isOfficerMockCounted, type OfficerPosting } from '../../api.ts'
+-import { Skeleton, SkeletonLine } from '../../components/Skeleton.tsx'
+-import useDelayedFlag from '../../hooks/useDelayedFlag.ts'
+-import { isPlainClick, routeHref } from '../../navigation-url.ts'
++import { isPlainClick, routeHref, routeUrl } from '../../navigation-url.ts'
+ import { formatPeriod } from '../../posting-format.ts'
++import { OfficerDrawer, OfficerMenu } from './OfficerModern.tsx'
++import { officerLabel } from './officer-modern-model.ts'
+ import './officer.css'
+ import './program-list.css'
++import './officer-entry-modern.css'
+
+-interface Props {
+-  onNew: () => void
+-  onOpen: (posting: OfficerPosting) => void
+-}
+-
++interface Props { onNew: () => void; onOpen: (posting: OfficerPosting) => void }
+ const count = (value: number) => `${value.toLocaleString('ko-KR')}건`
+-
++// A published program also closes when the server's application period has ended.
++const displayStatus = (item: OfficerPosting) => item.phase === 'closed' ? 'closed' : item.status
+ export default function ProgramList({ onNew, onOpen }: Props) {
+   const [items, setItems] = useState<OfficerPosting[] | null>(null)
+   const [failed, setFailed] = useState(false)
+   const [attempt, setAttempt] = useState(0)
+-  const showSkeleton = useDelayedFlag(items === null && !failed)
+-
+   useEffect(() => {
+     let active = true
+-    fetchOfficerPostings()
+-      .then((list) => {
+-        if (!active) return
+-        // 서버가 이미 작성 중을 앞에 준다. 순서가 어긋나도 화면은 같은 규칙을 지킨다.
+-        setItems([...list.filter((item) => item.phase === 'draft'), ...list.filter((item) => item.phase !== 'draft')])
+-      })
+-      .catch(() => { if (active) setFailed(true) })
++    fetchOfficerPostings().then((list) => {
++      if (!active) return
++      setItems([...list.filter((item) => item.phase === 'draft'), ...list.filter((item) => item.phase !== 'draft')])
++    }).catch(() => { if (active) setFailed(true) })
+     return () => { active = false }
+   }, [attempt])
+-
+-  return (
+-    <main className="plist">
+-      <header className="plist__head">
+-        <h1 className="plist__title">사업 목록</h1>
+-        {items && <span className="plist__count">전체 {items.length.toLocaleString('ko-KR')}개</span>}
+-        <button type="button" className="btn btn--primary plist__new" onClick={onNew}>새 사업 올리기</button>
+-      </header>
+-
+-      {items && isOfficerMockCounted() && (
+-        <p className="officer__mock">
+-          <strong>목업 데이터</strong> 기본 사업의 신청·확인 필요 건수는 예시로 채운 접수 목록을 센 값입니다.
+-        </p>
+-      )}
+-
+-      <div className="plist__body">
+-        {failed ? (
+-          <div className="plist__notice" role="alert">
+-            <strong>사업 목록을 불러오지 못했습니다.</strong>
+-            <button
+-              type="button"
+-              className="btn"
+-              onClick={() => { setFailed(false); setAttempt((value) => value + 1) }}
+-            >
+-              다시 시도
+-            </button>
+-          </div>
+-        ) : items === null ? (
+-          showSkeleton && (
+-            <Skeleton className="plist__grid" label="사업 목록을 불러오는 중">
+-              {[0, 1, 2].map((index) => (
+-                <div className="plist__card plist__card--loading" key={index} aria-hidden="true">
+-                  <SkeletonLine width="64px" />
+-                  <SkeletonLine width={index === 1 ? '50%' : '68%'} />
+-                  <SkeletonLine width="180px" />
+-                  <SkeletonLine width="70%" />
+-                </div>
+-              ))}
+-            </Skeleton>
+-          )
+-        ) : items.length === 0 ? (
+-          <div className="plist__notice">
+-            <strong>등록된 사업이 없습니다.</strong>
+-            <span>새 사업 올리기로 첫 사업을 만들어 주세요.</span>
+-          </div>
+-        ) : (
+-          <ul className="plist__grid">
+-            {items.map((item) => (
+-              <li key={item.id}>
+-                <a
+-                  className="plist__card"
+-                  href={routeHref(`/officer/programs/${item.id}`)}
+-                  onClick={(event) => {
+-                    if (!isPlainClick(event)) return
+-                    event.preventDefault()
+-                    onOpen(item)
+-                  }}
+-                >
+-                  <span className="plist__top">
+-                    <span className={`plist__chip plist__chip--${item.phase}`}>{item.phase_label}</span>
+-                    {item.builtin && <span>기본 사업 · 읽기 전용</span>}
+-                    {item.builtin && <span className="plist__tag">기본 사업</span>}
+-                  </span>
+-                  <strong className="plist__name">{item.title}</strong>
+-                  <span className="plist__period">{formatPeriod(item.apply_start, item.apply_end)}</span>
+-                  <span className="plist__stats">
+-                    <span className="plist__stat">
+-                      신청 <strong>{count(item.application_count)}</strong>
+-                    </span>
+-                    <span className={item.needs_check_count > 0 ? 'plist__stat plist__stat--alert' : 'plist__stat'}>
+-                      확인 필요 <strong>{count(item.needs_check_count)}</strong>
+-                    </span>
+-                    <span className="plist__go" aria-hidden="true">{item.builtin ? '신청 목록' : '사업 열기'}</span>
+-                  </span>
+-                </a>
+-              </li>
+-            ))}
+-          </ul>
+-        )}
+-      </div>
+-    </main>
+-  )
++  const retry = () => { setFailed(false); setItems(null); setAttempt((value) => value + 1) }
++  const openTab = (item: OfficerPosting, tab: 'settings' | 'info') => { onOpen(item); routeUrl(`/officer/programs/${item.id}`, { tab }) }
++  return <main className="om om-page om-entry-list plist">
++    <header className="om-head plist__head"><OfficerDrawer current="list" /><h1 className="plist__title">사업 목록</h1>
++      {items && <span className="om-subtle">전체 {items.length.toLocaleString('ko-KR')}개</span>}
++      <button type="button" className="btn btn--primary plist__new" onClick={onNew}>새 사업 올리기</button>
++    </header>
++    {items && isOfficerMockCounted() && <p className="om-subtle">합성 목업 데이터입니다.</p>}
++    <div className="plist__body">
++      {failed || items === null || items.length === 0 ? <div className="om-notice om-row" role={failed ? 'alert' : items === null ? 'status' : undefined}>
++        <span>{failed ? '사업 목록을 불러오지 못했습니다.' : items === null ? '사업 목록을 불러오고 있습니다.' : '등록된 사업이 없습니다.'}</span>
++        <button type="button" className="btn" onClick={retry}>다시 시도</button>
++      </div> : <ul className="plist__grid">{items.map((item) => <li key={item.id} className="om-program-card">
++        <div className="om-row om-program-top"><span className={`om-chip${displayStatus(item) === 'draft' ? ' om-chip--warning' : displayStatus(item) === 'published' ? ' om-chip--success' : ''}`}>{officerLabel(displayStatus(item))}</span>
++          {item.builtin && <span className="om-subtle">기본 사업 · 읽기 전용</span>}
++          <OfficerMenu label={`${item.title} 더보기`} actions={[
++            { label: '사업 설정', onSelect: () => openTab(item, 'settings') },
++            { label: '사업 정보', onSelect: () => openTab(item, 'info') },
++          ]} />
++        </div>
++        <a className="plist__card" href={routeHref(`/officer/programs/${item.id}`)} onClick={(event) => {
++          if (!isPlainClick(event)) return
++          event.preventDefault(); onOpen(item)
++        }}>
++          <strong className="plist__name">{item.title}</strong>
++          <span className="plist__period">{formatPeriod(item.apply_start, item.apply_end)}</span>
++          <span className="plist__stats"><span>신청 <strong>{count(item.application_count)}</strong></span>
++            <span className={item.needs_check_count > 0 ? 'om-program-pending' : undefined}>확인 필요 <strong>{count(item.needs_check_count)}</strong></span>
++          </span>
++        </a>
++      </li>)}</ul>}
++    </div>
++  </main>
+ }
+diff --git a/demo/frontend/src/pages/officer/officer-entry-modern.css b/demo/frontend/src/pages/officer/officer-entry-modern.css
+new file mode 100644
+index 0000000..14e839d
+--- /dev/null
++++ b/demo/frontend/src/pages/officer/officer-entry-modern.css
+@@ -0,0 +1,39 @@
++/* Entry surfaces are isolated from the legacy officer shell and job-package views. */
++.om.om-entry-upload{max-width:1000px}
++.om.om-entry-upload .om-head{margin-bottom:var(--sp-3)}
++.om.om-entry-upload .om-upload-steps{display:flex;flex-wrap:wrap;gap:var(--sp-2);list-style:none;margin:var(--sp-5) 0;padding:0}
++.om.om-entry-upload .om-upload-steps [aria-current=step]{color:var(--color-text-brand);border-color:var(--color-primary);background:var(--color-surface-brand)}
++.om.om-entry-upload .om-upload-zones{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-5)}
++.om.om-entry-upload .om-upload-slot{min-width:0}
++.om.om-entry-upload .om-upload-zone{box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--sp-3);width:100%;min-height:180px;padding:var(--sp-6);border:2px dashed var(--color-border-strong);border-radius:var(--radius-12);color:var(--color-text-brand);background:var(--color-surface-brand);font-size:var(--fs-16);text-align:center}
++.om.om-entry-upload .om-upload-zone strong{font-size:var(--fs-19)}
++.om.om-entry-upload .om-upload-zone span{color:var(--color-text-subtle);font-size:var(--fs-15)}
++.om.om-entry-upload .om-upload-zone:disabled{background:var(--color-surface-subtle);color:var(--color-text-muted)}
++.om.om-entry-upload .is-dragging .om-upload-zone{border-style:solid;border-color:var(--color-focus);background:var(--brand-10)}
++.om.om-entry-upload .om-upload-files{display:flex;flex-wrap:wrap;gap:var(--sp-2);list-style:none;padding:0;margin:var(--sp-3) 0 0}
++.om.om-entry-upload .om-upload-files .om-chip{max-width:100%;padding:var(--sp-1) var(--sp-2) var(--sp-1) var(--sp-3);gap:var(--sp-2)}
++.om.om-entry-upload .om-upload-files span{min-width:0;overflow-wrap:anywhere}
++.om.om-entry-upload .om-upload-remove{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:var(--control-sm);height:var(--control-sm);border:0;border-radius:var(--radius-pill);color:var(--color-text-brand);background:var(--color-surface);font-size:var(--fs-16)}
++.om.om-entry-upload .om-upload-limits{margin:0}
++.om.om-entry-upload .om-upload-supplemental{display:grid;gap:var(--sp-2);font-size:var(--fs-15);font-weight:var(--fw-medium)}
++.om.om-entry-upload .om-upload-actions{display:flex;justify-content:flex-end}
++.om.om-entry-upload .om-notice{margin:0}
++.om.om-entry-login{box-sizing:border-box;max-width:440px;margin:72px auto;padding:var(--sp-8);border:1px solid var(--color-border);border-radius:var(--radius-12);background:var(--color-surface);color:var(--color-text);font-size:var(--fs-16)}
++.om.om-entry-login form{gap:var(--sp-5)}
++.om.om-entry-login .officer-login__eyebrow{font-size:var(--fs-15);color:var(--color-text-muted)}
++.om.om-entry-login [role=alert]{color:var(--danger-60);font-size:var(--fs-15);margin:0}
++.om.om-entry-login .btn--primary{width:100%}
++.om.om-entry-list .plist__head{min-height:var(--control-md);margin-bottom:var(--sp-6)}
++.om.om-entry-list .plist__new{margin-left:var(--sp-3)}
++.om.om-entry-list .plist__grid{grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:var(--sp-5)}
++.om.om-entry-list .om-program-card{min-width:0;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-12)}
++.om.om-entry-list .om-program-top{padding:var(--sp-4) var(--sp-5) 0}
++.om.om-entry-list .om-program-top .om-menu{margin-left:auto}
++.om.om-entry-list .plist__card{box-sizing:border-box;min-height:160px;height:auto;padding:var(--sp-4) var(--sp-5) var(--sp-5);border:0;border-radius:0 0 var(--radius-12) var(--radius-12);background:transparent;color:var(--color-text);font-size:var(--fs-16);line-height:var(--lh-base);gap:var(--sp-2)}
++.om.om-entry-list .plist__card:hover{background:var(--color-surface-brand)}
++.om.om-entry-list .plist__name{font-size:var(--fs-19);line-height:var(--lh-base);margin:0}
++.om.om-entry-list .plist__period{color:var(--color-text-muted);font-size:var(--fs-15);margin:0}
++.om.om-entry-list .plist__stats{gap:var(--sp-4);flex-wrap:wrap;border-top:1px solid var(--color-divider);padding-top:var(--sp-3);margin-top:var(--sp-3);font-size:var(--fs-15);color:var(--color-text-subtle)}
++.om.om-entry-list .plist__stats strong{font-size:var(--fs-16);color:var(--color-text)}
++.om.om-entry-list .om-program-pending,.om.om-entry-list .om-program-pending strong{color:var(--warning-60)}
++@media(max-width:700px){.om.om-entry-upload .om-upload-zones{grid-template-columns:1fr}.om.om-entry-login{margin:var(--sp-6) var(--sp-4)}.om.om-entry-list .plist__new{margin-left:0}}

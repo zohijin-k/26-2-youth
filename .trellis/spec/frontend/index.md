@@ -21,6 +21,7 @@ This directory contains guidelines for frontend development. Fill in each file w
 | [Applicant Design System](./applicant-design-system.md) | Applicant-only tokens, dialogs, upload feedback and verification boundaries | Documented |
 | [Applicant PDF Workspace](./pdf-form-workspace.md) | Original PDF rendering, public numbering, save transitions, signature lifecycle | Documented |
 | [Program authoring and review](./program-authoring.md) | One-shot analysis, editable preview, confirmations and per-program review | Documented |
+| [Modern officer surfaces](./officer-modern-design.md) | Scoped tokens, accessible menus, publication transaction and legacy isolation | Documented |
 | [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | To fill |
 | [Type Safety](./type-safety.md) | Type patterns, validation | To fill |
 

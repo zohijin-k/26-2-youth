@@ -1,0 +1,22 @@
+{
+  "engine": {
+    "exit": 1,
+    "summary": [
+      "Infrastructure ENOSPC: no space left on device"
+    ],
+    "log": "/tmp/officer-polish-stage3-engine.log"
+  },
+  "backend": {
+    "exit": null,
+    "summary": [
+      "not run: ENOSPC creating log"
+    ]
+  },
+  "scenarios": {},
+  "frontend": {
+    "exit": null,
+    "summary": [
+      "not run"
+    ]
+  }
+}

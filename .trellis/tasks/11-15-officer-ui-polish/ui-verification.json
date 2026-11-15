@@ -1,0 +1,11 @@
+{
+  "result": "passed",
+  "checks": [
+    "menu arrows / Escape / opener focus restoration",
+    "drawer arrows / trapped Tab / Escape / focus return",
+    "menu and drawer outside dismissal",
+    "pending evidence one line / confirmed collapsed / edits reopen confirmation",
+    "officer confirmation: no outside dismissal, Tab trap, Escape, focus restoration"
+  ],
+  "errors": []
+}

@@ -1,0 +1,10 @@
+{
+  "url": "http://127.0.0.1:5185/officer/programs/1/province/review/901609?mock=1",
+  "errors": [],
+  "review_box": {
+    "x": 20,
+    "y": 2.5625,
+    "width": 1400,
+    "height": 897.796875
+  }
+}
