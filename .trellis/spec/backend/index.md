@@ -27,6 +27,7 @@ This directory contains guidelines for backend development. Fill in each file wi
 | [Application and officer access](./application-access.md) | Owner cookies, signed officer sessions, projections and authenticated test fixtures | Active |
 | [Generic program review](./generic-program-review.md) | Posting boundaries, evidence confirmations and shared decision guards | Active |
 | [Public notice drafts](./notice-drafts.md) | Provenance, conservative grammar and existing-rule bindings | Active |
+| [Form draft detection](./form-draft-detection.md) | Inline blanks, choice words, signature marks, false-positive guards, dedupe and officer snap | Active |
 
 ---
 

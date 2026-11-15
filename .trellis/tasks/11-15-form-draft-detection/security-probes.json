@@ -1,0 +1,12 @@
+{
+  "synthetic_only": true,
+  "source": "e2e.mjs against isolated loopback server",
+  "rows": [
+    {
+      "method": "POST",
+      "path": "/api/officer/postings/{id}/workspace/forms/{form_id}/snap",
+      "no_cookie": 401,
+      "officer": 200
+    }
+  ]
+}

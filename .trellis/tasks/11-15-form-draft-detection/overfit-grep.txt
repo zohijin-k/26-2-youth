@@ -1,0 +1,10 @@
+fixture names:
+3:Geometry uses PDF points with the same top-left origin as existing form_coords.
+form_no literals:
+511:def draft_layout(pdf: bytes, *, form_no: str = "form_1", title: str = "서식", template: str = "") -> dict[str, Any]:
+4+ digit numbers:
+  0 matches
+form-specific sentences (전북|두배적금|취업|청년|농협):
+  0 matches
+note: both hits above are unchanged lines from main (module docstring wording; draft_layout default parameter).
+added lines since stage-1 commit matching ([0-9]{4,}|서식[0-9]|job_): 0

@@ -1,0 +1,7 @@
+[
+  {"stage": 0, "result": "통과", "commit": null, "new_tests": 0, "notes": "main 641db8d에서 분기; df 여유 32Gi; 보호 해시 10/10 일치; A1267/B1645/C18/D69 기준선 통과"},
+  {"stage": 1, "result": "통과", "commit": "c9f8abe", "new_tests": 5, "notes": "precision·false_fields·oversized·missed·extra·전체 합계 줄 추가; 기존 측정 시험 2개 통과; A/B/C/D 통과(B1650)"},
+  {"stage": 2, "result": "통과", "commit": "0349dad", "new_tests": 21, "notes": "규칙 a~e·중복 제거; 재현율 64.1%→87.4%, 정밀도 84.3%→92.0%, oversized 4→0; A/B/C/D 통과(B1671)"},
+  {"stage": 3, "result": "통과", "commit": "38d28c5", "new_tests": 8, "notes": "칸 추가 클릭 맞춤 경로·편집기 연결; 백엔드5·프런트3; A/B/C/D 통과(B1676, D72)"},
+  {"stage": 4, "result": "통과", "commit": "문서 커밋(HEAD)", "new_tests": 0, "notes": "spec 문서·보고서; Playwright 종단 1회 통과(캡처 9장); 최종 A/B/C/D 결과는 report.md 7절"}
+]
