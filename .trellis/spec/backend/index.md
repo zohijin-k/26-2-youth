@@ -26,6 +26,7 @@ This directory contains guidelines for backend development. Fill in each file wi
 | [Private case verification](./verify-cases.md) | Shared upload assessments, ignored manifests, value-free snapshots and signed regression differences | Active |
 | [Application and officer access](./application-access.md) | Owner cookies, signed officer sessions, projections and authenticated test fixtures | Active |
 | [Generic program review](./generic-program-review.md) | Posting boundaries, evidence confirmations and shared decision guards | Active |
+| [Public notice drafts](./notice-drafts.md) | Provenance, conservative grammar and existing-rule bindings | Active |
 
 ---
 
