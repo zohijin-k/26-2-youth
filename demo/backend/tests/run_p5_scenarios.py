@@ -24,6 +24,7 @@ import tempfile
 from pathlib import Path
 
 from sqlmodel import create_engine, select
+from .security_support import authenticate_officer
 
 from .. import models
 from ..rules.programs import DOUBLE_SAVINGS, JOB_PACKAGE, get_program
@@ -674,6 +675,7 @@ def main() -> int:
 
     try:
         with TestClient(app) as client:
+            authenticate_officer(client)
             test_program_branching(client)
             test_self_check(client)
             test_subsidy_math()

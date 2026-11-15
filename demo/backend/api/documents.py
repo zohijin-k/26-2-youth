@@ -184,7 +184,8 @@ def set_doc_context(application_id: int, body: DocContextRequest) -> dict[str, A
         # Partial client updates preserve other independent choices.
         if not body.paper_forms:
             new_context["paper_forms"] = old.get("paper_forms", {})
-        app.doc_context_json = new_context
+        from engine_v2.pipeline.privacy import mask_data
+        app.doc_context_json = mask_data(new_context)
         app.updated_at = datetime.now()
         s.add(app)
         s.commit()

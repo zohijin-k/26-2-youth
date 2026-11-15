@@ -17,6 +17,7 @@ import { currentParams, routeUrl } from '../../navigation-url.ts'
 import NewProgram from './NewProgram.tsx'
 import ProgramList from './ProgramList.tsx'
 import ProgramWorkspace from './ProgramWorkspace.tsx'
+import OfficerSession from './OfficerSession.tsx'
 
 type Route =
   | { screen: 'list' }
@@ -52,7 +53,7 @@ function moveOldLink(postingId: number): void {
   routeUrl(`/officer/programs/${postingId}${rest}`, keep, true)
 }
 
-export default function OfficerApp() {
+function OfficerScreens() {
   const [route, setRoute] = useState<Route>(readRoute)
 
   // `?mode=officer`로 들어왔거나 알 수 없는 주소면 사업 목록의 주소로 맞춘다.
@@ -102,4 +103,8 @@ export default function OfficerApp() {
       )}
     />
   )
+}
+
+export default function OfficerApp() {
+  return <OfficerSession><OfficerScreens /></OfficerSession>
 }

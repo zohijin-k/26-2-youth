@@ -4,6 +4,7 @@ from datetime import date
 import pymupdf
 import pytest
 from fastapi.testclient import TestClient
+from demo.backend.tests.security_support import authenticate_officer
 from sqlmodel import create_engine
 
 from demo.backend import models
@@ -35,6 +36,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("ENGINE_V2_OCR", "off")
     try:
         with TestClient(app) as connected:
+            authenticate_officer(connected, monkeypatch)
             yield connected
     finally:
         isolated.dispose()

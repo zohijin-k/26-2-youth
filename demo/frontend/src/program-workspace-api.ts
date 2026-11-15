@@ -1,4 +1,5 @@
 import type { OfficerPosting } from './api.ts'
+import { officerSessionResponse } from './officer-session.ts'
 
 export type FieldKind = 'text' | 'number' | 'date' | 'check' | 'radio' | 'signature'
 export type AutofillSource = 'name' | 'birth' | 'mobile' | 'phone' | 'address' | 'email'
@@ -55,6 +56,7 @@ export interface ManagedProgramFields {
 
 async function workspaceRequest<T>(url: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(url, { credentials: 'same-origin', ...options })
+  officerSessionResponse(url, response)
   const body: unknown = await response.json().catch(() => null)
   if (!response.ok) {
     const message = body && typeof body === 'object' && 'detail' in body && typeof body.detail === 'string'

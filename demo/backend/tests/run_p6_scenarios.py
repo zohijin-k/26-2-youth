@@ -34,6 +34,7 @@ from pathlib import Path
 from typing import Any
 
 from sqlmodel import create_engine, select
+from .security_support import authenticate_officer
 
 from .. import models
 from .scenario_support import complete_synthetic_work, seed_blocked_historical_review
@@ -747,6 +748,7 @@ def _seed_noise(app) -> None:
     from fastapi.testclient import TestClient
 
     with TestClient(app) as client:
+        authenticate_officer(client)
         _create_ds(client, name="이전시연", uploads=S2_UPLOADS)
     models.engine.dispose()
 
@@ -791,6 +793,7 @@ def main(argv: list[str] | None = None) -> int:
             if index > 1:
                 _reset(root)
             with TestClient(app) as client:
+                authenticate_officer(client)
                 check(f"{index}회차 시작 시 신청 건", count_rows()["application"], 0)
                 results = run_round(client)
                 rows = count_rows()

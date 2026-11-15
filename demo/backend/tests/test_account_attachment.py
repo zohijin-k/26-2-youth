@@ -5,6 +5,7 @@ from pathlib import Path
 import pymupdf
 import pytest
 from fastapi.testclient import TestClient
+from demo.backend.tests.security_support import authenticate_officer
 from sqlmodel import create_engine, select
 
 from demo.backend import models
@@ -24,6 +25,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("ENGINE_V2_OCR", "off")
     try:
         with TestClient(app) as connection:
+            authenticate_officer(connection, monkeypatch)
             yield connection
     finally:
         database.dispose()

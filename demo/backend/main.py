@@ -31,6 +31,7 @@ from .api import (
 from .engine_adapter import apply_runtime_overrides
 from .models import init_db
 from .generic_access import GenericApplicantAccess
+from .officer_auth import OfficerAccess, router as officer_auth_router
 from .rules.programs import PROGRAMS, get_program
 from .rules.self_check import item_numbers
 from .rules.subsidy import catalog
@@ -61,6 +62,8 @@ app.add_middleware(
 
 
 app.add_middleware(GenericApplicantAccess)
+app.add_middleware(OfficerAccess)
+app.include_router(officer_auth_router)
 
 app.include_router(applications.router)
 app.include_router(criteria.public_router)

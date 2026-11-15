@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from sqlmodel import select
+from .security_support import authenticate_officer
 
 from . import run_p4_scenarios as p4
 from . import run_p5_scenarios as p5
@@ -224,6 +225,7 @@ def main() -> int:
     p4._isolate(tmp)
     try:
         with TestClient(app) as client:
+            authenticate_officer(client)
             test_count_scopes(client)
             test_interview_linking(client)
             test_receipt_amounts(client)

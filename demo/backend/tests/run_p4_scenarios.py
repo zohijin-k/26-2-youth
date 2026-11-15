@@ -23,6 +23,7 @@ import tempfile
 from pathlib import Path
 
 from sqlmodel import create_engine, select
+from .security_support import authenticate_officer
 
 from .. import models
 from .scenario_support import complete_synthetic_work, seed_blocked_historical_review
@@ -908,6 +909,7 @@ def main() -> int:
 
     try:
         with TestClient(app) as client:
+            authenticate_officer(client)
             ids = seed(client)
             test_list_and_filters(client, ids)
             test_quota(client)

@@ -13,11 +13,14 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlmodel import select
 
 from ..models import STATUS_DRAFT, Application, Consent, Document, get_session
 from .. import generic_programs as generic
+from ..applicant_privacy import mask_form_values
+from engine_v2.pipeline.privacy import mask_data
 from ..forms.signature_scan import signature_scan_paths
 from ..forms.email import is_valid_email, normalize_email
 from ..rules.criteria import latest as latest_criteria
@@ -94,7 +97,7 @@ def _without_server_form_dates(values: dict[str, Any]) -> dict[str, Any]:
 
 def _normalize_form_values(values: dict[str, Any]) -> dict[str, Any]:
     """Normalize email text before persistence and reject malformed nonempty values."""
-    normalized = _without_server_form_dates(values)
+    normalized = mask_form_values(_without_server_form_dates(values))
     email = normalized.get("email")
     if email is None:
         return normalized
@@ -190,6 +193,24 @@ def _require_draft(app: Application) -> None:
         raise HTTPException(409, "제출한 신청서는 수정할 수 없습니다.")
 
 
+# Positive response projection: adding a model column cannot expose it to applicants.
+APPLICANT_KEYS = frozenset({'id', 'application_no', 'program_code', 'criteria_version', 'status',
+    'form1_json', 'self_check_json', 'form5_json', 'doc_context_json', 'identity_json',
+    'created_at', 'updated_at', 'submitted_at'})
+IDENTITY_KEYS = frozenset({'name', 'birth', 'phone', 'method', 'verified_at', 'pledge_signature_kind'})
+
+
+def applicant_view(app: Application) -> dict[str, Any]:
+    data = app.model_dump(include=APPLICANT_KEYS)
+    data['identity_json'] = {key: value for key, value in (app.identity_json or {}).items() if key in IDENTITY_KEYS}
+    stored_pledge = (app.identity_json or {}).get('pledge_signature_path')
+    if isinstance(stored_pledge, str):
+        extension = Path(stored_pledge).suffix.lower().lstrip('.')
+        if extension in SIGNATURE_TYPES.values():
+            data['identity_json']['pledge_signature_path'] = f'/api/applications/{app.id}/identity-pledge.{extension}'
+    return mask_form_values(data)
+
+
 @router.post("")
 def create(body: CreateRequest, response: Response, request: Request) -> dict[str, Any]:
     if body.applicant_flow_version not in (0, 1):
@@ -215,15 +236,23 @@ def create(body: CreateRequest, response: Response, request: Request) -> dict[st
     response.set_cookie(
         key=f"applicant_access_{app.id}",
         value=applicant_token,
-        path="/api" if generic.is_generic(app.program_code) else f"/api/applications/{app.id}/forms/files",
+        path="/api",
         max_age=5 * 365 * 24 * 60 * 60,
         httponly=True,
         secure=request.url.scheme == "https",
         samesite="lax",
     )
+    if not generic.is_generic(app.program_code):
+        # Retire the old narrow cookie scope while keeping its response contract.
+        # Only the broad credential stays active, so cookie jars remain unambiguous.
+        response.set_cookie(
+            key=f"applicant_access_{app.id}", value=applicant_token,
+            path=f"/api/applications/{app.id}/forms/files", max_age=0,
+            httponly=True, secure=request.url.scheme == "https", samesite="lax",
+        )
     if generic.is_generic(app.program_code):
         return generic.application_dict(app)
-    return app.model_dump(exclude={"applicant_access_hash", "written_forms_archive_path", "written_forms_archive_count"})
+    return applicant_view(app)
 
 
 @router.get("/{application_id}")
@@ -231,7 +260,7 @@ def read(application_id: int) -> dict[str, Any]:
     app = _load(application_id)
     if generic.is_generic(app.program_code):
         return generic.application_dict(app)
-    return {**app.model_dump(exclude={"applicant_access_hash", "written_forms_archive_path", "written_forms_archive_count"}),
+    return {**applicant_view(app),
             "eligibility_blockers": age_blockers(get_program(app.program_code), app.form1_json or {}, app.identity_json)}
 
 
@@ -262,11 +291,11 @@ def patch(application_id: int, body: PatchRequest) -> dict[str, Any]:
                 values["bankbookFileName"] = Path(bankbook.file_path).name
             elif app.program_code == "job_package" and (app.doc_context_json or {}).get("applicant_flow_version") == 1:
                 values.pop("bankbookFileName", None)
-            app.form1_json = _lock_identity(values, app.identity_json or {})
+            app.form1_json = mask_form_values(_lock_identity(values, app.identity_json or {}))
         if body.self_check is not None:
-            app.self_check_json = body.self_check
+            app.self_check_json = mask_form_values(body.self_check)
         if body.form5 is not None:
-            saved_form5 = _without_server_form_dates(body.form5)
+            saved_form5 = mask_form_values(_without_server_form_dates(body.form5))
             _, processed_scan = signature_scan_paths(STORAGE, app.application_no)
             saved_form5.pop("handwrittenFileName", None)
             saved_form5["signatureScanUploaded"] = processed_scan.is_file()
@@ -291,7 +320,7 @@ def patch(application_id: int, body: PatchRequest) -> dict[str, Any]:
         s.add(app)
         s.commit()
         s.refresh(app)
-        return app.model_dump(exclude={"applicant_access_hash", "written_forms_archive_path", "written_forms_archive_count"})
+        return applicant_view(app)
 
 
 @router.post("/{application_id}/identity")
@@ -302,7 +331,7 @@ def verify_identity(application_id: int, body: IdentityRequest) -> dict[str, Any
     흉내 내어 입력값을 그대로 인증 결과로 쓴다 — 실연동 시 바꾸는 곳은 이 함수 하나다.
     인증 결과는 신청 건마다 한 번만 정한다. 바꾸려면 새 신청으로 시작한다.
     """
-    name = re.sub(r"\s+", "", body.name)
+    name = mask_data(re.sub(r"\s+", "", body.name))
     if not name:
         raise HTTPException(400, "성명을 입력해 주세요.")
     try:
@@ -340,15 +369,28 @@ def verify_identity(application_id: int, body: IdentityRequest) -> dict[str, Any
             "pledge_signature_path": str(target.relative_to(STORAGE.parent)),
             "pledge_signature_kind": body.signature_kind,
         }
-        app.form1_json = generic.values(app, app.form1_json or {}, phone=f"{phone[:3]}-{phone[3:7]}-{phone[7:]}") if generic.is_generic(app.program_code) else _lock_identity(app.form1_json or {}, app.identity_json)
+        app.form1_json = generic.values(app, app.form1_json or {}, phone=f"{phone[:3]}-{phone[3:7]}-{phone[7:]}") if generic.is_generic(app.program_code) else mask_form_values(_lock_identity(app.form1_json or {}, app.identity_json))
         app.updated_at = datetime.now()
         s.add(app)
         s.commit()
         s.refresh(app)
         if generic.is_generic(app.program_code):
             return {"identity": generic.application_dict(app)["identity_json"], "form1": app.form1_json, "eligibility_blockers": []}
-        return {"identity": app.identity_json, "form1": app.form1_json,
+        return {"identity": applicant_view(app)["identity_json"], "form1": app.form1_json,
                 "eligibility_blockers": age_blockers(get_program(app.program_code), app.form1_json or {}, app.identity_json)}
+
+
+@router.get('/{application_id}/identity-pledge.{extension}')
+def identity_pledge(application_id: int, extension: str) -> FileResponse:
+    application = _load(application_id)
+    relative = (application.identity_json or {}).get('pledge_signature_path')
+    if not isinstance(relative, str) or extension not in SIGNATURE_TYPES.values():
+        raise HTTPException(404, '서약 서명을 찾을 수 없습니다.')
+    target = (STORAGE.parent / relative).resolve()
+    if not target.is_relative_to(STORAGE.resolve()) or not target.is_file() or target.suffix.lower() != f'.{extension}':
+        raise HTTPException(404, '서약 서명을 찾을 수 없습니다.')
+    media_type = next(kind for kind, suffix in SIGNATURE_TYPES.items() if suffix == extension)
+    return FileResponse(target, media_type=media_type, headers={'Content-Disposition': 'inline', 'Cache-Control': 'no-store'})
 
 
 @router.post("/{application_id}/self-check")
@@ -364,7 +406,7 @@ def self_check(application_id: int, body: SelfCheckRequest) -> dict[str, Any]:
         row = s.get(Application, application_id)
         if row is None:
             raise HTTPException(404, "신청 건을 찾을 수 없습니다.")
-        row.self_check_json = dict(body.answers)
+        row.self_check_json = mask_form_values(dict(body.answers))
         row.updated_at = datetime.now()
         s.add(row)
         s.commit()
@@ -398,6 +440,7 @@ def save_consents(application_id: int, body: ConsentRequest, request: Request) -
             s.delete(old)
 
         for item in body.consents:
+            consent_type = mask_data(item.consent_type)
             signature_path: str | None = None
             if item.consent_type == "admin_info" and item.signature_kind == "handwritten":
                 _, processed_scan = signature_scan_paths(STORAGE, app.application_no)
@@ -406,23 +449,23 @@ def save_consents(application_id: int, body: ConsentRequest, request: Request) -
                 signature_path = str(processed_scan.relative_to(STORAGE.parent))
             if item.signature_data_url and "," in item.signature_data_url:
                 raw = base64.b64decode(item.signature_data_url.split(",", 1)[1])
-                target = SIGNATURES / f"{app.application_no}_{item.consent_type}.png"
+                target = SIGNATURES / f"{app.application_no}_{consent_type}.png"
                 target.write_bytes(raw)
                 signature_path = str(target.relative_to(STORAGE.parent))
 
             consent = Consent(
                 application_id=application_id,
-                consent_type=item.consent_type,
+                consent_type=consent_type,
                 agreed=item.agreed,
                 signature_path=signature_path,
-                signature_kind=item.signature_kind,
+                signature_kind=mask_data(item.signature_kind),
                 client_ip=request.client.host if request.client else None,
-                user_agent=request.headers.get("user-agent"),
+                user_agent=mask_data(request.headers.get("user-agent")),
             )
             s.add(consent)
             saved.append(
                 {
-                    "consent_type": item.consent_type,
+                    "consent_type": consent_type,
                     "agreed": item.agreed,
                     "signature_saved": signature_path is not None,
                 }

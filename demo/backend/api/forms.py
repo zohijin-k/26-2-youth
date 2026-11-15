@@ -586,6 +586,9 @@ def snapshot_written_pdf(app: Any) -> tuple[str | None, int]:
 
 
 def _require_applicant_archive_access(app: Any, request: Request) -> None:
+    from ..officer_auth import is_officer
+    if is_officer(request):
+        return
     token = request.cookies.get(f"applicant_access_{app.id}", "")
     actual = sha256(token.encode("utf-8")).hexdigest() if token else ""
     expected = app.applicant_access_hash or ""

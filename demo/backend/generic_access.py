@@ -1,4 +1,4 @@
-"""Cookie ownership guard for the newly added generic application surface."""
+"""Cookie ownership guard shared by every application version."""
 from __future__ import annotations
 
 from hashlib import sha256
@@ -13,6 +13,7 @@ from starlette.responses import JSONResponse
 
 from .models import Application, Document, get_session
 from .generic_programs import is_generic
+from .officer_auth import is_officer
 
 _INTEGER = TypeAdapter(int)
 
@@ -41,11 +42,28 @@ def _application_for_path(path: str) -> Application | None:
                 return None
             identifier = document.application_id
         application = session.get(Application, identifier)
-        return application if application and is_generic(application.program_code) else None
+        return application
+
+
+def _public_asset(parts: list[str], request: Request) -> bool:
+    if request.method != 'GET' or parts[2] != 'applications':
+        return False
+    tail = parts[4:]
+    if tail == ['program']:
+        return True
+    if len(tail) == 3 and tail[:2] in (['forms', 'layouts'], ['forms', 'templates']):
+        return True
+    if len(tail) == 4 and tail[0] == 'forms' and tail[2] == 'pages':
+        # Pydantic accepts several false spellings. Everything else stays guarded
+        # (including malformed values); a handler's future default cannot expose data.
+        return request.query_params.get('preview', 'false').lower() in {'false', '0', 'off', 'no'}
+    if tail in (['forms', 'files', 'original-hwp'], ['forms', 'files', 'original-hwp', 'options']):
+        return True
+    return len(tail) == 4 and tail[:2] == ['forms', 'files'] and tail[3] in {'blank.pdf', 'source.hwp', 'options'}
 
 
 class GenericApplicantAccess:
-    """Protect generic data/files while preserving legacy and officer APIs."""
+    """Protect application data and originals; public blank assets stay public."""
 
     def __init__(self, app: Any):
         self.app = app
@@ -69,21 +87,35 @@ class GenericApplicantAccess:
         if scope['type'] != 'http' or scope.get('method') == 'OPTIONS':
             await self.app(scope, receive, send)
             return
-        application = _application_for_path(scope.get('path', ''))
-        if application is not None:
-            request = Request(scope)
-            token = request.cookies.get(f'applicant_access_{application.id}', '')
-            expected = application.applicant_access_hash or ''
-            actual = sha256(token.encode('utf-8')).hexdigest() if token else ''
-            if not token or not expected or not hmac.compare_digest(actual, expected):
-                response = JSONResponse({'detail': '신청자 본인만 접근할 수 있습니다.'}, status_code=403,
-                                        headers={'Cache-Control': 'private, no-store'})
-                await response(scope, receive, send)
-                return
-            if scope.get('method') in {'POST', 'PUT', 'PATCH', 'DELETE'}:
-                # Hold through body reading, OCR and the final response; handlers
-                # reload the application after an earlier writer completes.
-                async with self._write_lock(application.id):
-                    await self.app(scope, receive, send)
-                return
+        path = scope.get('path', '')
+        parts = path.split('/')
+        # Creation has no application identifier. All routes beneath an identifier
+        # are private unless explicitly classified as blank public assets below.
+        protected = len(parts) >= 4 and parts[1] == 'api' and parts[2] in {'applications', 'files'}
+        if not protected:
+            await self.app(scope, receive, send)
+            return
+        application = _application_for_path(path)
+        request = Request(scope)
+        if application is not None and not is_generic(getattr(application, 'program_code', 'posting_unknown')) and _public_asset(parts, request):
+            await self.app(scope, receive, send)
+            return
+        # Officer sessions may view originals inline. They never authorize PATCH,
+        # applicant state changes, or general applicant data endpoints.
+        officer_view = scope.get('method') == 'GET' and (parts[2] == 'files' or (len(parts) >= 5 and (parts[4] == 'forms' or parts[4].startswith('identity-pledge.'))))
+        if officer_view and is_officer(request):
+            await self.app(scope, receive, send)
+            return
+        token = request.cookies.get(f'applicant_access_{application.id}', '') if application else ''
+        expected = application.applicant_access_hash or '' if application else ''
+        actual = sha256(token.encode('utf-8')).hexdigest() if token else ''
+        if not application or not token or not expected or not hmac.compare_digest(actual, expected):
+            response = JSONResponse({'detail': '신청자 본인만 접근할 수 있습니다.'}, status_code=403,
+                                    headers={'Cache-Control': 'private, no-store'})
+            await response(scope, receive, send)
+            return
+        if scope.get('method') in {'POST', 'PUT', 'PATCH', 'DELETE'}:
+            async with self._write_lock(application.id):
+                await self.app(scope, receive, send)
+            return
         await self.app(scope, receive, send)

@@ -4,6 +4,7 @@ import type {
   DecisionKey,
   DocStatus,
   OfficerDocument,
+  OfficerPosting,
   OfficerList,
   OfficerListQuery,
   OfficerRole,
@@ -20,6 +21,15 @@ export const isMockId = (applicationId: number) => byId.has(applicationId)
 import { YOUTH_PROGRAM as JOB_PACKAGE } from '../../program-scope.ts'
 
 const PROGRAM_NAMES: Record<string, string> = { [JOB_PACKAGE]: '전북청년 취업지원패키지' }
+
+/** A forced mock session loads no registry or authentication endpoints. */
+export function mockPosting(): OfficerPosting {
+  return { id: 1, title: PROGRAM_NAMES[JOB_PACKAGE], apply_start: '2026-01-01', apply_end: '2026-12-31',
+    phase: 'open', phase_label: '접수 중', status: 'published', builtin: true, can_apply: false, apply_path: null,
+    has_notice: false, has_forms: false, guidance_text: '', notice_url: null, forms_url: null,
+    notice_file_name: null, forms_file_name: null, application_count: 0, needs_check_count: 0, editable: false,
+    created_at: null, updated_at: null, published_at: null }
+}
 
 /** Relative geographic sampling weights; not application quotas. */
 const REGION_WEIGHTS: Record<string, number> = {
