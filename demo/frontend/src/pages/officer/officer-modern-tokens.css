@@ -47,6 +47,7 @@
   /* control / layout */
   --control-lg:56px; --control-md:48px; --control-sm:40px; --ease:160ms ease;
   --shell-max:1200px; --content-max:880px; --gutter:24px; --shell-h:72px;
+  --frame-max:1280px; --frame-outer:#e8ecf1; /* 넓은 화면에서 화면 전체를 묶는 박스 폭과 바깥 바탕 */
   --field-short:360px;      /* 성명·휴대폰처럼 짧은 값의 입력 칸 */
   --sign-max:560px;         /* 서명 칸 최대 폭 */
   --z-sticky:20; --z-skip:90; --z-modal:100;

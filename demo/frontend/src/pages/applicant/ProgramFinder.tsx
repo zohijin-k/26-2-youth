@@ -98,9 +98,15 @@ export default function ProgramFinder({ onOpen }: { onOpen: (id: number) => void
         ) : (
           <>
             {current.length > 0 ? (
-              <ul className="pfinder__list">
-                {current.map((item) => <Card key={item.id} posting={item} onOpen={onOpen} />)}
-              </ul>
+              <section aria-labelledby="pfinder-current-title">
+                <div className="pfinder__section-head">
+                  <h2 className="pfinder__section-title" id="pfinder-current-title">진행 중인 사업</h2>
+                  <span className="pfinder__count">{current.length}개</span>
+                </div>
+                <ul className="pfinder__list">
+                  {current.map((item) => <Card key={item.id} posting={item} onOpen={onOpen} />)}
+                </ul>
+              </section>
             ) : (
               <div className="pfinder__notice">
                 <strong>지금 신청할 수 있는 사업이 없습니다.</strong>
@@ -110,7 +116,10 @@ export default function ProgramFinder({ onOpen }: { onOpen: (id: number) => void
 
             {closed.length > 0 && (
               <section className="pfinder__closed" aria-labelledby="pfinder-closed-title">
-                <h2 className="pfinder__section-title" id="pfinder-closed-title">마감된 사업</h2>
+                <div className="pfinder__section-head">
+                  <h2 className="pfinder__section-title" id="pfinder-closed-title">마감된 사업</h2>
+                  <span className="pfinder__count">{closed.length}개</span>
+                </div>
                 <ul className="pfinder__list">
                   {closed.map((item) => <Card key={item.id} posting={item} onOpen={onOpen} />)}
                 </ul>

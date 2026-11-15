@@ -1,5 +1,6 @@
 .pinfo { max-width: calc(var(--content-max) + var(--gutter) * 2); margin: auto; padding: var(--sp-6) var(--gutter) var(--sp-16); }
-.pinfo__back { display: inline-flex; align-items: center; min-height: var(--control-sm); margin-bottom: var(--sp-4); font-size: var(--fs-15); }
+.pinfo__back { display: inline-flex; align-items: center; gap: var(--sp-1); min-height: var(--control-sm); margin-bottom: var(--sp-5); padding: 3px var(--sp-4) 0 var(--sp-3); border: 1px solid var(--color-border-strong); border-radius: var(--radius-pill); background: var(--color-surface); color: var(--color-text-brand); font-size: var(--fs-15); font-weight: var(--fw-bold); text-decoration: none; transition: background var(--ease), border-color var(--ease); }
+.pinfo__back:hover { border-color: var(--color-primary); background: var(--color-surface-brand); }
 .pinfo__head { padding: var(--sp-6) 0; border-bottom: 1px solid var(--color-divider); margin-bottom: var(--sp-6); }
 .pinfo__title { margin: var(--sp-3) 0; }
 .pinfo__period { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-bottom: 0; color: var(--color-text-subtle); }
