@@ -19,12 +19,13 @@ interface Props {
   onChanged: (data: ManagedProgramData) => void
   onDirty: (dirty: boolean) => void
   onBusy: (busy: boolean) => void
+  focusField?: { formId: number; key: string; nonce: number } | null
 }
 
 type Drag = { mode: 'new' | 'move' | 'resize'; key: string; x: number; y: number; box: PdfBox }
 
-export default function ProgramTemplateEditor({ postingId, forms, readOnly, onChanged, onDirty, onBusy }: Props) {
-  const [formId, setFormId] = useState<number | null>(forms[0]?.id || null)
+export default function ProgramTemplateEditor({ postingId, forms, readOnly, onChanged, onDirty, onBusy, focusField }: Props) {
+  const [formId, setFormId] = useState<number | null>(focusField?.formId || forms[0]?.id || null)
   const form = forms.find((item) => item.id === formId) || forms[0]
   const [layout, setLayout] = useState<ManagedFormLayout>(form?.layout || {})
   const [dirty, setDirty] = useState(false)
@@ -51,6 +52,18 @@ export default function ProgramTemplateEditor({ postingId, forms, readOnly, onCh
   }
   useEffect(() => { onDirty(dirty) }, [dirty, onDirty])
   useEffect(() => { onBusy(busy) }, [busy, onBusy])
+  const [seenFocus, setSeenFocus] = useState(focusField)
+  const [pendingFocus, setPendingFocus] = useState(focusField)
+  if (seenFocus !== focusField) {
+    setSeenFocus(focusField)
+    setPendingFocus(focusField)
+    if (focusField) setFormId(focusField.formId)
+  }
+  if (pendingFocus && form?.id === pendingFocus.formId) {
+    setPendingFocus(null)
+    const target = form.layout.fields?.[pendingFocus.key]
+    if (target) { setSelected(pendingFocus.key); setPage(target.page) }
+  }
 
   const fields = layout.fields || {}
   const entries = Object.entries(fields)

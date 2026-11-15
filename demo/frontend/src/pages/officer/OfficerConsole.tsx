@@ -27,7 +27,6 @@ import {
 } from '../../api.ts'
 import ApplicationList, { ApplicationListSkeleton } from './ApplicationList.tsx'
 import ReviewDetail from './ReviewDetail.tsx'
-import CriteriaEditor from '../../components/CriteriaEditor.tsx'
 import useDelayedFlag from '../../hooks/useDelayedFlag.ts'
 import { currentParams, routeUrl } from '../../navigation-url.ts'
 import { YOUTH_PROGRAM } from '../../officer-scope.ts'
@@ -246,7 +245,7 @@ export default function OfficerConsole({ basePath }: { basePath: string }) {
       {error && <p className="officer__error">{error}</p>}
 
       {showCriteria && query.role === 'province' ? (
-        <CriteriaEditor />
+        <section className="panel"><h2 className="panel__title">심사 기준 · 읽기 전용</h2><div className="panel__body"><p>취업지원패키지는 기존에 확정된 기준으로 운영합니다. 사업 설정 탭에서 기간과 안내를 확인할 수 있습니다.</p></div></section>
       ) : open !== null ? (
         <ReviewDetail
           // 같은 건의 다른 서류로 다시 들어올 때 초기 탭 선택이 확실히 다시 돌게

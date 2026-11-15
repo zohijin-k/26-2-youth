@@ -467,6 +467,9 @@ def update_posting(posting_id: int, body: PostingPatch) -> dict[str, Any]:
     """
     with get_session() as s:
         posting = _find(s, posting_id)
+        from .program_analysis import posting_is_v2
+        if posting_is_v2(posting) and posting.status != POSTING_DRAFT:
+            raise HTTPException(409, "게시를 취소한 뒤 예시 페이지에서 수정해 주세요.")
         if posting.rule_code is not None and body.title is not None:
             raise HTTPException(409, "기본 사업의 이름은 바꿀 수 없습니다.")
 

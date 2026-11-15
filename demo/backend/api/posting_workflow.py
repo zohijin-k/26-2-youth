@@ -95,6 +95,8 @@ def publish_blockers(posting: Any) -> list[str]:
         fields = (row.layout_json or {}).get('fields', {})
         if not fields or not row.confirmed_hash or row.confirmed_hash != layout_hash(row.layout_json):
             problems.append(f'{row.file_name}: 서식 틀을 확인하고 확정해 주세요.')
+    from .program_analysis import analysis_blockers
+    problems.extend(analysis_blockers(posting))
     return problems
 
 

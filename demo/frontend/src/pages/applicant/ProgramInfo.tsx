@@ -15,6 +15,7 @@ import { isPlainClick, routeHref } from '../../navigation-url.ts'
 import { formatDate } from '../../lib/format.ts'
 import useDocumentTitle from '../../hooks/useDocumentTitle.ts'
 import Icon from '../../components/Icon.tsx'
+import ProgramGuidance from '../../components/ProgramGuidance.tsx'
 import './program-info.css'
 
 interface Props {
@@ -169,9 +170,7 @@ export default function ProgramInfo({ postingId, onBack, onApply }: Props) {
           <section className="pinfo__card" aria-labelledby="pinfo-guidance-title">
             <h2 className="pinfo__card-title" id="pinfo-guidance-title">안내</h2>
             {paragraphs.length > 0 ? (
-              <div className="pinfo__guidance">
-                {paragraphs.map((text, index) => <p key={index}>{text}</p>)}
-              </div>
+              <ProgramGuidance text={posting.guidance_text} />
             ) : (
               <p className="pinfo__quiet">
                 {noticeUrl ? '등록된 안내문이 없습니다. 자세한 내용은 아래 공고문을 확인해 주세요.' : '등록된 안내문이 없습니다.'}

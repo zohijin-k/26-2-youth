@@ -14,7 +14,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import type { OfficerPosting } from '../../api.ts'
 import { currentParams, routeUrl } from '../../navigation-url.ts'
-import NewProgram from './NewProgram.tsx'
+import NewProgram from './OneShotNewProgram.tsx'
 import ProgramList from './ProgramList.tsx'
 import ProgramWorkspace from './ProgramWorkspace.tsx'
 import OfficerSession from './OfficerSession.tsx'

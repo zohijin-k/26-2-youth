@@ -6,6 +6,13 @@ the API-wide path; expire the former narrow cookie at creation. Missing legacy
 credentials are denied. Unknown private identifiers use the same denial response
 as an unrelated browser. Do not add a credential recovery endpoint.
 
+Existing narrow owner cookies can move to the API-wide path when the browser
+requests an existing public asset beneath their old scope. Verify the stored hash
+and reuse the exact token; do not mint a credential. The applicant read helper may
+request the old HWP-options path after a 403, then retry once. Missing, unrelated,
+invalid and tokenless historical credentials stay blocked. Scope-changing asset
+responses are private/no-store and keep Secure on HTTPS.
+
 The built-in blank assets, layouts, original forms and public program information
 retain their explicit public exceptions. Application-frozen generic assets retain
 their existing ownership boundary. Parse integer aliases consistently with the

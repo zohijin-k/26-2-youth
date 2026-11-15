@@ -269,3 +269,62 @@ def test_consent_text_and_request_metadata_are_masked_before_storage(security):
         row = session.exec(select(models.Consent).where(models.Consent.application_id == identifier)).one()
         assert '654321' not in repr(row.model_dump())
     assert '654321' not in security.get(f'/api/applications/{identifier}/consents').text
+
+
+
+@pytest.mark.parametrize('base_url', ['http://testserver', 'https://testserver'])
+def test_existing_narrow_cookie_migrates_same_token_via_existing_public_blank_options(security, base_url):
+    from copy import copy
+    owner = TestClient(app, base_url=base_url)
+    identifier = new_application(owner).json()['id']
+    name = f'applicant_access_{identifier}'
+    original = copy(next(cookie for cookie in owner.cookies.jar if cookie.name == name))
+    original.path = f'/api/applications/{identifier}/forms/files'
+    owner.cookies.clear()
+    owner.cookies.jar.set_cookie(original)
+    with models.get_session() as session:
+        before = session.get(models.Application, identifier).applicant_access_hash
+    base = f'/api/applications/{identifier}'
+    assert owner.get(base).status_code == 403
+    migrated = owner.get(base + '/forms/files/original-hwp/options')
+    assert migrated.status_code == 200
+    header = migrated.headers['set-cookie']
+    assert 'HttpOnly' in header and 'SameSite=lax' in header and 'Path=/api;' in header
+    assert ('Secure' in header) == base_url.startswith('https:')
+    assert migrated.headers['cache-control'] == 'private, no-store'
+    assert owner.cookies.get(name, path='/api') == original.value
+    assert all(cookie.path != original.path for cookie in owner.cookies.jar if cookie.name == name)
+    assert owner.get(base).status_code == 200
+    with models.get_session() as session:
+        assert session.get(models.Application, identifier).applicant_access_hash == before
+
+
+@pytest.mark.parametrize('credential', ['missing', 'wrong', 'other-owner', 'tokenless'])
+def test_public_blank_options_never_mints_credentials_without_matching_existing_token(security, credential):
+    from copy import copy
+    owner = TestClient(app)
+    identifier = new_application(owner).json()['id']
+    name = f'applicant_access_{identifier}'
+    original = copy(next(cookie for cookie in owner.cookies.jar if cookie.name == name))
+    original.path = f'/api/applications/{identifier}/forms/files'
+    stranger = TestClient(app)
+    if credential == 'wrong':
+        original.value = 'synthetic-wrong-token'
+        stranger.cookies.jar.set_cookie(original)
+    elif credential == 'other-owner':
+        other = new_application(stranger).json()['id']
+        other_cookie = next(cookie for cookie in stranger.cookies.jar if cookie.name == f'applicant_access_{other}')
+        original.value = other_cookie.value
+        stranger.cookies.jar.set_cookie(original)
+    elif credential == 'tokenless':
+        with models.get_session() as session:
+            row = session.get(models.Application, identifier)
+            row.applicant_access_hash = None
+            session.add(row)
+            session.commit()
+        stranger.cookies.jar.set_cookie(original)
+    base = f'/api/applications/{identifier}'
+    response = stranger.get(base + '/forms/files/original-hwp/options')
+    assert response.status_code == 200
+    assert 'set-cookie' not in response.headers
+    assert stranger.get(base).status_code == 403

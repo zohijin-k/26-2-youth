@@ -9,7 +9,7 @@ from weakref import WeakKeyDictionary, WeakValueDictionary
 
 from pydantic import TypeAdapter, ValidationError
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 
 from .models import Application, Document, get_session
 from .generic_programs import is_generic
@@ -98,7 +98,31 @@ class GenericApplicantAccess:
         application = _application_for_path(path)
         request = Request(scope)
         if application is not None and not is_generic(getattr(application, 'program_code', 'posting_unknown')) and _public_asset(parts, request):
-            await self.app(scope, receive, send)
+            # Browsers from before the ownership rollout send the existing token
+            # only beneath forms/files. A public blank-asset request can widen
+            # that same credential's scope after proving it matches the stored
+            # hash. No credential is created or recovered for a missing token.
+            name = f'applicant_access_{application.id}'
+            token = request.cookies.get(name, '')
+            expected = application.applicant_access_hash or ''
+            upgrade = (parts[4:6] == ['forms', 'files'] and token and expected
+                       and hmac.compare_digest(sha256(token.encode('utf-8')).hexdigest(), expected))
+            if upgrade:
+                cookies = Response()
+                attributes = {'httponly': True, 'secure': request.url.scheme == 'https', 'samesite': 'lax'}
+                cookies.set_cookie(name, token, path='/api', max_age=5 * 365 * 24 * 60 * 60, **attributes)
+                cookies.set_cookie(name, token, path=f'/api/applications/{application.id}/forms/files', max_age=0, **attributes)
+                cookie_headers = [(key, value) for key, value in cookies.raw_headers if key == b'set-cookie']
+                async def migration_send(message: dict[str, Any]) -> None:
+                    if message['type'] == 'http.response.start' and 200 <= message['status'] < 300:
+                        message = dict(message)
+                        message['headers'] = [(key, value) for key, value in message.get('headers', [])
+                                              if key.lower() != b'cache-control'] + cookie_headers + [
+                                                  (b'cache-control', b'private, no-store')]
+                    await send(message)
+                await self.app(scope, receive, migration_send)
+            else:
+                await self.app(scope, receive, send)
             return
         # Officer sessions may view originals inline. They never authorize PATCH,
         # applicant state changes, or general applicant data endpoints.

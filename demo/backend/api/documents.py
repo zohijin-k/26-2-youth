@@ -25,7 +25,7 @@ from ..ocr import read_document, split_pdf_pages
 from ..rules.identity import identity_of
 from ..ocr.base import OcrResult
 from engine_v2.pipeline.privacy import mask_data
-from ..rules.doc_check import THRESHOLD_NOTES, check_document
+from ..rules.doc_check import CheckFinding, CheckResult, THRESHOLD_NOTES, check_document
 from ..rules.doc_types import DocType
 from ..rules.criteria import for_application, read_criteria
 from ..rules.programs import get_program
@@ -555,7 +555,12 @@ async def _upload_merged(
             continue
 
         taken.add(req.slot_key)
-        result = check_document(req, ocr, None, "pdf", identity_of(app.identity_json))
+        if req.doc_type == DocType.UNKNOWN:
+            result = CheckResult('NEEDS_REVIEW', [CheckFinding(
+                code='MANUAL_DOCUMENT_REVIEW', message='담당자가 제출 서류의 원본과 사업 기준을 확인합니다.',
+                severity='NEEDS_REVIEW')])
+        else:
+            result = check_document(req, ocr, None, "pdf", identity_of(app.identity_json))
         if not generic.is_generic(app.program_code):
             _replace_existing(app.id or 0, req.slot_key)
         row = _save_row(

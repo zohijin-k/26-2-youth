@@ -25,6 +25,7 @@ from .api import (
     posting_workspace,
     posting_draft,
     posting_workflow,
+    program_analysis,
     draft_messages,
     review,
     subsidy,
@@ -82,6 +83,7 @@ app.include_router(files.router)
 # 사업 저장소. 담당자가 게시한 사업을 신청자가 찾는다. 공고문·서식 PDF도 inline 으로만 나간다.
 app.include_router(postings.public_router)
 app.include_router(postings.officer_router)
+app.include_router(program_analysis.router)
 
 
 @app.get("/api/health")

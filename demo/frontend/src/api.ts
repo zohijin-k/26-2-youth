@@ -356,8 +356,17 @@ export const createApplication = (programCode: string) =>
     body: JSON.stringify({ program_code: programCode, applicant_flow_version: 1 }),
   })
 
-export const fetchApplication = (id: number) =>
-  json<ApplicationRow>(`/api/applications/${id}`)
+export const fetchApplication = async (id: number): Promise<ApplicationRow> => {
+  const path = `/api/applications/${id}`
+  try { return await json<ApplicationRow>(path) }
+  catch (error) {
+    if (!(error instanceof Error) || !/\(403\)/.test(error.message)) throw error
+    // An existing narrow owner cookie reaches this original public asset path.
+    // The server broadens only a matching existing token; it never mints one.
+    await fetch(`${path}/forms/files/original-hwp/options`, { credentials: 'same-origin' })
+    return json<ApplicationRow>(path)
+  }
+}
 
 export const fetchApplicationConsents = (id: number) =>
   json<{ consent_type: string; agreed: boolean }[]>(`/api/applications/${id}/consents`)

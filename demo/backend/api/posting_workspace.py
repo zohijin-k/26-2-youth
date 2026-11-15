@@ -74,8 +74,10 @@ def _form_dict(row: ProgramForm) -> dict[str, Any]:
 def view(posting: ProgramPosting) -> dict[str, Any]:
     metadata = posting.template_json or {}
     from .posting_workflow import publish_blockers
+    from .program_analysis import analysis_of, posting_is_v2
     return {'publish_blockers': publish_blockers(posting), 'posting': postings._officer_view(posting), 'managed': managed(posting),
         'required_docs': metadata.get('required_docs', []),
+        'analysis': analysis_of(posting), 'authoring_version': 2 if posting_is_v2(posting) else 1,
         'slot_options': [{'key': key, 'label': req.label} for key, req in slot_catalog().items()],
         'forms': [_form_dict(row) for row in form_rows(posting.id or 0)]}
 
@@ -150,6 +152,9 @@ def replace_files(posting_id: int, notice_pdf: UploadFile | None = File(None),
         forms_pdfs: list[UploadFile] = File(default=[])) -> dict[str, Any]:
     posting = postings._load(posting_id)
     editable(posting)
+    from .program_analysis import posting_is_v2
+    if posting_is_v2(posting):
+        raise HTTPException(409, '분석한 공고문과 서식 파일을 바꾸려면 새 사업 올리기에서 다시 분석해 주세요.')
     notice = postings._read_pdf(notice_pdf, 'notice') if notice_pdf else None
     forms = [postings._read_pdf(upload, 'forms') for upload in forms_pdfs]
     if len(forms) > 10:
@@ -157,6 +162,8 @@ def replace_files(posting_id: int, notice_pdf: UploadFile | None = File(None),
     with get_session() as s:
         posting = postings._find(s, posting_id)
         editable(posting)
+        if posting_is_v2(posting):
+            raise HTTPException(409, '분석한 공고문과 서식 파일을 바꾸려면 새 사업 올리기에서 다시 분석해 주세요.')
         if notice:
             relative = f'postings/{posting_id}/notice-{uuid4().hex}.pdf'
             (postings.STORAGE / relative).write_bytes(notice[0])
