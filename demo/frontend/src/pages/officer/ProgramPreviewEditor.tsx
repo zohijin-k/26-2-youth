@@ -53,11 +53,19 @@ function Evidence({ item, label, readOnly, onConfirm, onSource }: {
   </div>
 }
 interface Confirmation { title: string; description: string; label: string; perform: () => void }
-export default function ProgramPreviewEditor({ postingId, onBack, onPostingChanged }: { postingId: number; onBack: () => void; onPostingChanged?: (posting: OfficerPosting) => void }) {
+export default function ProgramPreviewEditor({ postingId, onBack, onPostingChanged, focusHeadingOnLoad = false }: { postingId: number; onBack: () => void; onPostingChanged?: (posting: OfficerPosting) => void; focusHeadingOnLoad?: boolean }) {
   const mounted = useRef(true)
+  const heading = useRef<HTMLHeadingElement>(null)
+  const headingFocused = useRef(false)
   useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
   const [data, setData] = useState<AnalyzedProgramData | null>(null)
   const [draft, setDraft] = useState<NoticeDraft | null>(null)
+  useEffect(() => {
+    if (focusHeadingOnLoad && !headingFocused.current && heading.current) {
+      heading.current.focus()
+      headingFocused.current = true
+    }
+  }, [data, draft, focusHeadingOnLoad])
   const [savedDraft, setSavedDraft] = useState('')
   const [layoutDirty, setLayoutDirty] = useState(false)
   const [templateBusy, setTemplateBusy] = useState(false)
@@ -154,7 +162,7 @@ export default function ProgramPreviewEditor({ postingId, onBack, onPostingChang
   return <main className="om program-preview">
     <header className="program-preview__bar">
       <OfficerDrawer postingId={postingId} current="settings" disabled={busy || dirty || layoutDirty} onList={onBack} />
-      <div className="program-preview__heading"><h1>{draft.title.value || '새 사업'}</h1><span className="om-chip">{officerLabel(data.posting.status)}</span></div>
+      <div className="program-preview__heading"><h1 ref={heading} tabIndex={-1}>{draft.title.value || '새 사업'}</h1><span className="om-chip">{officerLabel(data.posting.status)}</span></div>
       <button className="btn btn--primary" disabled={!canPublish || data.posting.status === 'published'} onClick={() => void transition('publish')}>{busy ? '처리 중…' : data.posting.status === 'closed' ? '다시 게시' : '올리기(게시)'}</button>
       <OfficerMenu label="사업 더보기" actions={menuActions} disabled={busy || templateBusy} />
       <nav className="program-preview__progress" aria-label="편집 진행">

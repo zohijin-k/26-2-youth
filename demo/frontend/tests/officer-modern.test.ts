@@ -3,8 +3,12 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { canStartPublication, evidencePresentation, menuKeyResult, officerLabel, restorePanelFocus } from '../src/pages/officer/officer-modern-model.ts'
 
-function declarations(css: string): Record<string, string> {
-  return Object.fromEntries([...css.matchAll(/(--[\w-]+)\s*:\s*([^;{}]+);/g)].map((match) => [match[1], match[2].trim()]))
+function declarations(css: string): Record<string, string[]> {
+  const tokens: Record<string, string[]> = {}
+  for (const match of css.matchAll(/(--[\w-]+)\s*:\s*([^;{}]+);/g)) {
+    (tokens[match[1]] ||= []).push(match[2].trim())
+  }
+  return tokens
 }
 test('officer scoped tokens keep every applicant token name and value', () => {
   const applicant = readFileSync(new URL('../src/styles/tokens.css', import.meta.url), 'utf8')
