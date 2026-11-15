@@ -1,0 +1,384 @@
+[
+  {
+    "template": "job_application.pdf",
+    "reference_fields": 41,
+    "draft_fields": 33,
+    "iou_matches": 33,
+    "iou_match_rate": 0.8049,
+    "kind_matches": 33,
+    "kind_match_rate": 1.0,
+    "precision": 1.0,
+    "false_fields": 0,
+    "oversized": 0,
+    "missed": [
+      {
+        "name": "bankName",
+        "type": "text",
+        "page": 0,
+        "box": [
+          178.2,
+          197.7,
+          215.6,
+          210.1
+        ]
+      },
+      {
+        "name": "accountNo",
+        "type": "text",
+        "page": 0,
+        "box": [
+          247.9,
+          197.7,
+          535.3,
+          210.1
+        ]
+      },
+      {
+        "name": "job.interview.1.location",
+        "type": "text",
+        "page": 0,
+        "box": [
+          480.9,
+          295.8,
+          535.3,
+          312.6
+        ]
+      },
+      {
+        "name": "job.interview.2.location",
+        "type": "text",
+        "page": 0,
+        "box": [
+          480.9,
+          343.4,
+          535.3,
+          360.1
+        ]
+      },
+      {
+        "name": "job.suit.1.location",
+        "type": "text",
+        "page": 0,
+        "box": [
+          480.9,
+          390.8,
+          535.3,
+          407.5
+        ]
+      },
+      {
+        "name": "job.suit.2.location",
+        "type": "text",
+        "page": 0,
+        "box": [
+          480.9,
+          438.4,
+          535.3,
+          455.1
+        ]
+      },
+      {
+        "name": "job.certificate.1.organizer",
+        "type": "text",
+        "page": 0,
+        "box": [
+          417.4,
+          485.9,
+          535.3,
+          502.6
+        ]
+      },
+      {
+        "name": "job.certificate.2.organizer",
+        "type": "text",
+        "page": 0,
+        "box": [
+          417.4,
+          533.3,
+          535.3,
+          550.2
+        ]
+      }
+    ],
+    "extra": []
+  },
+  {
+    "template": "job_consent.pdf",
+    "reference_fields": 8,
+    "draft_fields": 8,
+    "iou_matches": 7,
+    "iou_match_rate": 0.875,
+    "kind_matches": 7,
+    "kind_match_rate": 1.0,
+    "precision": 0.875,
+    "false_fields": 1,
+    "oversized": 0,
+    "missed": [
+      {
+        "name": "name",
+        "type": "text",
+        "page": 0,
+        "box": [
+          397.3,
+          695.1,
+          445.0,
+          708.0
+        ]
+      }
+    ],
+    "extra": [
+      {
+        "type": "text",
+        "field_type": "text",
+        "page": 0,
+        "box": [
+          397.3,
+          695.1,
+          514.3,
+          708.0
+        ],
+        "label": "신청인"
+      }
+    ]
+  },
+  {
+    "template": "job_interview_confirmation.pdf",
+    "reference_fields": 5,
+    "draft_fields": 14,
+    "iou_matches": 5,
+    "iou_match_rate": 1.0,
+    "kind_matches": 5,
+    "kind_match_rate": 1.0,
+    "precision": 0.3571,
+    "false_fields": 9,
+    "oversized": 0,
+    "missed": [],
+    "extra": [
+      {
+        "type": "text",
+        "field_type": "text",
+        "page": 0,
+        "box": [
+          170.2,
+          249.8,
+          536.3,
+          277.9
+        ],
+        "label": "회사명"
+      },
+      {
+        "type": "text",
+        "field_type": "text",
+        "page": 0,
+        "box": [
+          170.2,
+          281.9,
+          536.3,
+          310.1
+        ],
+        "label": "소재지"
+      },
+      {
+        "type": "text",
+        "field_type": "text",
+        "page": 0,
+        "box": [
+          170.2,
+          314.1,
+          536.3,
+          342.3
+        ],
+        "label": "업태/업종"
+      },
+      {
+        "type": "text",
+        "field_type": "text",
+        "page": 0,
+        "box": [
+          170.2,
+          346.3,
+          323.1,
+          374.5
+        ],
+        "label": "담당자"
+      },
+      {
+        "type": "text",
+        "field_type": "text",
+        "page": 0,
+        "box": [
+          387.4,
+          346.3,
+          536.3,
+          374.5
+        ],
+        "label": "연락처"
+      },
+      {
+        "type": "text",
+        "field_type": "text",
+        "page": 0,
+        "box": [
+          170.2,
+          410.6,
+          536.3,
+          438.9
+        ],
+        "label": "면접장소"
+      },
+      {
+        "type": "text",
+        "field_type": "text",
+        "page": 0,
+        "box": [
+          170.2,
+          442.9,
+          536.3,
+          471.0
+        ],
+        "label": "응시직군"
+      },
+      {
+        "type": "text",
+        "field_type": "date",
+        "page": 0,
+        "box": [
+          274.9,
+          556.4,
+          301.7,
+          575.3
+        ],
+        "label": "월"
+      },
+      {
+        "type": "text",
+        "field_type": "date",
+        "page": 0,
+        "box": [
+          319.7,
+          556.4,
+          354.1,
+          575.3
+        ],
+        "label": "일"
+      }
+    ]
+  },
+  {
+    "template": "서식1.pdf",
+    "reference_fields": 69,
+    "draft_fields": 67,
+    "iou_matches": 66,
+    "iou_match_rate": 0.9565,
+    "kind_matches": 66,
+    "kind_match_rate": 1.0,
+    "precision": 0.9851,
+    "false_fields": 1,
+    "oversized": 0,
+    "missed": [
+      {
+        "name": "priorPeriod",
+        "type": "text",
+        "page": 0,
+        "box": [
+          409.3,
+          237.9,
+          437.0,
+          249.4
+        ]
+      },
+      {
+        "name": "priorAmount",
+        "type": "text",
+        "page": 0,
+        "box": [
+          483.4,
+          237.9,
+          524.9,
+          249.4
+        ]
+      },
+      {
+        "name": "householdSizeCount",
+        "type": "text",
+        "page": 0,
+        "box": [
+          373.3,
+          531.5,
+          384.0,
+          543.0
+        ]
+      }
+    ],
+    "extra": [
+      {
+        "type": "check",
+        "field_type": "check",
+        "page": 0,
+        "box": [
+          163.6,
+          128.8,
+          173.5,
+          138.8
+        ],
+        "label": "✓(체크)표 하세요(온라인"
+      }
+    ]
+  },
+  {
+    "template": "서식2.pdf",
+    "reference_fields": 16,
+    "draft_fields": 16,
+    "iou_matches": 16,
+    "iou_match_rate": 1.0,
+    "kind_matches": 16,
+    "kind_match_rate": 1.0,
+    "precision": 1.0,
+    "false_fields": 0,
+    "oversized": 0,
+    "missed": [],
+    "extra": []
+  },
+  {
+    "template": "서식3.pdf",
+    "reference_fields": 7,
+    "draft_fields": 7,
+    "iou_matches": 7,
+    "iou_match_rate": 1.0,
+    "kind_matches": 7,
+    "kind_match_rate": 1.0,
+    "precision": 1.0,
+    "false_fields": 0,
+    "oversized": 0,
+    "missed": [],
+    "extra": []
+  },
+  {
+    "template": "서식4.pdf",
+    "reference_fields": 5,
+    "draft_fields": 5,
+    "iou_matches": 5,
+    "iou_match_rate": 1.0,
+    "kind_matches": 5,
+    "kind_match_rate": 1.0,
+    "precision": 1.0,
+    "false_fields": 0,
+    "oversized": 0,
+    "missed": [],
+    "extra": []
+  },
+  {
+    "template": "서식5.pdf",
+    "reference_fields": 8,
+    "draft_fields": 8,
+    "iou_matches": 8,
+    "iou_match_rate": 1.0,
+    "kind_matches": 8,
+    "kind_match_rate": 1.0,
+    "precision": 1.0,
+    "false_fields": 0,
+    "oversized": 0,
+    "missed": [],
+    "extra": []
+  }
+]

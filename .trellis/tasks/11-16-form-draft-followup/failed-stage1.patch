@@ -1,0 +1,489 @@
+diff --git a/demo/backend/api/posting_workflow.py b/demo/backend/api/posting_workflow.py
+index faf9463..095c949 100644
+--- a/demo/backend/api/posting_workflow.py
++++ b/demo/backend/api/posting_workflow.py
+@@ -68,12 +68,18 @@ def validate_layout(row: ProgramForm, raw: dict[str, Any]) -> dict[str, Any]:
+         group = field.get('group') or ''
+         if not isinstance(group, str) or len(group) > 80:
+             raise HTTPException(422, '선택 묶음을 확인해 주세요.')
++        choice_mark = field.get('choice_mark')
++        if choice_mark not in (None, 'circle'):
++            raise HTTPException(422, '선택 표시 방식을 확인해 주세요.')
+         clean[key] = {'type': 'image' if kind == 'signature' else 'check' if kind in {'check','radio'} else 'text',
+             'field_type':kind, 'page':page, 'box':box, 'x':box[0]+2, 'y':box[3]-3,
+             'size':size, 'label':label.strip(), 'anchor':label.strip(), 'required':bool(field.get('required', False)),
+             'autofill_source':source or None, 'confidence':confidence,
+             'needs_review':field.get('needs_review',True) is not False, 'group':group,
+             'align':'left','font_family':'sans'}
++        if choice_mark and kind in {'check', 'radio'}:
++            # A printed choice word that is itself the option; drawn as a circle around it.
++            clean[key]['choice_mark'] = choice_mark
+     return {'form_no': f'form_{row.id}', 'title': row.file_name, 'template':row.file_path,
+         'fields':clean, 'page_sizes':sizes, 'public_form':None, 'internal_form':None,
+         'status':'draft' if clean else 'manual_required', 'confirmed':False}
+diff --git a/demo/backend/forms/draft.py b/demo/backend/forms/draft.py
+index 97b2088..7dd848f 100644
+--- a/demo/backend/forms/draft.py
++++ b/demo/backend/forms/draft.py
+@@ -34,6 +34,9 @@ _COLONS = (":", "：")
+ _PAGE_SHARE_LIMIT = .15
+ _INLINE_CONFIDENCE = .6
+ _LABEL_CONFIDENCE = .55
++#: Layout attribute for a choice word that is itself the option; renderers draw
++#: an oval around the chosen word instead of a check over its glyphs.
++CHOICE_MARK_CIRCLE = "circle"
+ 
+ 
+ def _compact(text: str) -> str:
+@@ -475,9 +478,11 @@ def _vector_fields(page: Any, page_no: int) -> list[dict[str, Any]]:
+                 continue  # A printed box next to the word is the field.
+             chars = _page_chars(page) if chars is None else chars
+             group = f"p{page_no}_words_{len(found)}"
++            # The printed word is the option: pick one of the pair, marked by a circle around it.
+             for _, choice_words in (first, second):
+                 label = " ".join(str(w[4]).strip(_SEPARATORS) for w in choice_words)
+-                found.append(_field(_ink(choice_words, chars), page_no, label, "check", _INLINE_CONFIDENCE, group=group))
++                found.append(_field(_ink(choice_words, chars), page_no, label, "radio", _INLINE_CONFIDENCE,
++                                    group=group, choice_mark=CHOICE_MARK_CIRCLE))
+ 
+     inline = [field for field in _inline_fields(rows, horizontal, vertical, right_margin, page_no)
+               if not _yields_to_value_cell(field, value_cells)]
+diff --git a/demo/backend/forms/render.py b/demo/backend/forms/render.py
+index be54584..f337604 100644
+--- a/demo/backend/forms/render.py
++++ b/demo/backend/forms/render.py
+@@ -8,7 +8,8 @@
+ 
+   * 글자 — 칸 안에 들어가도록 폭을 재서 넣는다. 넘치면 글자를 줄이지, 칸 밖으로
+     나가지 않는다. 원본 선·글자를 침범하는 순간 서식이 아니라 낙서가 된다.
+-  * `✓`  — 원본 체크 상자 중심에 좌표 비율을 적용해 크게 그린다.
++  * `✓`  — 원본 체크 상자 중심에 좌표 비율을 적용해 크게 그린다. 인쇄된 선택어 자체가
++    칸인 경우(``choice_mark: "circle"``)에는 고른 단어를 타원(○)으로 둘러싼다.
+   * 이미지 — 서식5 서명란에 캔버스 전자서명 PNG (R9.2).
+ """
+ 
+@@ -58,6 +59,16 @@ def format_field_text(field: dict[str, Any], text: str) -> str:
+     return text
+ 
+ 
++def circle_mark_rect(box: list[float]) -> tuple[float, float, float, float]:
++    """Oval around a chosen word: the word box padded on every side.
++
++    The applicant screen uses the same padding (``src/lib/form-choice.ts``).
++    """
++    height = float(box[3]) - float(box[1])
++    pad_x, pad_y = max(2.0, height * 0.35), max(1.5, height * 0.3)
++    return (float(box[0]) - pad_x, float(box[1]) - pad_y, float(box[2]) + pad_x, float(box[3]) + pad_y)
++
++
+ def render_page_png(pdf: bytes, page_no: int, dpi: int = 200) -> bytes:
+     """Render one 1-based PDF page with PyMuPDF, matching the coordinate source."""
+     import fitz
+@@ -217,6 +228,12 @@ def render(coords: FormCoords, filled: FilledForm) -> bytes:
+         box = spec["box"]
+         if spec.get("control") == "radio_text":
+             continue
++        if spec.get("choice_mark") == "circle":
++            # A printed choice word is the option itself: circle it, keep it readable.
++            word_height = float(box[3]) - float(box[1])
++            doc[int(spec["page"])].draw_oval(fitz.Rect(*circle_mark_rect(box)), color=INK,
++                                             width=max(0.9, word_height * 0.09), overlay=True)
++            continue
+         height = float(box[3] - box[1])
+         size = max(float(box[2] - box[0]), height) + 3.0
+         center_x = (float(box[0]) + float(box[2])) / 2
+diff --git a/demo/backend/generic_programs.py b/demo/backend/generic_programs.py
+index 6d682d5..7e34f28 100644
+--- a/demo/backend/generic_programs.py
++++ b/demo/backend/generic_programs.py
+@@ -222,7 +222,7 @@ def public_layout(app: Application, form_no: str) -> dict[str,Any]:
+     row=form(app,form_no)
+     safe={}
+     for key,field in row['fields'].items():
+-        safe[key]={attr:field[attr] for attr in ('type','field_type','page','box','x','y','size','align','font_family','label','required','group','autofill_source') if attr in field}
++        safe[key]={attr:field[attr] for attr in ('type','field_type','page','box','x','y','size','align','font_family','label','required','group','autofill_source','choice_mark') if attr in field}
+         safe[key]['readonly']=field.get('autofill_source') in {'name','birth'}
+     return {'form_no':form_no,'title':row['title'],'public_form':None,'page_sizes':row['page_sizes'],
+         'fields':safe,'requirements':[],'masks':[],'auto_date':date.today().isoformat()}
+diff --git a/demo/backend/tests/test_form_choice_marks.py b/demo/backend/tests/test_form_choice_marks.py
+new file mode 100644
+index 0000000..0198df3
+--- /dev/null
++++ b/demo/backend/tests/test_form_choice_marks.py
+@@ -0,0 +1,206 @@
++"""Single-choice circle marks for printed choice words (rule a), end to end.
++
++Every PDF is synthetic and generated here with PyMuPDF; no fixture file is read.
++"""
++from copy import deepcopy
++import json
++
++import pymupdf
++import pytest
++from fastapi.testclient import TestClient
++from sqlmodel import create_engine
++
++from demo.backend import models
++from demo.backend.api import applications, common, documents, files, forms, postings
++from demo.backend.forms.coords import FormCoords
++from demo.backend.forms.draft import draft_layout
++from demo.backend.forms.render import circle_mark_rect, render
++from demo.backend.forms.values import FilledForm
++from demo.backend.main import app
++from demo.backend.tests.security_support import authenticate_officer
++from demo.backend.tests.test_generic_programs import TODAY, signature
++
++
++def _choice_pdf() -> bytes:
++    with pymupdf.open() as document:
++        page = document.new_page(width=500, height=400)
++        page.insert_text((40, 100), "1. 해당 지역에 거주합니까?", fontname="korea", fontsize=11)
++        page.insert_text((360, 100), "예,", fontname="korea", fontsize=11)
++        page.insert_text((390, 100), "아니오", fontname="korea", fontsize=11)
++        return document.tobytes()
++
++
++def _ovals(page) -> list[pymupdf.Rect]:
++    """Stroked, unfilled curve paths: the circle marks."""
++    return [pymupdf.Rect(path["rect"]) for path in page.get_drawings()
++            if path.get("fill") is None and any(item[0] == "c" for item in path["items"])]
++
++
++def _filled(page) -> list[pymupdf.Rect]:
++    return [pymupdf.Rect(path["rect"]) for path in page.get_drawings() if path.get("fill") is not None]
++
++
++# Drafting ------------------------------------------------------------------------------
++
++def test_choice_word_pair_is_one_radio_group_with_circle_marks():
++    layout = draft_layout(_choice_pdf())
++    choices = [field for field in layout["fields"].values() if field.get("choice_mark")]
++    assert [field["label"] for field in choices] == ["예", "아니오"]
++    assert {field["field_type"] for field in choices} == {"radio"}
++    assert {field["type"] for field in choices} == {"check"}
++    assert choices[0]["group"] == choices[1]["group"]
++    assert {field["choice_mark"] for field in choices} == {"circle"}
++    assert all(field["needs_review"] for field in layout["fields"].values()) and not layout["confirmed"]
++
++
++def test_printed_boxes_stay_plain_checks_without_circle_marks():
++    with pymupdf.open() as document:
++        page = document.new_page(width=500, height=400)
++        for x, word in ((300, "예"), (360, "아니오")):
++            page.draw_rect(pymupdf.Rect(x, 90, x + 10, 100))
++            page.insert_text((x + 14, 100), word, fontname="korea", fontsize=11)
++        fields = list(draft_layout(document.tobytes())["fields"].values())
++    assert len(fields) == 2
++    assert all(field["field_type"] == "check" and "choice_mark" not in field for field in fields)
++
++
++# Rendering -----------------------------------------------------------------------------
++
++def _coords(tmp_path, fields) -> FormCoords:
++    template = tmp_path / "template.pdf"
++    with pymupdf.open() as document:
++        document.new_page(width=300, height=200)
++        document.save(template)
++    return FormCoords(form_no="synthetic", title="합성", template=template, fields=fields, source={})
++
++
++def test_circle_mark_surrounds_only_the_chosen_word(tmp_path):
++    word = {"type": "check", "field_type": "radio", "page": 0, "group": "g", "choice_mark": "circle"}
++    coords = _coords(tmp_path, {"yes": {**word, "box": [100, 50, 112, 62]},
++                                "no": {**word, "box": [140, 50, 170, 62]}})
++    with pymupdf.open(stream=render(coords, FilledForm(form_no="synthetic", checks=["no"])), filetype="pdf") as pdf:
++        ovals, filled = _ovals(pdf[0]), _filled(pdf[0])
++    assert len(ovals) == 1 and filled == []
++    oval = ovals[0]
++    assert oval.contains(pymupdf.Rect(140, 50, 170, 62))  # the whole word stays inside, uncovered
++    assert oval.x0 > 112  # the other word is not circled
++    expected = circle_mark_rect([140, 50, 170, 62])
++    assert [round(value) for value in oval] == [round(value) for value in expected]
++
++
++def test_plain_box_check_still_draws_the_filled_check(tmp_path):
++    coords = _coords(tmp_path, {"box": {"type": "check", "field_type": "check", "page": 0, "box": [100, 50, 110, 60]}})
++    with pymupdf.open(stream=render(coords, FilledForm(form_no="synthetic", checks=["box"])), filetype="pdf") as pdf:
++        assert _ovals(pdf[0]) == [] and len(_filled(pdf[0])) == 1
++
++
++def test_circle_mark_padding_matches_the_applicant_screen_formula():
++    # Same constants as src/lib/form-choice.ts circleMarkBox.
++    assert circle_mark_rect([0, 0, 30, 10]) == (-3.5, -3.0, 33.5, 13.0)
++    assert circle_mark_rect([0, 0, 30, 4]) == (-2.0, -1.5, 32.0, 5.5)
++
++
++# Officer layout, applicant choice, required group, submitted PDF ------------------------------
++
++@pytest.fixture
++def client(tmp_path, monkeypatch):
++    engine = create_engine(f'sqlite:///{tmp_path / "synthetic.db"}', connect_args={'check_same_thread': False})
++    monkeypatch.setattr(models, 'engine', engine)
++    storage = tmp_path / 'storage'
++    for module in (applications, common, documents, files, forms, postings):
++        monkeypatch.setattr(module, 'STORAGE', storage)
++    monkeypatch.setattr(applications, 'SIGNATURES', storage / 'signatures')
++    monkeypatch.setattr(documents, 'DOCUMENTS', storage / 'documents')
++    monkeypatch.setattr(models, 'posting_today', lambda: TODAY)
++    monkeypatch.setenv('ENGINE_V2_OCR', 'off')
++    with TestClient(app) as connected:
++        authenticate_officer(connected, monkeypatch)
++        yield connected
++    engine.dispose()
++
++
++def _published(client, *, required: bool):
++    created = client.post('/api/officer/postings', data={
++        'title': '합성 선택 사업', 'apply_start': '2026-11-01', 'apply_end': '2026-12-01',
++        'workflow_version': '1', 'required_docs': '[]'},
++        files={'notice_pdf': ('notice.pdf', _choice_pdf(), 'application/pdf'),
++               'forms_pdf': ('choice.pdf', _choice_pdf(), 'application/pdf')})
++    assert created.status_code == 201, created.text
++    base = f'/api/officer/postings/{created.json()["id"]}'
++    form_id = client.get(base + '/workspace').json()['forms'][0]['id']
++    drafted = client.post(base + f'/workspace/forms/{form_id}/draft')
++    assert drafted.status_code == 200, drafted.text
++    layout = drafted.json()['forms'][0]['layout']
++    radios = {key for key, field in layout['fields'].items() if field.get('choice_mark') == 'circle'}
++    assert len(radios) == 2
++    layout['fields'] = {key: {**field, 'required': required, 'needs_review': False}
++                        for key, field in layout['fields'].items() if key in radios}
++    saved = client.put(base + f'/workspace/forms/{form_id}/layout', json={'layout': layout})
++    assert saved.status_code == 200, saved.text
++    kept = saved.json()['forms'][0]['layout']['fields']
++    assert {field.get('choice_mark') for field in kept.values()} == {'circle'}
++    assert client.post(base + f'/workspace/forms/{form_id}/confirm').status_code == 200
++    published = client.post(base + '/publish')
++    assert published.status_code == 200, published.text
++    return published.json()
++
++
++def _applicant(client, posting):
++    row = client.post('/api/applications', json={'program_code': f'posting_{posting["id"]}'}).json()
++    result = client.post(f'/api/applications/{row["id"]}/identity', json={
++        'name': '가상신청', 'birth': '2000-05-15', 'phone': '01012345678', 'pledge': True,
++        'signature_kind': 'electronic', 'signature_data_url': signature()})
++    assert result.status_code == 200, result.text
++    form_no = client.get(f'/api/applications/{row["id"]}/forms').json()[0]['form_no']
++    layout = client.get(f'/api/applications/{row["id"]}/forms/layouts/{form_no}').json()
++    by_label = {field['label']: key for key, field in layout['fields'].items()}
++    return row, form_no, layout, by_label['예'], by_label['아니오']
++
++
++def test_required_choice_group_blocks_until_one_word_is_chosen_and_switching_clears_the_other(client):
++    row, form_no, layout, yes, no = _applicant(client, _published(client, required=True))
++    assert {layout['fields'][key]['choice_mark'] for key in (yes, no)} == {'circle'}
++    assert layout['fields'][yes]['group'] == layout['fields'][no]['group']
++    path = f'/api/applications/{row["id"]}'
++    final = client.get(path + '/final-check').json()
++    assert not final['can_submit']
++    assert {issue.get('target') for issue in final['blockers']} >= {yes, no}
++    assert client.patch(path, json={'form1': {yes: True, no: True}}).status_code == 422
++    assert client.patch(path, json={'form1': {yes: True}}).status_code == 200
++    assert client.get(path + '/final-check').json()['can_submit']
++    # Switching sends the new choice with the old one cleared, as the applicant screen does.
++    assert client.patch(path, json={'form1': {yes: False, no: True}}).status_code == 200
++    stored = client.get(path).json()['form1_json']
++    assert stored[yes] is False and stored[no] is True
++    assert client.get(path + '/final-check').json()['can_submit']
++    with pymupdf.open(stream=client.get(f'{path}/forms/{form_no}.pdf').content, filetype='pdf') as pdf:
++        ovals = _ovals(pdf[0])
++    assert len(ovals) == 1 and ovals[0].contains(pymupdf.Rect(layout['fields'][no]['box']))
++    assert not ovals[0].intersects(pymupdf.Rect(layout['fields'][yes]['box']))
++
++
++def test_optional_choice_group_does_not_block(client):
++    row, _, _, _, _ = _applicant(client, _published(client, required=False))
++    assert client.get(f'/api/applications/{row["id"]}/final-check').json()['can_submit']
++
++
++def test_layout_rejects_unknown_choice_marks_and_drops_them_on_non_choice_fields(client):
++    from demo.backend.api.posting_workflow import validate_layout
++    from demo.backend.api import posting_workspace
++
++    created = client.post('/api/officer/postings', data={
++        'title': '합성 검증 사업', 'apply_start': '2026-11-01', 'apply_end': '2026-12-01',
++        'workflow_version': '1', 'required_docs': '[]'},
++        files={'notice_pdf': ('notice.pdf', _choice_pdf(), 'application/pdf'),
++               'forms_pdf': ('choice.pdf', _choice_pdf(), 'application/pdf')})
++    row = posting_workspace.form_rows(created.json()['id'])[0]
++    base = {'type': 'check', 'field_type': 'radio', 'page': 0, 'box': [10, 10, 30, 22], 'label': '예', 'group': 'g'}
++    clean = validate_layout(row, {'fields': {'a': {**base, 'choice_mark': 'circle'},
++                                             'b': {**base, 'type': 'text', 'field_type': 'text', 'choice_mark': 'circle'},
++                                             'c': deepcopy(base)}})['fields']
++    assert clean['a']['choice_mark'] == 'circle'
++    assert 'choice_mark' not in clean['b'] and 'choice_mark' not in clean['c']
++    with pytest.raises(Exception) as error:
++        validate_layout(row, {'fields': {'a': {**base, 'choice_mark': 'square'}}})
++    assert getattr(error.value, 'status_code', None) == 422
++    assert json.dumps(clean, ensure_ascii=False).count('circle') == 1
+diff --git a/demo/frontend/src/api.ts b/demo/frontend/src/api.ts
+index cdf06eb..2b5adfa 100644
+--- a/demo/frontend/src/api.ts
++++ b/demo/frontend/src/api.ts
+@@ -387,6 +387,8 @@ export interface FormFieldLayout {
+   readonly?: boolean
+   group?: string
+   control?: 'radio_text'
++  /** A printed choice word that is itself the option: circle the chosen word. */
++  choice_mark?: 'circle'
+   page: number
+   box: [number, number, number, number]
+   label_box?: [number, number, number, number]
+diff --git a/demo/frontend/src/forms/PdfFormsWorkspace.tsx b/demo/frontend/src/forms/PdfFormsWorkspace.tsx
+index 7234a01..98cf91c 100644
+--- a/demo/frontend/src/forms/PdfFormsWorkspace.tsx
++++ b/demo/frontend/src/forms/PdfFormsWorkspace.tsx
+@@ -28,6 +28,7 @@ import Icon from '../components/Icon.tsx'
+ import Spinner from '../components/Spinner.tsx'
+ import { friendlyError } from '../lib/error-copy.ts'
+ import { splitEmphasis } from '../lib/emphasis.ts'
++import { choiceSatisfied, circleMarkBox, toggledChoices } from '../lib/form-choice.ts'
+ import './pdf-forms-workspace.css'
+ 
+ type ActiveForm = { formNo: string; mode: 'edit' | 'preview' }
+@@ -241,7 +242,8 @@ export default function PdfFormsWorkspace({
+   const pageWidth = Math.min(794, availablePageWidth)
+   const scale = pageSize ? pageWidth / pageSize.width : 1
+ 
+-  const genericField = (key: string) => Object.values(layouts).flatMap((layout) => Object.entries(layout.fields)).find(([id]) => id === key)?.[1]
++  const allFields = () => Object.values(layouts).flatMap((layout) => Object.entries(layout.fields))
++  const genericField = (key: string) => allFields().find(([id]) => id === key)?.[1]
+   const readChoice = (key: string): boolean => {
+     if (generic) return readForm(form1, key) === true
+     const [group, option] = [fieldGroup(key), key.split('.').slice(-1)[0]]
+@@ -297,8 +299,8 @@ export default function PdfFormsWorkspace({
+   const requirementSatisfied = (key: string): boolean => {
+     if (generic) {
+       const field = genericField(key)
+-      if (field?.field_type === 'radio' && field.group) return Object.values(layouts).some((layout) => Object.entries(layout.fields).some(([id, item]) => item.group === field.group && readForm(form1, id) === true))
+-      return field?.type === 'check' ? readForm(form1, key) === true : truthy(readForm(form1, key))
++      if (field?.type === 'check') return choiceSatisfied(form1 as unknown as Record<string, unknown>, allFields(), key)
++      return truthy(readForm(form1, key))
+     }
+     if (key.startsWith('self_check.')) return !!answers[Number(key.split('.')[1])]
+     if (key === 'consent.privacy') return !!consent.privacy
+@@ -352,10 +354,7 @@ export default function PdfFormsWorkspace({
+ 
+   const toggleChoice = (key: string, checked: boolean) => {
+     if (generic) {
+-      const next = { ...(form1 as unknown as Record<string, unknown>), [key]: checked }
+-      const field = genericField(key)
+-      if (checked && field?.field_type === 'radio' && field.group) for (const layout of Object.values(layouts)) for (const [id, item] of Object.entries(layout.fields)) if (id !== key && item.group === field.group) next[id] = false
+-      onForm1(next as unknown as Form1Value)
++      onForm1(toggledChoices(form1 as unknown as Record<string, unknown>, allFields(), key, checked) as unknown as Form1Value)
+       return
+     }
+     const group = fieldGroup(key)
+@@ -517,7 +516,18 @@ export default function PdfFormsWorkspace({
+             aria-label={`${label} ${field.label || '선택'}`}
+             onChange={(event) => toggleChoice(key, event.currentTarget.checked)}
+           />
+-          {checked && <svg
++          {checked && field.choice_mark === 'circle' && (() => {
++            const [ox0, oy0, ox1, oy1] = circleMarkBox(field.box)
++            return <svg
++              className="pdf-form__circle-mark"
++              data-choice-mark="circle"
++              viewBox="0 0 100 100"
++              preserveAspectRatio="none"
++              aria-hidden="true"
++              style={{ left: (ox0 - cx0) * scale, top: (oy0 - cy0) * scale, width: (ox1 - ox0) * scale, height: (oy1 - oy0) * scale }}
++            ><ellipse cx="50" cy="50" rx="48" ry="46" vectorEffect="non-scaling-stroke" /></svg>
++          })()}
++          {checked && field.choice_mark !== 'circle' && <svg
+             className="pdf-form__check-mark"
+             width={markSize}
+             height={markSize}
+diff --git a/demo/frontend/src/forms/pdf-forms-workspace.css b/demo/frontend/src/forms/pdf-forms-workspace.css
+index 91c5a77..303e671 100644
+--- a/demo/frontend/src/forms/pdf-forms-workspace.css
++++ b/demo/frontend/src/forms/pdf-forms-workspace.css
+@@ -67,6 +67,8 @@
+ .pdf-form__check-mark { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); overflow: visible; pointer-events: none; z-index: 1; }
+ .pdf-form__check-mark rect { fill: var(--pdf-check-ink); stroke: var(--pdf-check-ink); }
+ .pdf-form__check-mark path { fill: none; stroke: var(--gray-0); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
++.pdf-form__circle-mark { position: absolute; overflow: visible; pointer-events: none; z-index: 1; }
++.pdf-form__circle-mark ellipse { fill: none; stroke: var(--pdf-check-ink); stroke-width: 1.6; }
+ 
+ .pdf-form__radio-text { position: absolute; display: flex; align-items: center; justify-content: center; gap: 4px; z-index: 5; overflow: visible; pointer-events: auto; color: var(--pdf-print-ink); font-family: 'Noto Sans KR', sans-serif; font-weight: 400; white-space: nowrap; cursor: pointer; }
+ .pdf-form__radio-text--serif { font-family: 'Noto Serif KR', serif; }
+diff --git a/demo/frontend/src/lib/form-choice.ts b/demo/frontend/src/lib/form-choice.ts
+new file mode 100644
+index 0000000..363315c
+--- /dev/null
++++ b/demo/frontend/src/lib/form-choice.ts
+@@ -0,0 +1,33 @@
++/** Applicant choice fields of officer-published forms: one choice per radio group, and the
++ * circle drawn around a chosen printed word (`choice_mark: 'circle'`). */
++import type { PdfBox } from './form-box.ts'
++
++export interface ChoiceField { field_type?: string; group?: string; choice_mark?: string }
++export type ChoiceFields = Iterable<readonly [string, ChoiceField]>
++
++/** Values after toggling one choice; picking a radio clears every other field of its group. */
++export function toggledChoices(values: Readonly<Record<string, unknown>>, fields: ChoiceFields, key: string, checked: boolean): Record<string, unknown> {
++  const all = [...fields]
++  const next: Record<string, unknown> = { ...values, [key]: checked }
++  const field = all.find(([id]) => id === key)?.[1]
++  if (checked && field?.field_type === 'radio' && field.group) {
++    for (const [id, item] of all) if (id !== key && item.group === field.group) next[id] = false
++  }
++  return next
++}
++
++/** A required radio is satisfied once any field of its group is chosen. */
++export function choiceSatisfied(values: Readonly<Record<string, unknown>>, fields: ChoiceFields, key: string): boolean {
++  const all = [...fields]
++  const field = all.find(([id]) => id === key)?.[1]
++  if (field?.field_type === 'radio' && field.group) return all.some(([id, item]) => item.group === field.group && values[id] === true)
++  return values[key] === true
++}
++
++/** Oval around a chosen word: the word box padded on every side (same as forms/render.py). */
++export function circleMarkBox(box: PdfBox): PdfBox {
++  const height = box[3] - box[1]
++  const padX = Math.max(2, height * 0.35)
++  const padY = Math.max(1.5, height * 0.3)
++  return [box[0] - padX, box[1] - padY, box[2] + padX, box[3] + padY]
++}
+diff --git a/demo/frontend/tests/form-choice.test.ts b/demo/frontend/tests/form-choice.test.ts
+new file mode 100644
+index 0000000..c5ee333
+--- /dev/null
++++ b/demo/frontend/tests/form-choice.test.ts
+@@ -0,0 +1,34 @@
++import assert from 'node:assert/strict'
++import test from 'node:test'
++import { choiceSatisfied, circleMarkBox, toggledChoices, type ChoiceField } from '../src/lib/form-choice.ts'
++
++const word = (group: string): ChoiceField => ({ field_type: 'radio', group, choice_mark: 'circle' })
++const fields: [string, ChoiceField][] = [
++  ['yes', word('g1')], ['no', word('g1')], ['other_yes', word('g2')], ['box', { field_type: 'check', group: 'g3' }],
++]
++
++test('choosing one word of a pair clears the other word of the same group only', () => {
++  const first = toggledChoices({}, fields, 'yes', true)
++  assert.deepEqual(first, { yes: true, no: false })
++  const switched = toggledChoices({ ...first, other_yes: true }, fields, 'no', true)
++  assert.equal(switched.yes, false)
++  assert.equal(switched.no, true)
++  assert.equal(switched.other_yes, true)
++})
++
++test('plain checks and unchecking never touch other fields', () => {
++  assert.deepEqual(toggledChoices({ yes: true }, fields, 'box', true), { yes: true, box: true })
++  assert.deepEqual(toggledChoices({ yes: true, no: false }, fields, 'yes', false), { yes: false, no: false })
++})
++
++test('a required choice group is satisfied by either word, a plain check only by itself', () => {
++  assert.equal(choiceSatisfied({}, fields, 'yes'), false)
++  assert.equal(choiceSatisfied({ no: true }, fields, 'yes'), true)
++  assert.equal(choiceSatisfied({ other_yes: true }, fields, 'yes'), false)
++  assert.equal(choiceSatisfied({ yes: true }, fields, 'box'), false)
++})
++
++test('the circle surrounds the word box with the renderer padding', () => {
++  assert.deepEqual(circleMarkBox([0, 0, 30, 10]), [-3.5, -3, 33.5, 13])
++  assert.deepEqual(circleMarkBox([0, 0, 30, 4]), [-2, -1.5, 32, 5.5])
++})
