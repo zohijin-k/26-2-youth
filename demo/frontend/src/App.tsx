@@ -10,6 +10,7 @@
  */
 import { lazy, Suspense, useEffect, useState } from 'react'
 
+import logo from './assets/brand/jbyouthhub-logo.png'
 import { currentMode, goToHome, routeUrl, type Mode } from './navigation-url.ts'
 import './app-shell.css'
 
@@ -27,6 +28,8 @@ export default function App() {
   const [mode] = useState<Mode>(currentMode)
   /** 값이 바뀌면 현재 화면이 새로 마운트돼 주소에서 상태를 다시 읽는다. */
   const [screenKey, setScreenKey] = useState(0)
+  /** 담당자 머리글 오른쪽 자리. 로그인 상태·로그아웃 버튼을 여기에 그린다. */
+  const [toolsHost, setToolsHost] = useState<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const onHistoryChange = () => {
@@ -55,19 +58,17 @@ export default function App() {
   if (mode === 'officer') {
     return (
       <div className="app-shell app-shell--officer">
-        <nav className="shell" aria-label="담당자 화면">
-          <span className="shell__title">
-            <button className="shell__mark" type="button" onClick={goHome} aria-label="사업 목록으로 이동">
-              전북
+        <header className="shell">
+          <div className="shell__inner">
+            <button className="shell__home" type="button" onClick={goHome} aria-label="사업 목록으로 이동">
+              <img className="shell__logo" src={logo} alt="전북청년허브센터" />
             </button>
-            <span>
-              <strong>전북 청년정책</strong>
-              <small>담당자 사업 관리·신청서류 검토</small>
-            </span>
-          </span>
-        </nav>
+            <span className="shell__role">담당자</span>
+            <div className="shell__tools" ref={setToolsHost} />
+          </div>
+        </header>
         <Suspense fallback={null}>
-          <OfficerApp key={screenKey} />
+          <OfficerApp key={screenKey} headerHost={toolsHost} />
         </Suspense>
       </div>
     )

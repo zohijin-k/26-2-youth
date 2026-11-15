@@ -250,6 +250,12 @@
   white-space: nowrap;
 }
 
+/* 일괄 처리가 없는 역할의 빈 선택 열 머리. 머리 줄과 같은 바탕을 쓴다. */
+.alist__table thead td {
+  border-bottom: 1px solid #ccc;
+  background: #f2f2f2;
+}
+
 .alist__table td {
   height: 48px;
   padding: 0 14px;

@@ -1,0 +1,24 @@
+/* 담당자 쪽 글꼴. 신청자 쪽(styles/base.css)과 같은 Pretendard GOV 파일을 담당자 입구에서도 불러온다.
+ * 이 파일이 없으면 담당자 화면은 시스템 글꼴(맥: Apple SD Gothic Neo)로 그려져 버튼 속 한글이 위로 뜬다.
+ * 글꼴을 쓰는 규칙은 .om · 머리글 · 사이드바 · 기존 목록에만 있다. 원본 서류 뷰어(ReviewDetail/DocumentViewer)는 그대로다. */
+@font-face {
+  font-family: 'Pretendard GOV';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../../assets/fonts/PretendardGOV/PretendardGOV-Regular.subset.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Pretendard GOV';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('../../assets/fonts/PretendardGOV/PretendardGOV-Medium.subset.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Pretendard GOV';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../../assets/fonts/PretendardGOV/PretendardGOV-Bold.subset.woff2') format('woff2');
+}

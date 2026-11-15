@@ -1,1 +1,80 @@
-.program-officer-workspace__head{max-width:1440px;margin:24px auto 16px;padding:0 24px;display:flex;align-items:center;gap:20px}.program-officer-workspace__head h1{font-size:22px;flex:1;margin:0}.program-officer-workspace__tabs{max-width:1392px;margin:0 auto 24px;display:flex;border-bottom:1px solid #d9e1eb;gap:4px;padding:0 0 12px}.program-officer-workspace__tabs [aria-current=page]{background:#173975;color:white;border-color:#173975}.program-officer-workspace__info{max-width:1000px;margin:24px auto;padding:32px;background:white;border:1px solid #d9e1eb;border-radius:8px}.program-officer-workspace__info dl{display:grid;grid-template-columns:120px 1fr;gap:16px}.program-officer-workspace .managed-program__applications{max-width:1392px;margin:24px auto;padding:0 24px}
+/*
+ * 기본 사업(취업지원패키지) 작업 공간.
+ * 위쪽 머리(서랍 · 사업명 · 상태 칩 · 칩 탭)는 다른 사업과 같은 .om 모양을 쓰고,
+ * 아래의 기존 목록·심사 화면(OfficerConsole)은 이 파일 안에서만 겉모양을 다듬는다.
+ * officer.css · application-list.css 는 고치지 않는다 — 여기 규칙이 더 구체적이라 덮어쓴다.
+ */
+.program-officer-workspace { box-sizing: border-box; max-width: 1440px; margin: 0 auto; padding: 24px 24px 48px; color: #1e2124; }
+.program-officer-workspace .om.om-workspace { max-width: none; }
+.program-officer-workspace .program-officer-workspace__top .om-head { margin-bottom: 0; padding-bottom: 20px; border-bottom: 1px solid #e6e8ea; }
+.program-officer-workspace .om-workspace__info { margin-top: 24px; max-width: 880px; }
+.program-officer-workspace .om-workspace__info dd { white-space: pre-line; }
+
+/* ---- 기존 콘솔 ---- */
+/* 목록 쪽만 담당자 글꼴을 쓴다. 심사 상세(원본 뷰어)는 원래 글꼴 그대로 둔다. */
+.program-officer-workspace .officer__head,
+.program-officer-workspace .officer > .panel,
+.program-officer-workspace .alist,
+.program-officer-workspace .pager { font-family: 'Pretendard GOV', 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif; }
+.program-officer-workspace .officer { min-width: min(1280px, 100%); padding: 20px 0 0; }
+.program-officer-workspace .officer__head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-bottom: 20px; }
+.program-officer-workspace .officer__title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.program-officer-workspace .officer__mock { flex-basis: 100%; margin: 0; padding: 10px 14px; border: 1px solid #ffe0a3; border-radius: 8px; background: #fff8e8; color: #6b4e00; font-size: 14px; }
+.program-officer-workspace .officer__mock code { border-radius: 4px; }
+
+/* 역할 전환: 알약형 묶음 */
+.program-officer-workspace .officer__roles { gap: 4px; padding: 4px; border: 1px solid #dfe3e8; border-radius: 999px; background: #f4f5f6; }
+.program-officer-workspace .officer__role { min-height: 36px; padding: 2px 18px 0; border: 0; border-radius: 999px; background: transparent; color: #464c53; font-size: 15px; font-weight: 500; }
+.program-officer-workspace .officer__role:hover { background: #fff; color: #173975; }
+.program-officer-workspace .officer__role--on,
+.program-officer-workspace .officer__role--on:hover { background: #173975; color: #fff; font-weight: 700; box-shadow: 0 1px 2px rgb(0 0 0 / 12%); }
+.program-officer-workspace .officer__role:focus-visible { outline: 2px solid #2c5baf; outline-offset: 2px; }
+.program-officer-workspace .officer__scope { margin: 0; color: #58616a; font-size: 14px; }
+.program-officer-workspace .officer__scope strong { color: #1e2124; }
+.program-officer-workspace .officer__criteria-tab { min-height: 36px; margin: 0 0 0 auto; padding: 0 16px; border: 1px solid #cdd1d5; border-radius: 999px; background: #fff; color: #173975; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.program-officer-workspace .officer__criteria-tab:hover { border-color: #173975; background: #f2f5fa; }
+.program-officer-workspace .officer__notes { flex-basis: 100%; margin: 0; padding: 0; list-style: none; color: #6d7882; font-size: 14px; }
+/* 역할마다 안내 줄 수가 달라 표가 위아래로 움직였다. 한 줄로 이어 쓰고 높이를 고정한다. */
+.program-officer-workspace .officer__notes { display: flex; gap: 0; height: 22px; overflow: hidden; white-space: nowrap; }
+.program-officer-workspace .officer__notes li { overflow: hidden; text-overflow: ellipsis; }
+.program-officer-workspace .officer__notes li + li::before { content: '·'; margin: 0 8px; }
+.program-officer-workspace .officer__head { min-height: 0; }
+.program-officer-workspace .officer__error { border-radius: 8px; }
+.program-officer-workspace .officer > .panel { overflow: hidden; border-color: #dfe3e8; border-radius: 12px; }
+.program-officer-workspace .officer > .panel .panel__title { padding: 12px 16px; background: #f4f5f6; border-color: #dfe3e8; font-size: 15px; }
+.program-officer-workspace .officer > .panel .panel__body { padding: 16px; font-size: 15px; }
+
+/* 신청 목록: 폭을 머리와 맞추고 표를 둥근 카드로 */
+.program-officer-workspace .alist { max-width: none; }
+.program-officer-workspace .alist__head { box-sizing: border-box; height: 56px; border-bottom-color: #e6e8ea; }
+/* 시군·읍면동 선택칸이 있든 없든 탭 줄 높이가 같다. */
+.program-officer-workspace .alist__scope { align-self: center; padding-bottom: 0; }
+.program-officer-workspace .alist__tab { border-top: 3px solid transparent; color: #58616a; } /* 아래 3px 선과 짝을 맞춰 글자를 가운데에 둔다 */
+.program-officer-workspace .alist__tab--on { color: #173975; border-bottom-color: #173975; }
+.program-officer-workspace .alist__count { border-radius: 999px; }
+.program-officer-workspace .alist__bar { height: 64px; }
+.program-officer-workspace .alist__search,
+.program-officer-workspace .alist__period input,
+.program-officer-workspace .alist__scope select { height: 40px; border-color: #cdd1d5; border-radius: 8px; font-size: 14px; }
+.program-officer-workspace .alist__search { width: 300px; padding: 0 12px; }
+.program-officer-workspace .alist__period { color: #464c53; font-size: 14px; }
+.program-officer-workspace .alist__period input { padding: 0 10px; }
+.program-officer-workspace .alist__table { border: 0; border-collapse: separate; border-spacing: 0; outline: 1px solid #dfe3e8; outline-offset: -1px; border-radius: 12px; overflow: hidden; font-size: 14.5px; }
+.program-officer-workspace .alist__col-no { width: 24%; }
+.program-officer-workspace .alist__col-time { width: 22%; }
+.program-officer-workspace .alist__col-status { width: 16%; }
+.program-officer-workspace .alist__table th { height: 44px; background: #f4f5f6; border-bottom-color: #dfe3e8; color: #464c53; font-size: 14px; }
+.program-officer-workspace .alist__table thead td { height: 44px; background: #f4f5f6; border-bottom-color: #dfe3e8; }
+.program-officer-workspace .alist__table td { height: 52px; border-bottom-color: #eef0f2; }
+.program-officer-workspace .alist__table tr:last-child td { border-bottom: 0; }
+.program-officer-workspace .alist__row:hover td { background: #f7f9fc; }
+.program-officer-workspace .alist__chip { padding: 1.5px 10px 0; border-radius: 999px; line-height: 20.5px; }
+.program-officer-workspace .alist__toggle { height: 32px; padding: 0 12px; border-radius: 999px; font-size: 13.5px; }
+.program-officer-workspace .alist__selection { border-radius: 8px; }
+.program-officer-workspace .pager { justify-content: center; gap: 6px; margin-top: 20px; }
+.program-officer-workspace .pager button { min-width: 36px; height: 36px; padding: 0 10px; border-color: #dfe3e8; border-radius: 8px; color: #464c53; }
+.program-officer-workspace .pager button:hover { border-color: #173975; color: #173975; }
+.program-officer-workspace .pager .pager__on,
+.program-officer-workspace .pager .pager__on:hover { border-color: #173975; background: #173975; color: #fff; }
+
+@media (max-width: 850px) { .program-officer-workspace { padding: 16px 16px 40px; } }

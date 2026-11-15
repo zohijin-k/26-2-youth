@@ -8,7 +8,7 @@ The applicant styles intentionally include global element rules and portal style
 
 ## Tokens and original documents
 
-UI color, font-size, and radius declarations read `styles/tokens.css`. Normal controls use 40/48/56px sizes, text is at least 13px, and responsive width queries use 600/900px. The replacement opaque logo is 844×226 with pure-white outer edges and sits directly on the white header; the earlier beige-edged logo chip is removed. Its sampled navy is `#173975`; the red, yellow and green are decoration only. Font files and the OFL license ship locally.
+UI color, font-size, and radius declarations read `styles/tokens.css`. Normal controls use 40/48/56px sizes, text is at least 13px, and responsive width queries use 600/900px. The logo (assets/brand/jbyouthhub-logo.png, 252×80, trimmed to the mark with a small white margin) sits directly on the white header and is shared with the officer header. Wider than 1360px, the applicant app sits in a centered `--frame-max` (1280px) box on a `--frame-outer` page background. Its sampled navy is `#173975`; the red, yellow and green are decoration only. Font files and the OFL license ship locally.
 
 Original PDF coordinates, masks, page scaling, fonts and field sizing remain the original renderer's responsibility. `--pdf-*` tokens preserve its ink and translucent overlays. The 2px PDF field radius and coordinate-scaled text sizes are document exceptions, not UI control precedents. Initially missing fields use a brand outline; attempted continuation exposes errors. Use the single focus outline in `base.css`.
 

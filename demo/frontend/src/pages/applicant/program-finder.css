@@ -2,19 +2,29 @@
 .pfinder__title { margin-bottom: var(--sp-3); }
 .pfinder__lead { margin: 0; color: var(--color-text-subtle); }
 .pfinder__body { max-width: calc(var(--content-max) + var(--gutter) * 2); margin: auto; padding: var(--sp-8) var(--gutter) var(--sp-16); }
-.pfinder__list { display: grid; gap: var(--sp-4); margin: 0; padding: 0; list-style: none; }
-.pfinder__card { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-6); padding: var(--sp-6); border: 1px solid var(--color-border); border-radius: var(--radius-12); background: var(--color-surface); color: var(--color-text); text-decoration: none; transition: border-color var(--ease), box-shadow var(--ease); }
-.pfinder__card:hover { border-color: var(--color-primary); box-shadow: var(--shadow-1); }
-.pfinder__card-main { display: grid; justify-items: start; gap: var(--sp-3); min-width: 0; }
-.pfinder__name { font-size: var(--fs-22); line-height: var(--lh-tight); }
+.pfinder__section-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.pfinder__section-head .pfinder__section-title { margin: 0; }
+.pfinder__count { color: var(--color-text-muted); font-size: var(--fs-15); }
+/* 목록형: 한 상자 안에 사업을 한 줄씩 나눠 놓는다. */
+.pfinder__list { display: grid; margin: 0; padding: 0; overflow: hidden; border: 1px solid var(--color-border); border-radius: var(--radius-12); background: var(--color-surface); list-style: none; }
+.pfinder__list > li + li, .pfinder__list > .pfinder__card + .pfinder__card { border-top: 1px solid var(--color-divider); }
+.pfinder__card { display: grid; grid-template-columns: 88px minmax(0, 1fr) auto auto; align-items: center; gap: var(--sp-5); min-height: 76px; padding: var(--sp-4) var(--sp-6); background: var(--color-surface); color: var(--color-text); text-decoration: none; transition: background var(--ease); }
+.pfinder__card:hover { background: var(--color-surface-brand); }
+.pfinder__card:focus-visible { outline-offset: -3px; }
+.pfinder__card-main { display: contents; }
+.pfinder__card .pfinder__status { justify-self: start; }
+.pfinder__name { min-width: 0; font-size: var(--fs-19); line-height: var(--lh-tight); }
+.pfinder__card:hover .pfinder__name { color: var(--color-text-brand); }
 .pfinder__period { display: flex; flex-wrap: wrap; gap: var(--sp-2); color: var(--color-text-subtle); font-size: var(--fs-15); }
 .pfinder__period-label { font-weight: var(--fw-bold); }
 .pfinder__status, .pinfo__status { display: inline-flex; align-items: center; gap: var(--sp-1); min-height: 26px; padding: 0 var(--sp-2); border-radius: var(--radius-4); color: var(--info-60); background: var(--info-5); font-size: var(--fs-13); font-weight: var(--fw-bold); }
 .pfinder__status--closed, .pinfo__status--closed { background: var(--gray-5); color: var(--gray-70); }
 .pfinder__status--upcoming, .pinfo__status--upcoming { background: var(--brand-5); color: var(--brand-60); }
-.pfinder__go { flex: none; color: var(--color-text-brand); font-size: var(--fs-15); font-weight: var(--fw-bold); }
+.pfinder__go { flex: none; color: var(--color-text-brand); font-size: var(--fs-15); font-weight: var(--fw-bold); white-space: nowrap; }
+.pfinder__go::after { content: '›'; margin-left: var(--sp-1); font-size: var(--fs-17); }
 .pfinder__closed { margin-top: var(--sp-10); }
+.pfinder__closed .pfinder__name { color: var(--color-text-subtle); }
 .pfinder__section-title { margin-bottom: var(--sp-4); }
 .pfinder__notice { padding: var(--sp-6); border: 1px solid var(--color-border); border-radius: var(--radius-12); background: var(--color-surface); }
 .pfinder__notice p { color: var(--color-text-subtle); }
-@media (max-width: 600px) { .pfinder__card { align-items: start; flex-direction: column; gap: var(--sp-4); padding: var(--sp-4); } .pfinder__name { font-size: var(--fs-19); } .pfinder__head { padding-block: var(--sp-6); } }
+@media (max-width: 600px) { .pfinder__card { grid-template-columns: minmax(0, 1fr) auto; gap: var(--sp-2) var(--sp-3); padding: var(--sp-4); } .pfinder__card .pfinder__name, .pfinder__card .pfinder__period { grid-column: 1 / -1; } .pfinder__card .pfinder__go { grid-row: 1; grid-column: 2; } .pfinder__name { font-size: var(--fs-17); } .pfinder__head { padding-block: var(--sp-6); } }

@@ -78,7 +78,8 @@ export default function ProgramInfo({ postingId, onBack, onApply }: Props) {
         onBack()
       }}
     >
-      사업 찾기
+      <Icon name="chevronLeft" size={18} />
+      사업 찾기로 돌아가기
     </a>
   )
 

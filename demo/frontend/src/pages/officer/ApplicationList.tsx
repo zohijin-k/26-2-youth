@@ -83,7 +83,7 @@ export default function ApplicationList({
   /** 지금 표에 있는 행이 속한 구분. 탭을 막 옮긴 직후에는 `queue`보다 한 박자 늦다. */
   const shownQueue = OFFICER_QUEUES.find((key) => key === list.filters.applied.queue) ?? queue
   const canBulk = list.role.can_bulk
-  const columnCount = HEADERS.length + (canBulk ? 2 : 1)
+  const columnCount = HEADERS.length + 2
 
   // ---- 검색어. 입력 칸의 글자는 여기서 쥐고, 멈췄을 때만 목록 조건으로 올린다.
   const appliedSearch = query.q ?? ''
@@ -343,7 +343,8 @@ export default function ApplicationList({
       >
         <table className="alist__table">
           <colgroup>
-            {canBulk && <col className="alist__col-check" />}
+            {/* 일괄 처리가 없는 역할도 열을 비워 둔다. 역할을 바꿔도 열 위치가 그대로다. */}
+            <col className="alist__col-check" />
             <col className="alist__col-no" />
             <col />
             <col className="alist__col-time" />
@@ -352,7 +353,7 @@ export default function ApplicationList({
           </colgroup>
           <thead>
             <tr>
-              {canBulk && (
+              {canBulk ? (
                 <th scope="col" className="alist__check">
                   <label>
                     <input
@@ -365,7 +366,7 @@ export default function ApplicationList({
                     />
                   </label>
                 </th>
-              )}
+              ) : <td className="alist__check" aria-hidden="true" />}
               {HEADERS.map((label) => <th key={label} scope="col">{label}</th>)}
               <th scope="col"><span className="alist__sr">확인 필요 사유</span></th>
             </tr>
@@ -385,7 +386,7 @@ export default function ApplicationList({
               return (
                 <Fragment key={id}>
                   <tr className={rowClass} onClick={() => generic ? toggleReasons(id) : onOpen(id)}>
-                    {canBulk && (
+                    {canBulk ? (
                       <td className="alist__check" onClick={(event) => event.stopPropagation()}>
                         <label>
                           <input
@@ -396,7 +397,7 @@ export default function ApplicationList({
                           />
                         </label>
                       </td>
-                    )}
+                    ) : <td className="alist__check" aria-hidden="true" />}
                     <td>
                       <button
                         type="button"

@@ -2,7 +2,7 @@
  * 신청자 화면 디자인 토큰. 신청자 쪽 입구(pages/applicant/ApplicantApp.tsx)만 불러온다.
  * 담당자 화면이 읽는 옛 변수(--brand, --border 등, src/index.css)와 이름이 겹치지 않는다.
  *
- * 브랜드 색은 전북청년허브센터 로고(assets/brand/jbyouthhub-logo.png, 844×226)를 픽셀 표본으로 뽑았다.
+ * 브랜드 색은 전북청년허브센터 로고(assets/brand/jbyouthhub-logo.png)를 픽셀 표본으로 뽑았다.
  *   남색 글자·심볼  #173975  (파랑 계열 픽셀의 어두운 절반 중앙값이자 최빈값) → --brand-60
  *   심볼 빨강 #b82d2b · 노랑 #e6b943 · 초록 #8db243                          → 장식 전용
  *   큰 글자 #211816(거의 검정)은 글자 잉크로 보고 회색 척도가 맡는다.
@@ -57,6 +57,7 @@
   /* control / layout */
   --control-lg:56px; --control-md:48px; --control-sm:40px; --ease:160ms ease;
   --shell-max:1200px; --content-max:880px; --gutter:24px; --shell-h:72px;
+  --frame-max:1280px; --frame-outer:#e8ecf1; /* 넓은 화면에서 화면 전체를 묶는 박스 폭과 바깥 바탕 */
   --field-short:360px;      /* 성명·휴대폰처럼 짧은 값의 입력 칸 */
   --sign-max:560px;         /* 서명 칸 최대 폭 */
   --z-sticky:20; --z-skip:90; --z-modal:100;
