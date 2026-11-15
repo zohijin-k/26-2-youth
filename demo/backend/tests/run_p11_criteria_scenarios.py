@@ -11,6 +11,7 @@ from ..rules.criteria import CRITERIA_SCHEMA_VERSION, for_application, issue_bou
 from ..rules.facts import build_facts
 from ..models import Application, ProgramCriteriaVersion, get_session
 from sqlmodel import select
+from .security_support import authenticate_officer
 from engine.models import Document as EngineDocument, RequiredDocumentSpec, ReasonCode
 from engine.stage1_document_check import check_single_document
 
@@ -185,6 +186,7 @@ def main() -> int:
     p4._isolate(tmp)
     try:
         with TestClient(app) as client:
+            authenticate_officer(client)
             run(client)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

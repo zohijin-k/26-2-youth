@@ -53,7 +53,7 @@ def test_other_applicant_cannot_read_or_mutate_generic_application_or_files(clie
         assert all(value not in response.text for value in ('가상신청','합성 주소',owner['application_no'],form['title']))
         assert response.headers['cache-control']=='private, no-store'
     # Officer routes stay separate; a role-shaped header/query cannot bypass owner checks.
-    assert outsider.get('/api/officer/applications').status_code==200
+    assert outsider.get('/api/officer/applications').status_code==401
     assert outsider.get(base+'?role=province',headers={'Authorization':'Bearer province'}).status_code==403
     assert client.get(base).status_code==200
 
@@ -68,4 +68,4 @@ def test_integer_aliases_and_wrong_cookie_cannot_bypass_generic_owner_guard(clie
     outsider.cookies.set(f'applicant_access_{owner["id"]}','synthetic-wrong-cookie',path='/api')
     assert outsider.get(f'/api/applications/{owner["id"]}').status_code==403
     builtin=client.post('/api/applications',json={'program_code':'job_package'}).json()
-    assert outsider.get(f'/api/applications/{builtin["id"]}').status_code==200
+    assert outsider.get(f'/api/applications/{builtin["id"]}').status_code==403

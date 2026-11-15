@@ -25,6 +25,7 @@ from sqlmodel import select
 from engine_v2.pipeline.privacy import mask_data
 
 from .. import generic_programs as generic
+from ..generic_review import validate_decision, validate_bulk_decisions
 from ..models import (
     STATUS_DECIDED,
     STATUS_DRAFT,
@@ -1097,6 +1098,7 @@ def _apply_decision(
         review = s.exec(
             select(Review).where(Review.application_id == application_id)
         ).first()
+        validate_decision(app, review, decision, memo)
         if review is None:
             raise HTTPException(400, "심사 결과가 없어 판단을 기록할 수 없습니다.")
 
@@ -1183,6 +1185,7 @@ def decide_bulk(body: BulkDecisionRequest) -> dict[str, Any]:
             403, f"'{role.name}' 역할은 건별 확인이 원칙이라 일괄 처리를 할 수 없습니다."
         )
     _check_action(role, body.decision)
+    validate_bulk_decisions(body.application_ids, body.decision, body.memo)
     if body.decision == DECISION_APPROVE:
         unchecked = _unchecked_numbers(body.application_ids)
         if unchecked:

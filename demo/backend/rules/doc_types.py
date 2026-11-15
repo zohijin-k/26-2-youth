@@ -14,6 +14,8 @@ from enum import StrEnum
 
 
 class DocType(StrEnum):
+    # Additive generic-program manual slot; never eligible for automatic PASS.
+    UNKNOWN = "기타서류"
     # --- 두배적금: 온라인 업로드 대상 ---
     ADMIN_INFO_CONSENT = "행정정보공동이용동의서"  # 서식5 (원문상 자필서명)
 

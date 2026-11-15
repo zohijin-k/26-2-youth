@@ -78,6 +78,7 @@ def eligible_posting(code: str) -> ProgramPosting:
 
 def freeze(session: Any, app: Application, posting: ProgramPosting) -> None:
     from .api import posting_workspace
+    from .api.program_analysis import freeze_requirements, snapshot_metadata
     root = storage() / 'program_snapshots' / str(app.id)
     root.mkdir(parents=True,exist_ok=True)
     entries = []
@@ -98,17 +99,17 @@ def freeze(session: Any, app: Application, posting: ProgramPosting) -> None:
             entries.append({'form_no':f'program_form_{row.id}','title':row.file_name,
                 'path':str(target.relative_to(storage())), 'fields':fields,
                 'page_sizes':deepcopy(row.layout_json['page_sizes'])})
-        requirements=[]
         catalog=posting_workspace.slot_catalog()
-        for key in (posting.template_json or {}).get('required_docs',[]):
-            req=asdict(catalog[key])
+        configured = freeze_requirements(posting, catalog)
+        requirements = configured if configured is not None else [
+            asdict(catalog[key]) for key in (posting.template_json or {}).get('required_docs', [])]
+        for req in requirements:
             for attr in ('min_issue_date','max_issue_date'):
                 if isinstance(req.get(attr),date): req[attr]=req[attr].isoformat()
-            requirements.append(req)
         session.add(ProgramApplicationSnapshot(application_id=app.id,posting_id=posting.id,
             snapshot_json={'title':posting.title,'apply_start':posting.apply_start.isoformat(),
                 'apply_end':posting.apply_end.isoformat(),'guidance_text':posting.guidance_text,
-                'forms':entries,'requirements':requirements}))
+                'forms':entries,'requirements':requirements, **snapshot_metadata(posting)}))
     except Exception:
         shutil.rmtree(root,ignore_errors=True)
         raise
@@ -291,9 +292,13 @@ def blockers(app:Application) -> list[dict[str,Any]]:
     if not app.identity_json:
         result.append({'kind':'identity','target':'identity','label':'본인인증','message':'본인인증을 마쳐 주세요.','goto':'identity'})
     result.extend(required_missing(app))
-    result.extend(document_blockers(checklist(app),list_documents(app.id or 0)))
+    documents = list_documents(app.id or 0)
+    result.extend(document_blockers(checklist(app),documents))
+    raw=snapshot(app).snapshot_json
+    if raw.get('authoring_version') == 2:
+        from .generic_criteria import applicant_blockers, evaluate
+        result.extend(applicant_blockers(evaluate(app, raw.get('criteria', []), documents)))
     if app.status=='draft':
-        raw=snapshot(app).snapshot_json
         from .api import postings
         current_open=True
         try:
@@ -325,9 +330,18 @@ def run_review(app:Application) -> Review:
     by_slot={row.slot_key:row for row in docs}
     all_pass=not required_missing(app) and all(req.slot_key in by_slot and by_slot[req.slot_key].stage1_status=='PASS' for req in checklist(app) if req.required)
     all_pass=all_pass and all(row.stage1_status=='PASS' for row in docs)
+    raw = snapshot(app).snapshot_json
+    criteria_results = None
+    if raw.get('authoring_version') == 2:
+        from .generic_criteria import evaluate
+        criteria_results = evaluate(app, raw.get('criteria', []), docs)
+        all_pass = all_pass and bool(criteria_results) and all(row['status'] == 'PASS' for row in criteria_results)
     final='PASS' if all_pass else 'NEEDS_REVIEW'
+    payload = {'final_status':final,'reasons':[{'code':'PROGRAM_RULES_UNSET','message':NOTICE}]}
+    if criteria_results is not None:
+        payload = {'final_status': final, 'criteria_results': criteria_results, 'reasons': []}
     return Review(application_id=app.id,final_status=final,stage1_status=final,stage2_status=None,
-        review_payload_json={'final_status':final,'reasons':[{'code':'PROGRAM_RULES_UNSET','message':NOTICE}]})
+        review_payload_json=payload)
 
 
 def submit(app:Application) -> dict[str,Any]:

@@ -1,0 +1,30 @@
+{
+  "helper": "demo/backend/tests/security_support.py",
+  "fixtures": [
+    "demo/backend/tests/test_generic_programs.py::client",
+    "demo/backend/tests/test_officer_queue_api.py::client",
+    "demo/backend/tests/test_postings_api.py::client",
+    "demo/backend/tests/test_portal_uploads.py::client",
+    "demo/backend/tests/test_account_attachment.py::client"
+  ],
+  "scenario_modules": [
+    "run_p4_scenarios",
+    "run_p5_scenarios",
+    "run_p6_scenarios",
+    "run_p7_scenarios",
+    "run_p9_identity_scenarios",
+    "run_p11_criteria_scenarios",
+    "run_p12_subsidy_criteria_scenarios",
+    "run_p18_applicant_precheck_scenarios"
+  ],
+  "method": "Explicit real login with injected synthetic environment values. Business expectations unchanged.",
+  "synthetic_owner_seeds": [
+    "demo/backend/tests/test_eligibility_blockers.py::test_confirmed_regional_excess_includes_numeric_evidence_without_scores",
+    "demo/backend/tests/test_eligibility_blockers.py::test_submit_rechecks_income_after_a_previously_clear_final_check",
+    "demo/backend/tests/test_eligibility_blockers.py::test_work_not_met_blocks_final_and_direct_submit",
+    "demo/backend/tests/test_eligibility_blockers.py::test_undetermined_income_remains_submittable_for_officer_review",
+    "demo/backend/tests/test_eligibility_blockers.py::test_unknown_work_remains_submittable_and_final_review_is_consistent",
+    "demo/backend/tests/test_eligibility_blockers.py::test_submit_rechecks_other_eligibility_after_clear_final_check",
+    "demo/backend/tests/test_failure_cases_work_acceptance.py::test_source_shaped_work_failure_reaches_all_consumers"
+  ]
+}

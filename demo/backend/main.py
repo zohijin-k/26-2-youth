@@ -20,10 +20,12 @@ from .api import (
     files,
     forms,
     officer,
+    generic_officer,
     postings,
     posting_workspace,
     posting_draft,
     posting_workflow,
+    program_analysis,
     draft_messages,
     review,
     subsidy,
@@ -31,6 +33,7 @@ from .api import (
 from .engine_adapter import apply_runtime_overrides
 from .models import init_db
 from .generic_access import GenericApplicantAccess
+from .officer_auth import OfficerAccess, router as officer_auth_router
 from .rules.programs import PROGRAMS, get_program
 from .rules.self_check import item_numbers
 from .rules.subsidy import catalog
@@ -61,6 +64,8 @@ app.add_middleware(
 
 
 app.add_middleware(GenericApplicantAccess)
+app.add_middleware(OfficerAccess)
+app.include_router(officer_auth_router)
 
 app.include_router(applications.router)
 app.include_router(criteria.public_router)
@@ -73,10 +78,12 @@ app.include_router(review.router)
 app.include_router(forms.router)
 # 담당자 심사 화면(P4). 원본은 files 라우터가 inline으로만 흘린다 — 다운로드 경로는 없다.
 app.include_router(officer.router)
+app.include_router(generic_officer.router)
 app.include_router(files.router)
 # 사업 저장소. 담당자가 게시한 사업을 신청자가 찾는다. 공고문·서식 PDF도 inline 으로만 나간다.
 app.include_router(postings.public_router)
 app.include_router(postings.officer_router)
+app.include_router(program_analysis.router)
 
 
 @app.get("/api/health")

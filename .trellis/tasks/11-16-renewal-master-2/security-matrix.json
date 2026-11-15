@@ -1,0 +1,441 @@
+{
+  "suite": "renewal-master-2",
+  "synthetic_only": true,
+  "passed": true,
+  "row_count": 54,
+  "rows": [
+    {
+      "method": "GET",
+      "path": "/api/applications/4",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/applications/4",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/4/documents",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/4/required-documents",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/4/final-check",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/4/status",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/4/consents",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/4/subsidy-items",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/4/forms",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/4/forms/job_application.pdf",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/4/forms/job_consent.pdf",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/4/forms/files/written.pdf",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/4/forms/files/job_application/filled.pdf",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/4/forms/files/job_consent/filled.pdf",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/4/forms/job_application/pages/1.png?preview=true",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/4/forms/job_consent/pages/1.png?preview=true",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/4/forms/interview-confirmation/filled.pdf",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/4/forms/signature-scan.png",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/4/identity-pledge.png",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "GET",
+      "path": "/api/files/6",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "GET",
+      "path": "/api/files/7",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "GET",
+      "path": "/api/files/8",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "GET",
+      "path": "/api/officer/session",
+      "anonymous": 401,
+      "other": 401,
+      "owner_or_officer": 200,
+      "expected": "officer"
+    },
+    {
+      "method": "GET",
+      "path": "/api/officer/roles",
+      "anonymous": 401,
+      "other": 401,
+      "owner_or_officer": 200,
+      "expected": "officer"
+    },
+    {
+      "method": "GET",
+      "path": "/api/officer/applications",
+      "anonymous": 401,
+      "other": 401,
+      "owner_or_officer": 200,
+      "expected": "officer"
+    },
+    {
+      "method": "GET",
+      "path": "/api/officer/postings",
+      "anonymous": 401,
+      "other": 401,
+      "owner_or_officer": 200,
+      "expected": "officer"
+    },
+    {
+      "method": "GET",
+      "path": "/api/programs",
+      "anonymous": 200,
+      "other": 200,
+      "owner_or_officer": 200,
+      "expected": "public"
+    },
+    {
+      "method": "GET",
+      "path": "/api/programs/job_package",
+      "anonymous": 200,
+      "other": 200,
+      "owner_or_officer": 200,
+      "expected": "public"
+    },
+    {
+      "method": "GET",
+      "path": "/api/programs/job_package/criteria",
+      "anonymous": 200,
+      "other": 200,
+      "owner_or_officer": 200,
+      "expected": "public"
+    },
+    {
+      "method": "GET",
+      "path": "/api/postings",
+      "anonymous": 200,
+      "other": 200,
+      "owner_or_officer": 200,
+      "expected": "public"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/4/forms/layouts/job_application",
+      "anonymous": 200,
+      "other": 200,
+      "owner_or_officer": 200,
+      "expected": "public"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/4/forms/templates/job_application.pdf",
+      "anonymous": 200,
+      "other": 200,
+      "owner_or_officer": 200,
+      "expected": "public"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/4/forms/job_application/pages/1.png?preview=false",
+      "anonymous": 200,
+      "other": 200,
+      "owner_or_officer": 200,
+      "expected": "public"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/4/forms/files/job_application/blank.pdf",
+      "anonymous": 200,
+      "other": 200,
+      "owner_or_officer": 200,
+      "expected": "public"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/4/forms/files/job_application/source.hwp",
+      "anonymous": 200,
+      "other": 200,
+      "owner_or_officer": 200,
+      "expected": "public"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/4/forms/files/original-hwp/options",
+      "anonymous": 200,
+      "other": 200,
+      "owner_or_officer": 200,
+      "expected": "public"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/4/forms/files/original-hwp",
+      "anonymous": 200,
+      "other": 200,
+      "owner_or_officer": 200,
+      "expected": "public"
+    },
+    {
+      "method": "GET",
+      "path": "/api/postings/4/files/notice.pdf",
+      "anonymous": 200,
+      "other": 200,
+      "owner_or_officer": 200,
+      "expected": "public"
+    },
+    {
+      "method": "GET",
+      "path": "/api/postings/3/files/notice.pdf",
+      "anonymous": 200,
+      "other": 200,
+      "owner_or_officer": 200,
+      "expected": "public"
+    },
+    {
+      "method": "POST",
+      "path": "/api/applications/6/identity",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "POST",
+      "path": "/api/applications/4/self-check",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "POST",
+      "path": "/api/applications/4/consents",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "POST",
+      "path": "/api/applications/4/subsidy-items",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/applications/4/doc-context",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "POST",
+      "path": "/api/applications/4/documents",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/applications/4/documents/8",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "POST",
+      "path": "/api/applications/4/documents",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "POST",
+      "path": "/api/applications/4/forms/signature-scan",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/applications/4/forms/signature-scan",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "POST",
+      "path": "/api/applications/4/forms/signature-scan",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "POST",
+      "path": "/api/applications/4/submit",
+      "anonymous": 403,
+      "other": 403,
+      "owner_or_officer": 200,
+      "expected": "owner"
+    },
+    {
+      "method": "GET",
+      "path": "/api/officer/applications/4",
+      "anonymous": 401,
+      "other": 401,
+      "owner_or_officer": 200,
+      "expected": "officer"
+    },
+    {
+      "method": "GET",
+      "path": "/api/officer/applications/4/reasons",
+      "anonymous": 401,
+      "other": 401,
+      "owner_or_officer": 200,
+      "expected": "officer"
+    },
+    {
+      "method": "POST",
+      "path": "/api/officer/applications/4/decision",
+      "anonymous": 401,
+      "other": 401,
+      "owner_or_officer": 200,
+      "expected": "officer"
+    }
+  ],
+  "error_type": null
+}

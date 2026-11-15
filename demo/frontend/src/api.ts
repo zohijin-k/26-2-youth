@@ -3,6 +3,7 @@
 import { FORM_FIELD_KEYS } from './forms/form-field-bindings.ts'
 import { youthOfficerRole } from './officer-scope.ts'
 import { YOUTH_PROGRAM } from './program-scope.ts'
+import { officerSessionResponse } from './officer-session.ts'
 
 type OfficerMocks = typeof import('./pages/officer/mock-data.ts')
 let loadedOfficerMocks: OfficerMocks | null = null
@@ -331,6 +332,7 @@ async function json<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: { 'Content-Type': 'application/json', ...init?.headers },
   })
+  officerSessionResponse(path, res)
   if (!res.ok) throw new Error(`${init?.method ?? 'GET'} ${path} 실패 (${res.status})`)
   return res.json() as Promise<T>
 }
@@ -338,6 +340,7 @@ async function json<T>(path: string, init?: RequestInit): Promise<T> {
 /** 파일 업로드는 multipart라 Content-Type을 브라우저가 붙이게 둔다. */
 async function form<T>(path: string, body: FormData): Promise<T> {
   const res = await fetch(path, { method: 'POST', body })
+  officerSessionResponse(path, res)
   if (!res.ok) {
     const detail = (await res.json().catch(() => null)) as { detail?: string } | null
     throw new Error(detail?.detail ?? `업로드 실패 (${res.status})`)
@@ -353,8 +356,17 @@ export const createApplication = (programCode: string) =>
     body: JSON.stringify({ program_code: programCode, applicant_flow_version: 1 }),
   })
 
-export const fetchApplication = (id: number) =>
-  json<ApplicationRow>(`/api/applications/${id}`)
+export const fetchApplication = async (id: number): Promise<ApplicationRow> => {
+  const path = `/api/applications/${id}`
+  try { return await json<ApplicationRow>(path) }
+  catch (error) {
+    if (!(error instanceof Error) || !/\(403\)/.test(error.message)) throw error
+    // An existing narrow owner cookie reaches this original public asset path.
+    // The server broadens only a matching existing token; it never mints one.
+    await fetch(`${path}/forms/files/original-hwp/options`, { credentials: 'same-origin' })
+    return json<ApplicationRow>(path)
+  }
+}
 
 export const fetchApplicationConsents = (id: number) =>
   json<{ consent_type: string; agreed: boolean }[]>(`/api/applications/${id}/consents`)
@@ -767,6 +779,9 @@ export interface OfficerDocument {
   file_url: string
   file_name: string
   file_format: string
+  /** Officer-only faithful raster for one-page PDFs in the generic workspace. */
+  page_count?: number
+  page_image_url?: string
   page_index: number | null
   extracted: Record<string, string>
   bboxes: Record<string, BBox>
@@ -1054,6 +1069,7 @@ async function writePosting<T>(path: string, init: RequestInit): Promise<T> {
   let res: Response
   try {
     res = await fetch(path, init)
+    officerSessionResponse(path, res)
   } catch {
     throw new Error('서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.')
   }
@@ -1090,11 +1106,15 @@ export const fetchPostings = async (): Promise<PublicPosting[]> =>
 export const fetchPosting = (id: number) => json<PublicPostingDetail>(`/api/postings/${id}`)
 
 /** 담당자 화면: 작성 중인 사업까지. 작성 중이 맨 앞에 온다. */
-export const fetchOfficerPostings = async (): Promise<OfficerPosting[]> =>
-  Promise.all((await json<{ items: OfficerPosting[] }>('/api/officer/postings')).items.map(withMockCounts))
+export const fetchOfficerPostings = async (): Promise<OfficerPosting[]> => {
+  if (mockMode().forced) return [await withMockCounts((await loadOfficerMocks()).mockPosting())]
+  return Promise.all((await json<{ items: OfficerPosting[] }>('/api/officer/postings')).items.map(withMockCounts))
+}
 
-export const fetchOfficerPosting = async (id: number): Promise<OfficerPosting> =>
-  withMockCounts(await json<OfficerPosting>(`/api/officer/postings/${id}`))
+export const fetchOfficerPosting = async (id: number): Promise<OfficerPosting> => {
+  if (mockMode().forced) return withMockCounts((await loadOfficerMocks()).mockPosting())
+  return withMockCounts(await json<OfficerPosting>(`/api/officer/postings/${id}`))
+}
 
 /** 작성 중 상태로 만든다. multipart라 Content-Type은 브라우저가 붙인다. */
 export function createPosting(fields: NewPostingFields) {
@@ -1128,4 +1148,6 @@ export const closePosting = (id: number) =>
 export const deletePosting = (id: number) =>
   writePosting<void>(`/api/officer/postings/${id}`, { method: 'DELETE' })
 
-export const fetchReasonExplanation = (id: number, role: string) => json<{ text: string; label: string; basis: string }>(`/api/officer/applications/${id}/reason-explanation?${query({ role })}`)
+export const fetchReasonExplanation = (id: number, role: string) => mockMode().forced
+  ? Promise.resolve({ text: '제출 원본과 규칙 결과를 확인해 주세요.', label: '담당자 확인 안내', basis: '근거는 규칙 결과입니다.' })
+  : json<{ text: string; label: string; basis: string }>(`/api/officer/applications/${id}/reason-explanation?${query({ role })}`)

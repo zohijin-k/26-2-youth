@@ -4,6 +4,7 @@ from datetime import date, datetime, timedelta
 import pymupdf
 import pytest
 from fastapi.testclient import TestClient
+from demo.backend.tests.security_support import authenticate_officer
 from sqlmodel import create_engine, select
 
 from demo.backend import models
@@ -38,6 +39,7 @@ def client(tmp_path, storage, monkeypatch):
     monkeypatch.setattr(models, "posting_today", lambda: TODAY)
     try:
         with TestClient(app) as connected:
+            authenticate_officer(connected, monkeypatch)
             yield connected
     finally:
         isolated.dispose()

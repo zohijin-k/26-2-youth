@@ -1,0 +1,32 @@
+{
+  "baseline_size": [
+    1400,
+    999
+  ],
+  "final_size": [
+    1400,
+    999
+  ],
+  "changed_pixels": 78088,
+  "total_pixels": 1398600,
+  "changed_percent": 5.5832975832975835,
+  "difference_bbox": [
+    0,
+    16,
+    1400,
+    999
+  ],
+  "aligned": {
+    "changed_pixels": 1245,
+    "total_pixels": 1398600,
+    "changed_percent": 0.08901758901758902,
+    "difference_bbox": [
+      16,
+      74,
+      777,
+      152
+    ],
+    "image": "shots/final-review-aligned.png",
+    "alignment_record": "visual-pixel-alignment.json"
+  }
+}

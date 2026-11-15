@@ -1,0 +1,14 @@
+{
+  "source": "test-generated synthetic public notice",
+  "title": true,
+  "period": true,
+  "guidance": true,
+  "documents": 2,
+  "age": true,
+  "residence": true,
+  "issue_date": true,
+  "work_continuity": true,
+  "unsupported_checklist": true,
+  "all_unconfirmed": true,
+  "template_notice_pdfs": 0
+}

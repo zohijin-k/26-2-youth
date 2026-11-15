@@ -7,6 +7,7 @@ import json
 import pymupdf
 import pytest
 from fastapi.testclient import TestClient
+from demo.backend.tests.security_support import authenticate_officer
 from sqlmodel import create_engine,select
 
 from demo.backend import models
@@ -45,7 +46,9 @@ def client(tmp_path,monkeypatch):
     monkeypatch.setattr(documents,'DOCUMENTS',storage/'documents')
     monkeypatch.setattr(models,'posting_today',lambda:TODAY)
     monkeypatch.setenv('ENGINE_V2_OCR','off')
-    with TestClient(app) as connected:yield connected
+    with TestClient(app) as connected:
+        authenticate_officer(connected, monkeypatch)
+        yield connected
     engine.dispose()
 
 

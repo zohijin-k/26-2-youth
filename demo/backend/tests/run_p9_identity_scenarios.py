@@ -25,6 +25,7 @@ import json
 import shutil
 import tempfile
 from pathlib import Path
+from .security_support import authenticate_officer
 
 from . import run_p4_scenarios as p4
 from .scenario_support import complete_synthetic_work, seed_blocked_historical_review
@@ -454,6 +455,7 @@ def main() -> int:
     p4._isolate(tmp)
     try:
         with TestClient(app) as client:
+            authenticate_officer(client)
             test_identity_api(client)
             test_matching(client, tmp)
             test_samples_and_no_identity(client, tmp)

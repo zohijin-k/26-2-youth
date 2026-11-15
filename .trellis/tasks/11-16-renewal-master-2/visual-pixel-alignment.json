@@ -1,0 +1,31 @@
+{
+  "baseline_box": {
+    "x": 20,
+    "y": 1.78125,
+    "width": 1400,
+    "height": 997.796875
+  },
+  "raw_box": {
+    "x": 20,
+    "y": 2.5625,
+    "width": 1400,
+    "height": 997.796875
+  },
+  "aligned_box": {
+    "x": 20,
+    "y": 1.78125,
+    "width": 1400,
+    "height": 997.796875
+  },
+  "after_capture_box": {
+    "x": 20,
+    "y": 1.78125,
+    "width": 1400,
+    "height": 997.796875
+  },
+  "ancestor": ".program-officer-workspace",
+  "vertical_calibration": -0.78125,
+  "method": "Temporary unprotected ancestor top offset aligns fractional screenshot origin; original captures and product sources preserved",
+  "page_errors": [],
+  "api_requests": []
+}

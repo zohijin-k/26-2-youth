@@ -55,6 +55,14 @@ def assess_upload(
     reader: Callable[[str, DocType | None], OcrResult] = read_document,
 ) -> tuple[OcrResult, CheckResult]:
     """Read the original path and run the same explicit-slot upload assessment."""
+    if req.doc_type == DocType.UNKNOWN:
+        # An officer-defined document has no established reader or type rule.
+        # Keep its original for inline inspection without sending it to OCR or
+        # manufacturing a type result from its name or arbitrary printed text.
+        return OcrResult(tier='none'), CheckResult('NEEDS_REVIEW', [CheckFinding(
+            code='MANUAL_DOCUMENT_REVIEW',
+            message='담당자가 제출 서류의 원본과 사업 기준을 확인합니다.',
+            how_to_fix='내용을 읽을 수 있는 원본을 올려 주세요.', severity='NEEDS_REVIEW')])
     ocr = reader(str(path), req.doc_type)
     if identity_from_ocr is not None:
         identity = identity_from_ocr(ocr)
