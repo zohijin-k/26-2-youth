@@ -1,11 +1,17 @@
 import { useEffect, useState, type ReactNode, type FormEvent } from 'react'
 import { officerLoginUrl, officerReturnPath } from '../../officer-session.ts'
+import { createModernNavigationRegistration, OfficerNavigationContext } from './officer-navigation-context.ts'
 import './officer-session.css'
+import './officer-modern-tokens.css'
+import './officer-modern.css'
+import './officer-entry-modern.css'
 
 export default function OfficerSession({ children }: { children: ReactNode }) {
   const mock = new URLSearchParams(window.location.search).get('mock') === '1'
   const loginPage = window.location.pathname === '/officer/login'
   const [ready, setReady] = useState(mock)
+  const [modernDrawerCount, setModernDrawerCount] = useState(0)
+  const [registerModernDrawer] = useState(() => createModernNavigationRegistration(setModernDrawerCount))
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -34,7 +40,7 @@ export default function OfficerSession({ children }: { children: ReactNode }) {
           }
           else expired()
         }
-      }).catch(() => { if (active) setError('서버에 연결하지 못했습니다. 새로고침해 주세요.') })
+      }).catch(() => { if (active) setError('서버에 연결하지 못했습니다. 다시 시도해 주세요.') })
     }
     return () => { active = false; clearTimeout(expiryTimer); window.removeEventListener('officer-session-expired', expired) }
   }, [mock, loginPage])
@@ -51,21 +57,20 @@ export default function OfficerSession({ children }: { children: ReactNode }) {
       setPassword('')
       if (!response.ok) { setError(body?.detail || '로그인하지 못했습니다.'); return }
       window.location.replace(officerReturnPath(new URLSearchParams(window.location.search).get('returnTo')))
-    } catch { setError('서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.') }
+    } catch { setError('서버에 연결하지 못했습니다. 다시 시도해 주세요.') }
     finally { setBusy(false) }
   }
-  if (loginPage) return <main className="officer-login"><form onSubmit={(event) => void login(event)}>
+  if (loginPage) return <main className="om officer-login om-entry-login"><form onSubmit={(event) => void login(event)}>
     <span className="officer-login__eyebrow">전북 청년정책 · 담당자</span>
-    <h1>담당자 로그인</h1><p>사업 관리와 신청서류 검토를 시작합니다.</p>
+    <h1>담당자 로그인</h1>
     <label htmlFor="officer-password">담당자 비밀번호</label>
     <input id="officer-password" type="password" autoComplete="current-password" required autoFocus value={password}
       disabled={busy} onChange={(event) => setPassword(event.target.value)} />
     {error && <p role="alert">{error}</p>}
     <button className="btn btn--primary" disabled={busy} type="submit">{busy ? '확인 중' : '로그인'}</button>
-    <small>역할과 지역은 로그인한 뒤 선택합니다.</small>
   </form></main>
-  if (!ready) return <main className="officer-login" role={error ? 'alert' : 'status'}>{error || '담당자 세션을 확인하고 있습니다.'}</main>
-  return <><div className="officer-session-bar"><span>담당자 로그인됨</span><button type="button" className="btn" onClick={() => {
+  if (!ready) return <main className="om officer-login om-entry-login"><p role={error ? 'alert' : 'status'}>{error || '담당자 세션을 확인하고 있습니다.'}</p><button type="button" className="btn" onClick={() => window.location.reload()}>다시 시도</button></main>
+  return <OfficerNavigationContext.Provider value={registerModernDrawer}>{modernDrawerCount === 0 && <div className="officer-session-bar"><span>담당자 로그인됨</span><button type="button" className="btn" onClick={() => {
     void fetch('/api/officer/logout', { method: 'POST', credentials: 'same-origin' }).then(() => window.location.replace('/officer/login'))
-  }}>로그아웃</button></div>{children}</>
+  }}>로그아웃</button></div>}{children}</OfficerNavigationContext.Provider>
 }

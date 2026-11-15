@@ -1,6 +1,7 @@
-import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useContext, useEffect, useId, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { flushSync } from 'react-dom'
 import Modal from '../../components/Modal.tsx'
+import { OfficerNavigationContext } from './officer-navigation-context.ts'
 import { menuKeyResult, officerDestination, restorePanelFocus } from './officer-modern-model.ts'
 import './officer-modern-tokens.css'
 import './officer-modern.css'
@@ -86,6 +87,8 @@ export function OfficerDrawer({ postingId, current, disabled = false, onList, on
   postingId?: number; current?: OfficerLocation; disabled?: boolean; onList?: () => void
   onTab?: (tab: 'applications' | 'settings' | 'info') => void
 }) {
+  const registerNavigation = useContext(OfficerNavigationContext)
+  useEffect(() => registerNavigation?.(), [registerNavigation])
   const [open, setOpen] = useState(false)
   const id = useId()
   const panel = useRef<HTMLDivElement>(null)

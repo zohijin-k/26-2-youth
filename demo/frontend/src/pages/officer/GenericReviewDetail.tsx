@@ -56,7 +56,7 @@ export default function GenericReviewDetail({ postingId, applicationId, onBack }
             const id = item.slot_key === 'written' ? 'written' : String(item.document_id)
             const reason = item.findings[0]?.message || '제출 원본을 확인해 주세요.'
             return <section className="om-review__card" key={item.document_id}>
-              <div className="om-review__card-head"><button type="button" className="generic-review__doc-link" onClick={() => setActive(item.document_id)}>{item.label}</button><span className={`om-chip${item.status === 'PASS' ? ' om-chip--success' : item.status === 'FAIL' ? ' om-chip--danger' : ' om-chip--warning'}`}>{officerLabel(item.status)}</span></div>
+              <div className="om-review__card-head"><strong>{item.label}</strong><span className={`om-chip${item.status === 'PASS' ? ' om-chip--success' : item.status === 'FAIL' ? ' om-chip--danger' : ' om-chip--warning'}`}>{officerLabel(item.status)}</span></div>
               <p className="om-review__reason" title={reason}>{reason}</p>
               {(item.ocr_engine || item.findings.length > 0 || item.ocr_fallback_reason) && <details><summary>자세히</summary><div className="om-review__details">{item.findings.map((finding, index) => <p key={index}>{finding.message}</p>)}{item.ocr_engine && <p>판독 방식: {officerLabel(item.ocr_engine, '기타 판독 방식')}</p>}{item.ocr_fallback_reason && <p>{/[가-힣]/.test(item.ocr_fallback_reason) ? item.ocr_fallback_reason : '보조 판독 경로를 사용했습니다.'}</p>}</div></details>}
               <label className="om-review__check"><input type="checkbox" disabled={busy || data.status === 'decided'} checked={data.checks.current && data.checks.document_ids.includes(id)} onChange={(event) => toggle('document_ids', id, event.target.checked)} />{item.label} 원본 확인함</label>

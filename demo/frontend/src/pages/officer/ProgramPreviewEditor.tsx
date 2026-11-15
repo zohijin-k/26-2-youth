@@ -168,13 +168,13 @@ export default function ProgramPreviewEditor({ postingId, onBack, onPostingChang
       <nav className="program-preview__progress" aria-label="편집 진행">
         {progress.map((item) => <button type="button" className="om-chip" key={item.id} onClick={() => jump(item.id)}>{item.label} {item.count ? item.count : '✓'}</button>)}
         <div className={`program-preview__remaining${remaining || layoutDirty ? ' is-pending' : ''}`}>
-          <OfficerMenu label={`남은 확인 ${remaining}개 보기`} disabled={!remaining && !layoutDirty} actions={[
+          {remaining === 0 && !layoutDirty ? <span className="om-chip om-chip--success" role="status">모두 확인함</span> : <OfficerMenu label={`남은 확인 ${remaining}개 보기`} actions={[
             ...pending.map((item) => ({ label: labels.get(item.id) || '확인할 항목', onSelect: () => jump(item.id) })),
             ...formPending.map((item) => ({ label: `${item.label} · 서식`, disabled: layoutDirty || templateBusy, onSelect: () => { setFocusField({ formId: item.formId, key: item.key, nonce: Date.now() }); jump('forms') } })),
             ...unconfirmedForms.map((form) => ({ label: `${form.file_name} · 서식 확정 필요`, onSelect: () => jump('forms') })),
             ...(!data.forms.length ? [{ label: '서식 PDF를 먼저 등록해 주세요', onSelect: () => jump('forms') }] : []),
             ...(layoutDirty ? [{ label: '수정한 서식을 확정해 주세요', onSelect: () => jump('forms') }] : []),
-          ]}>남은 확인 {remaining}개 보기</OfficerMenu>
+          ]}>남은 확인 {remaining}개 보기</OfficerMenu>}
         </div>
       </nav>
       {!!publishReasons.length && <ul className="program-preview__blockers" role="alert">{publishReasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>}
