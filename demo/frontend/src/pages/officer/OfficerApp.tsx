@@ -75,9 +75,9 @@ function OfficerScreens() {
     return (
       <NewProgram
         onCancel={toList}
-        onCreated={(posting) => go(
+        onCreated={(posting) => { go(
           { screen: 'workspace', target: posting.id, posting }, `/officer/programs/${posting.id}`, true,
-        )}
+        ); routeUrl(`/officer/programs/${posting.id}`, { tab: 'settings' }, true) }}
       />
     )
   }
