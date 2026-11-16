@@ -111,12 +111,22 @@ def test_working_primary_mode_makes_no_extra_call():
 @pytest.mark.parametrize('mode', RESPONSE_FORMATS)
 @pytest.mark.parametrize('proposal', [
     {'quote': '인용이 없는 문장'}, {'page': 99}, {'values': {**VALUES, 'min_age': 17}},
-    {'values': {'min_age': 18, 'max_age': 39}}, {'kind': 'residence'},
+    {'kind': 'residence'},
 ])
 def test_each_mode_discards_bad_quote_value_or_type_and_keeps_the_rule_draft(mode, proposal):
     transport = Transport(**{name: reply(response(**proposal)) for name in RESPONSE_FORMATS})
     value = draft()
     assert enrich_notice(value, provider=provider(transport, mode)) == value
+
+
+@pytest.mark.parametrize('mode', RESPONSE_FORMATS)
+def test_each_mode_accepts_a_proposal_with_only_the_stated_values(mode):
+    # The sentence states 18 and 39; basis and birth dates are derived by the extractor.
+    transport = Transport(**{name: reply(response(values={'min_age': 18, 'max_age': 39})) for name in RESPONSE_FORMATS})
+    result = enrich_notice(draft(), provider=provider(transport, mode))
+    assert result['suggestions'] == [{'target_id': 'age_synthetic', 'type': 'age', 'values': VALUES,
+        'page': 1, 'quote': QUOTE, 'source': 'jbai', 'confidence': 0.0, 'needs_review': True}]
+    assert result['criteria'] == draft()['criteria']
 
 
 @pytest.mark.parametrize('mode', RESPONSE_FORMATS)

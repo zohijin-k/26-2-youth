@@ -9,11 +9,15 @@ prints one table: format mode, HTTP status, JSON/schema O/X, seconds and
 suggestion counts. Keys, hosts, model names, request and response bodies are
 kept in memory only and never printed, logged or written.
 
-Format modes are tried in order: ``json_schema`` (strict, the provider
-default) -> ``json_object`` -> ``prompt`` (no response_format, "JSON only"
+Format modes are tried in order: ``json_schema`` (strict) -> ``json_object``
+(the provider default) -> ``prompt`` (no response_format, "JSON only"
 instruction), built by the provider's own ``format_body`` with its automatic
-fallback switched off so that each row measures exactly one mode. The first mode that answers HTTP 200 with schema-valid JSON is
-used for the timed runs. ``--all-modes`` probes every mode once.
+fallback switched off so that each row measures exactly one mode. The first mode that answers HTTP 200 with a readable answer is
+used for the timed runs. ``--all-modes`` probes every mode once; ``--mode``
+skips the probing. Answers are read and judged with the provider's own
+functions (``_json_text``, ``values_match``), so a row shows what the
+application would accept. ``--long`` adds one call with a long synthetic notice
+to check the input limit and timing.
 """
 from __future__ import annotations
 
@@ -32,8 +36,8 @@ import pymupdf
 from ..llm_drafts import _http_transport
 from ..notice_analysis import analyze_notice
 from ..notice_llm import (
-    JSON_ONLY, MAX_RESPONSE, RESPONSE_FORMATS, RULE_TYPES, _canonical, _object_json, _quote_valid,
-    _response, configured_notice_provider, enrich_notice, format_body, guidance_text, notice_payload,
+    JSON_ONLY, MAX_RESPONSE, RESPONSE_FORMATS, RULE_TYPES, _canonical, _json_text, _object_json, _quote_valid,
+    _response, configured_notice_provider, enrich_notice, format_body, guidance_text, notice_payload, values_match,
 )
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -57,6 +61,17 @@ NOTICES: dict[str, tuple[list[list[str]], str]] = {
             '지원 대상: 1987.1.1 ~ 2008.12.31 출생자', '제출 서류: 면접용 사진사본',
             '신청 방법: 온라인 신청', '문의: 합성센터']], '합성 공개 부가 설명'),
 }
+LONG = 'L'
+LONG_PAGES, LONG_LINES = 24, 38
+
+
+def long_notice() -> tuple[list[list[str]], str]:
+    """Notice A followed by synthetic filler pages: checks the input limit and timing on a long notice."""
+    pages = [list(NOTICES['A'][0][0])]
+    for page in range(2, LONG_PAGES + 1):
+        pages.append([f'합성 안내 {page}쪽 {line}줄: 이 문장은 길이 확인을 위한 합성 예시이며 실제 사업 내용이 아닙니다.'
+                      for line in range(1, LONG_LINES + 1)])
+    return pages, NOTICES['A'][1]
 
 
 def public_pdf(pages: list[list[str]]) -> bytes:
@@ -123,7 +138,8 @@ def classify(content: Any, draft: Mapping[str, Any], supplemental: str,
               'quote': 0, 'value': 0, 'kind': 0, 'json': 0, 'other': 0, 'screen_violation': 0}
     payload = notice_payload(draft, supplemental)
     counts['screen_violation'] = screen_violations(draft, payload, result)
-    body = _object_json(content) if type(content) is str and len(content) <= MAX_RESPONSE else None
+    # Read the answer the way enrich_notice does (wrappers and extra keys are tolerated).
+    body = _json_text(content) if type(content) is str and len(content) <= MAX_RESPONSE else None
     if body is None or type(body.get('criteria')) is not list or 'guidance' not in body:
         counts['json'] += 1
         return counts
@@ -131,7 +147,7 @@ def classify(content: Any, draft: Mapping[str, Any], supplemental: str,
     reasons = []
     guide = body['guidance']
     if guide is not None:
-        if type(guide) is not dict or set(guide) != {'text', 'page', 'quote'} or type(guide['text']) is not str:
+        if type(guide) is not dict or type(guide.get('text')) is not str or 'page' not in guide or 'quote' not in guide:
             reasons.append('json')
         elif not _quote_valid(guide['page'], guide['quote'], payload):
             reasons.append('quote')
@@ -139,12 +155,12 @@ def classify(content: Any, draft: Mapping[str, Any], supplemental: str,
             reasons.append('value')
         else:
             reasons.append(None)
-    for item in body['criteria']:
-        if type(item) is not dict or set(item) != {'type', 'values_json', 'page', 'quote'}:
+    for item in body['criteria'][:50]:
+        if type(item) is not dict or not {'type', 'page', 'quote'} <= set(item) or type(item['quote']) is not str:
             reasons.append('json')
-        elif item['type'] not in RULE_TYPES:
+        elif type(item['type']) is not str or item['type'] not in RULE_TYPES:
             reasons.append('kind')
-        elif type(item['values_json']) is not str:
+        elif type(item.get('values_json')) not in (str, dict):
             reasons.append('json')
         elif not _quote_valid(item['page'], item['quote'], payload):
             reasons.append('quote')
@@ -165,7 +181,7 @@ def classify(content: Any, draft: Mapping[str, Any], supplemental: str,
 
 
 def _value_matches(item: Mapping[str, Any], draft: Mapping[str, Any]) -> bool:
-    values = _object_json(item['values_json'])
+    values = item['values_json'] if type(item['values_json']) is dict else _object_json(item['values_json'])
     if values is None:
         return False
     for candidate in draft.get('criteria', []):
@@ -173,7 +189,7 @@ def _value_matches(item: Mapping[str, Any], draft: Mapping[str, Any]) -> bool:
         if (candidate.get('type') == item['type'] and candidate.get('engine_rule')
                 and candidate.get('page') == item['page'] and quote
                 and (quote in item['quote'] or item['quote'] in quote)
-                and _canonical(candidate.get('values')) == _canonical(values)):
+                and values_match(candidate, values)):
             return True
     return False
 
@@ -213,13 +229,13 @@ def run_once(recorder: Recorder, provider: Any, notice: str, mode: str, phase: s
              drafts: dict[str, dict[str, Any]]) -> dict[str, Any]:
     recorder.last = {}
     draft = drafts[notice]
-    supplemental = NOTICES[notice][1]
+    supplemental = NOTICES['A' if notice == LONG else notice][1]
     # One mode per measurement: the provider's own format body, without its fallback.
     pinned = replace(provider, environ={**provider.environ, 'JBAI_RESPONSE_FORMAT': mode}, fallback=False)
     result = enrich_notice(draft, supplemental, provider=pinned)
     last = recorder.last or {'status': 'skipped', 'seconds': 0.0, 'content': None}
     content = last['content']
-    parsed = _object_json(content) if type(content) is str else None
+    parsed = _json_text(content) if type(content) is str else None
     row = {'phase': phase, 'mode': mode, 'notice': notice, 'repeat': repeat,
            'status': last['status'], 'seconds': last['seconds'],
            'json_ok': parsed is not None, 'schema_ok': _response(content) is not None}
@@ -231,7 +247,8 @@ def run_once(recorder: Recorder, provider: Any, notice: str, mode: str, phase: s
 
 
 def probe(*, environ: Mapping[str, str], transport: Callable[..., Mapping[str, Any]] = _http_transport,
-          max_calls: int = 9, all_modes: bool = False, repeats: int = 2, mode: str | None = None) -> dict[str, Any]:
+          max_calls: int = 9, all_modes: bool = False, repeats: int = 2, mode: str | None = None,
+          long: bool = False) -> dict[str, Any]:
     budget = max(0, min(max_calls, HARD_CALL_LIMIT))
     recorder = Recorder(transport, budget)
     provider = configured_notice_provider(environ=environ, transport=recorder)
@@ -254,6 +271,12 @@ def probe(*, environ: Mapping[str, str], transport: Callable[..., Mapping[str, A
         for notice in NOTICES:
             for repeat in range(1, repeats + 1):
                 rows.append(run_once(recorder, provider, notice, chosen, 'run', repeat, drafts))
+        if long:
+            pages, supplemental = long_notice()
+            drafts[LONG] = analyze_notice(public_pdf(pages), supplemental)
+            row = run_once(recorder, provider, LONG, chosen, 'long', 1, drafts)
+            row['notice_chars'] = sum(len(page['text']) for page in notice_payload(drafts[LONG])['notice_pages'])
+            rows.append(row)
     return {'configured': True, 'calls': recorder.calls, 'mode': chosen, 'rows': rows,
             'summary': summarize([row for row in rows if row['phase'] == 'run'])}
 
@@ -308,11 +331,12 @@ def main(argv: list[str] | None = None, *, transport: Callable[..., Mapping[str,
     parser.add_argument('--mode', choices=MODES, help='skip mode probing and use this mode')
     parser.add_argument('--repeats', type=int, default=2)
     parser.add_argument('--max-calls', type=int, default=9, help=f'real call budget (hard limit {HARD_CALL_LIMIT})')
+    parser.add_argument('--long', action='store_true', help='add one call with a long synthetic notice (input limit check)')
     parser.add_argument('--env-file', type=Path, default=ROOT / '.env')
     args = parser.parse_args(argv)
     try:
         report = probe(environ=_env(args.env_file), transport=transport, max_calls=args.max_calls,
-                       all_modes=args.all_modes, repeats=max(1, args.repeats), mode=args.mode)
+                       all_modes=args.all_modes, repeats=max(1, args.repeats), mode=args.mode, long=args.long)
     except Exception:
         # Error objects may carry URLs, keys or bodies; print nothing from them.
         print('probe failed')
