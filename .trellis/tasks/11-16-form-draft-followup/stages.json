@@ -13,5 +13,7 @@
 
   {"stage": "decision-2·3", "result": "일부 통과", "commit": "6e3fd63", "new_tests": 6, "notes": "어휘 4개·(서명/인) 커밋. 앞 괄호 정리·면접일시 제외는 기존 시험 고정값과 충돌 → failed-decision3-bracket.patch, failed-decision2-supplement.patch; B1705"},
 
-  {"stage": "decision-4", "result": "통과", "commit": "문서 커밋(HEAD)", "new_tests": 0, "notes": "spec 갱신, 종단 1회 O(바꾸면 예 해제, 제출 PDF ○ 8), 측정 92.5%→93.7% / 93.0%→91.4%"}
+  {"stage": "decision-4", "result": "통과", "commit": "문서 커밋(HEAD)", "new_tests": 0, "notes": "spec 갱신, 종단 1회 O(바꾸면 예 해제, 제출 PDF ○ 8), 측정 92.5%→93.7% / 93.0%→91.4%"},
+
+  {"stage": "test-update", "result": "통과", "commit": "2a3a974", "new_tests": 2, "notes": "앞 괄호 정리·보충 12칸 patch 적용, 이 브랜치 시험 고정값 4줄 갱신; B1707; 보충 포함 일치율 93.6%→94.2%"}
 ]

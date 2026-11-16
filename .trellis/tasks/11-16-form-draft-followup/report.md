@@ -198,6 +198,75 @@
 
 ### 8.7 남은 사람 결정
 
-1. `failed-decision3-bracket.patch` 적용: `test_form_draft_followup.py` 46·49줄 `"(은행명"` → `"은행명"` 수정 허락 여부.
-2. `failed-decision2-supplement.patch` 적용: `test_form_draft_eval_supplement.py` 의 `13`→`12`, `18`→`17` 수정 허락 여부, 그리고 보충 12칸 캡처 확인.
-3. job_interview_confirmation 아래 서명줄 3칸(회사명·담당자·(서명/인))을 수작업 좌표에 넣을지(지금은 원래 열에서 오검출로 셈).
+1. ~~`failed-decision3-bracket.patch` 적용: `test_form_draft_followup.py` 46·49줄 `"(은행명"` → `"은행명"` 수정 허락 여부.~~ → 9절에서 반영(2a3a974).
+2. ~~`failed-decision2-supplement.patch` 적용: `test_form_draft_eval_supplement.py` 의 `13`→`12`, `18`→`17` 수정 허락 여부, 그리고 보충 12칸 캡처 확인.~~ → 9절에서 반영(2a3a974).
+3. job_interview_confirmation 아래 서명줄 3칸(회사명·담당자·(서명/인))을 수작업 좌표에 넣을지 → 넣지 않음(기존 job_package 좌표 유지, 9절).
+
+## 9. 시험 고정값 갱신 반영 (e3e05f9 이후)
+
+시험 수정 일반 규칙: 이 브랜치에서 새로 만든 시험이 나중 사람 결정 때문에 고정값만 달라지는 경우 그 값만 고침. main 에 있던 시험은 여전히 수정 안 함(두 파일 모두 main 에 없음: `test_form_draft_followup.py` 077ec95, `test_form_draft_eval_supplement.py` a6ed6e6 에서 처음 생김).
+
+### 9.1 결과 표
+
+| 항목 | 결과 | 커밋 | 새 시험 |
+|---|---|---|---:|
+| 1. 짝 없는 앞 여는 괄호 지우기 (`failed-decision3-bracket.patch` 적용) | O | 2a3a974 | 2 |
+| 2. 보충 정답에서 면접일시 칸 빼기 (`failed-decision2-supplement.patch` 적용, 12칸) | O | 2a3a974 | 0 |
+| 3. 수작업 좌표 그대로 (`demo/fixtures/form_coords`, main 대비 변경 0) | O | – | 0 |
+| 보고서·spec 갱신 | O | 문서 커밋(HEAD) | 0 |
+
+### 9.2 고친 시험 줄
+
+| 파일 | 줄 | 시험 | 이전 → 이후 | 근거 결정 |
+|---|---:|---|---|---|
+| `demo/backend/tests/test_form_draft_followup.py` | 46 | `test_general_labels_with_colons_yield_blanks_without_autofill` | `"(은행명"` → `"은행명"` (라벨 집합) | 짝 없는 앞 여는 괄호 지우기 |
+| `demo/backend/tests/test_form_draft_followup.py` | 49 | 〃 | `labels["(은행명"]` → `labels["은행명"]` | 〃 |
+| `demo/backend/tests/test_form_draft_eval_supplement.py` | 64 | `test_measure_reports_the_supplemented_interview_confirmation` | `supplement_fields == 13` → `== 12` | 면접일시 칸 제외 |
+| `demo/backend/tests/test_form_draft_eval_supplement.py` | 65 | 〃 | 보충 포함 `reference_fields == 18` → `== 17` | 〃 |
+
+### 9.3 보충 12칸 캡처 눈 확인
+
+`shots/decision-job_interview_confirmation-supplement.png` (110dpi, 빨간 상자 = 보충 정답). 13칸 기준 이전 캡처 `shots/stage3-…png` 는 기록으로 남김.
+
+| 칸 | 확인 |
+|---|---|
+| 면접기업 값 칸 회사명·소재지·업태/업종·담당자·연락처 (5) | O 각 값 칸 괘선 안쪽, 라벨 칸 침범 없음 |
+| 면접현황 값 칸 면접장소·응시직군 (2) | O |
+| 면접일시 | O 상자 없음(예시 문구 "2026. 00. 00. 00:00~00:00" 칸 제외) |
+| "2026년 월 일" 의 월·일 빈칸 (2) | O 인쇄 글자 사이 빈칸 |
+| 아래 서명줄 회사명·담당자 빈칸 (2) | O 콜론 뒤 빈칸 |
+| (서명/인) (1) | O 표시 글자를 감쌈 |
+
+- 합계 12칸, `status: 사람 확인 필요` 유지.
+
+### 9.4 측정 (e3e05f9 → 최종)
+
+| 서식 | 일치율 | 정밀도 | 오검출 | 과대 칸 | 보충 칸 | 보충 포함 일치율 | 보충 포함 정밀도 |
+|---|---|---|---|---|---|---|---|
+| job_application | 80.5% → 80.5% | 100.0% → 100.0% | 0 → 0 | 0 → 0 | 0 | 80.5% → 80.5% | 100.0% → 100.0% |
+| job_consent | 87.5% → 87.5% | 87.5% → 87.5% | 1 → 1 | 0 → 0 | 0 | 87.5% → 87.5% | 87.5% → 87.5% |
+| job_interview_confirmation | 100.0% → 100.0% | 29.4% → 29.4% | 12 → 12 | 0 → 0 | 13 → 12 | 94.4% → 100.0% | 100.0% → 100.0% |
+| 서식1 | 98.6% → 98.6% | 98.6% → 98.6% | 1 → 1 | 0 → 0 | 0 | 98.6% → 98.6% | 98.6% → 98.6% |
+| 서식2·3·4·5 | 100.0% → 100.0% | 100.0% → 100.0% | 0 → 0 | 0 → 0 | 0 | 100.0% | 100.0% |
+| **전체(micro)** | **93.7% → 93.7%** | **91.4% → 91.4%** | 14 → 14 | 0 → 0 | 13 → 12 | **93.6% → 94.2%** | **98.8% → 98.8%** |
+
+- 원래 열의 job_interview_confirmation 정밀도 하락은 수작업 좌표에 없는 실제 서명줄 3칸 때문이며, 보충 포함 열에서는 모두 일치.
+- 앞 괄호 정리는 라벨 문자열만 바꾸고 칸 위치는 그대로라 원래 열 수치 변화 0.
+- 원자료: `measure-decision.*`(e3e05f9), `measure-final2.*`(최종).
+
+### 9.5 확인
+
+| 묶음 | 2a3a974 커밋 전 | 문서 커밋 전 |
+|---|---:|---:|
+| A 엔진 | 1267 | 1267 |
+| B 백엔드 | 1707 | 1707 |
+| C 시나리오 18개 모듈 | 18/18 | 18/18 |
+| D 프런트 tsc·oxlint·build·단위 | 76, 경고 0 | 76, 경고 0 |
+
+- 픽셀(main 기준): 서식2 radio_text·서식1/job_consent/job_application □ 체크 4개 모두 O (`pixel/decision4`, `pixel/comparison.json`).
+- 보호 파일 10개 sha256 O, 비밀값 검사(`sk-[A-Za-z0-9_-]{16,}`) O, 사용자 미커밋 파일 스테이지 0.
+- `demo/fixtures/form_coords/job_interview_confirmation.json` main 대비 변경 0.
+
+### 9.6 남은 사람 결정
+
+1. 보충 12칸 확정(캡처 확인 후 `status` 를 바꿀지).

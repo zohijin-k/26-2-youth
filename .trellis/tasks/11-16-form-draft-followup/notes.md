@@ -42,3 +42,8 @@
 - 1단계: patch 적용 + 허락된 inline 시험 5줄 → 게이트 decision1(A1267/B1699/C18/D76) → b532bb1.
 - 2·3 구현 후 기존 시험 2개 충돌 확인: "(은행명" 라벨 고정(test_form_draft_followup), 보충 13·18칸 고정(test_form_draft_eval_supplement). 허락 범위 밖이라 두 부분만 patch로 빼고(failed-decision3-bracket.patch, failed-decision2-supplement.patch) 나머지(어휘 4개·"(서명/인)")만 게이트 decision2(B1705) 후 6e3fd63.
 - 종단 1회(E2E_MODE=decision), 끝난 뒤 서버 종료·/tmp/form-draft-followup-e2e 삭제·포트 닫힘 확인.
+
+## 시험 고정값 갱신 (e3e05f9 이후)
+
+- 두 시험 파일이 main 에 없음(git cat-file) 확인 후 patch 2개 적용, 고정값 4줄 수정, `build_eval_supplement.py --write` 로 12칸 캡처 재생성.
+- 게이트 decision4(A1267/B1707/C18/D76) 후 2a3a974. form_coords main 대비 변경 0.

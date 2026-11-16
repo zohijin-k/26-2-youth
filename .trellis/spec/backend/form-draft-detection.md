@@ -60,7 +60,9 @@ list (`성명, 은행명, 계좌번호 등`), filled (`소속: 값`) or without 
 
 ### Labels and anchors
 
-`label` drops trailing colons (`:`/`：`) and spaces (`생년월일:` → `생년월일`);
+`label` drops trailing colons (`:`/`：`) and spaces (`생년월일:` → `생년월일`) and a
+leading opening bracket (`(`, `（`, `[`) whose closing bracket does not appear in the label
+(`(은행명 :` → `은행명`); paired brackets stay (`(서명)`, `(서명/인)`).
 `anchor` keeps the source text unchanged. An empty result falls back to `입력칸`.
 
 ### Choice words: single choice and circle mark
@@ -73,9 +75,6 @@ and `draw_oval` in `forms/render.py` (no filled check). `validate_layout` keeps
 `choice_mark` only when it is `"circle"` on a check/radio field (any other value → 422),
 and the applicant layout whitelist carries it. Fields without `choice_mark` (printed □,
 job_package 서식2 `radio_text`) render exactly as before.
-
-Not applied (needs an existing-test decision): dropping an unpaired leading bracket from
-`label` (`(은행명` → `은행명`) — `failed-decision3-bracket.patch` in the follow-up task.
 
 ## False-positive guards (rule e)
 

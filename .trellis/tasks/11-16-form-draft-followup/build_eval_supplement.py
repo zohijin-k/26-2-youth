@@ -15,7 +15,7 @@ import pymupdf
 ROOT = Path(__file__).resolve().parents[3]
 TEMPLATE = ROOT / 'demo/fixtures/templates/job_interview_confirmation.pdf'
 OUT = ROOT / 'demo/fixtures/form_draft_eval/job_interview_confirmation.extra.json'
-SHOT = Path(__file__).resolve().parent / 'shots/stage3-job_interview_confirmation-supplement.png'
+SHOT = Path(__file__).resolve().parent / 'shots/decision-job_interview_confirmation-supplement.png'
 INSET = 2.0
 
 
@@ -45,8 +45,9 @@ def build():
                     band |= pymupdf.Rect(item[1])
         # Enterprise table: a label cell, then a value cell up to the next rule on the right.
         for name, label in (('company', '회사명'), ('location', '소재지'), ('business', '업태/업종'),
-                            ('manager', '담당자'), ('contact', '연락처'), ('datetime', '면접일시'),
+                            ('manager', '담당자'), ('contact', '연락처'),
                             ('place', '면접장소'), ('job', '응시직군')):
+            # 면접일시 is left out: its cell carries a printed example (사람 결정, 11-16 후속).
             # Only words inside the enterprise/interview table band; "연락처"/"담당자" repeat elsewhere.
             word = next(w for w in words if w[4] == label and band.y0 <= (w[1] + w[3]) / 2 <= band.y1)
             middle = (word[1] + word[3]) / 2
@@ -58,7 +59,6 @@ def build():
             fields[f'supplement.{name}'] = {'type': 'text', 'page': 0, 'label': label,
                                             'box': [round(left + INSET, 2), round(top + INSET, 2),
                                                     round(right - INSET, 2), round(bottom - INSET, 2)]}
-        fields['supplement.datetime']['note'] = '예시 문구(2026. 00. 00. 00:00~00:00)가 인쇄된 칸'
         # "2026년  월  일": the blanks between the printed tokens.
         line = sorted((w for w in words if w[4] in ('2026년', '월', '일') and w[1] > 540), key=lambda w: w[0])
         for (left, right), part in zip(zip(line, line[1:]), ('month', 'day')):
