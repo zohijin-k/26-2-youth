@@ -1,0 +1,11 @@
+/* 반려 탭의 표. 바깥 표 모양(alist__table / om-generic-list__table)은 각 목록의 것을 그대로 쓴다. */
+.rejection-table .rejection-table__no{width:20%}
+.rejection-table .rejection-table__name{width:14%}
+.rejection-table .rejection-table__date{width:18%}
+.rejection-table td{vertical-align:top}
+.rejection-table__notice{display:grid;gap:4px;justify-items:start;padding:4px 0}
+.rejection-table__notice p{margin:0;white-space:pre-line;line-height:1.55;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.rejection-table__more{padding:0;border:0;background:none;color:#173975;font:inherit;font-size:13.5px;text-decoration:underline;cursor:pointer}
+.rejection-table__none{color:#6d7882;font-size:13.5px}
+.rejection-table__empty{margin:0;padding:48px 0;text-align:center;color:#58616a}
+.rejection-table__full{margin:0;white-space:pre-line;line-height:1.6}

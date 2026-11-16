@@ -15,7 +15,6 @@ import {
   type DecisionKey,
   type OfficerList,
   type OfficerListQuery,
-  type OfficerQueue,
   type OfficerRow,
 } from '../../api.ts'
 import { Skeleton, SkeletonLine } from '../../components/Skeleton.tsx'
@@ -23,12 +22,15 @@ import useDelayedFlag from '../../hooks/useDelayedFlag.ts'
 import { formatDayTime } from '../../posting-format.ts'
 import { bulkActionsFor, queueOf } from './bulk-actions.ts'
 import SortToggle from './SortToggle.tsx'
+import RejectionTable from './RejectionTable.tsx'
+import { LIST_TABS, nextTab, shownTabOf, tabCount, tabOf, tabQuery, type ListTab } from './list-tabs.ts'
 import './application-list.css'
 
-const QUEUE_COPY: Record<OfficerQueue, { label: string; empty: string }> = {
+const QUEUE_COPY: Record<ListTab, { label: string; empty: string }> = {
   needs_check: { label: '확인 필요', empty: '확인이 필요한 신청이 없습니다.' },
   pass: { label: '적합', empty: '적합으로 판정된 미처리 신청이 없습니다.' },
   done: { label: '처리 완료', empty: '처리한 신청이 없습니다.' },
+  rejected: { label: '반려', empty: '반려한 신청이 없습니다.' },
 }
 
 const HEADERS = ['신청번호', '성명', '접수일시', '처리상태']
@@ -81,6 +83,8 @@ export default function ApplicationList({
 }: Props) {
   const uid = useId()
   const queue = query.queue ?? 'needs_check'
+  /** 보이는 탭. 반려 탭은 처리 완료 중 반려만 거른 것이다. */
+  const tab = tabOf(query)
   /** 지금 표에 있는 행이 속한 구분. 탭을 막 옮긴 직후에는 `queue`보다 한 박자 늦다. */
   const shownQueue = OFFICER_QUEUES.find((key) => key === list.filters.applied.queue) ?? queue
   const canBulk = list.role.can_bulk
@@ -107,7 +111,7 @@ export default function ApplicationList({
   // 응답이 빨리 오면 내용이 든 채로 한 번에 펼친다. 늦을 때만 자리 표시를 먼저 보인다.
   const showLoading = useDelayedFlag(openState?.status === 'loading')
 
-  const tabs = useRef<Partial<Record<OfficerQueue, HTMLButtonElement | null>>>({})
+  const tabs = useRef<Partial<Record<ListTab, HTMLButtonElement | null>>>({})
   const selectAll = useRef<HTMLInputElement>(null)
 
   const filtered = Boolean(appliedSearch || text.trim() || query.submitted_from || query.submitted_to)
@@ -145,22 +149,16 @@ export default function ApplicationList({
     searchInput.current?.focus()
   }
 
-  const pickQueue = (next: OfficerQueue, focus = false) => {
-    if (next !== queue) change({ queue: next, page: 1 })
+  const pickQueue = (next: ListTab, focus = false) => {
+    if (next !== tab) change({ ...tabQuery(next), page: 1 })
     if (focus) tabs.current[next]?.focus()
   }
 
   const onTabKey = (event: KeyboardEvent<HTMLButtonElement>) => {
-    const at = OFFICER_QUEUES.indexOf(queue)
-    const last = OFFICER_QUEUES.length - 1
-    const to = event.key === 'ArrowRight' ? (at === last ? 0 : at + 1)
-      : event.key === 'ArrowLeft' ? (at === 0 ? last : at - 1)
-        : event.key === 'Home' ? 0
-          : event.key === 'End' ? last
-            : -1
-    if (to < 0) return
+    const to = nextTab(tab, event.key)
+    if (!to) return
     event.preventDefault()
-    pickQueue(OFFICER_QUEUES[to], true)
+    pickQueue(to, true)
   }
 
   const loadReasons = (id: number) => {
@@ -201,7 +199,7 @@ export default function ApplicationList({
 
   /** 처리가 끝나면 일괄 처리 버튼이 사라진다. 초점은 건수가 바뀐 탭으로 옮긴다. */
   const runBulk = (decision: DecisionKey) => {
-    void onBulk(decision).then(() => tabs.current[queue]?.focus())
+    void onBulk(decision).then(() => tabs.current[tab]?.focus())
   }
 
   const onSearchSubmit = (event: FormEvent) => {
@@ -213,9 +211,9 @@ export default function ApplicationList({
     <div className="alist">
       <div className="alist__head">
         <div className="alist__tabs" role="tablist" aria-label="신청 구분">
-          {OFFICER_QUEUES.map((key) => {
-            const on = key === queue
-            const count = list.queues[key]
+          {LIST_TABS.map((key) => {
+            const on = key === tab
+            const count = tabCount(list, key)
             const loud = key === 'needs_check' && count > 0
             return (
               <button
@@ -340,10 +338,10 @@ export default function ApplicationList({
         className="alist__panel"
         role="tabpanel"
         id={`${uid}-panel`}
-        aria-labelledby={`${uid}-tab-${queue}`}
+        aria-labelledby={`${uid}-tab-${tab}`}
         onKeyDown={onTableKey}
       >
-        <table className="alist__table">
+        {shownTabOf(list) === 'rejected' ? <RejectionTable rows={list.rows} tableClassName="alist__table" onOpen={(id) => onOpen(id)} /> : <table className="alist__table">
           <colgroup>
             {/* 일괄 처리가 없는 역할도 열을 비워 둔다. 역할을 바꿔도 열 위치가 그대로다. */}
             <col className="alist__col-check" />
@@ -461,7 +459,7 @@ export default function ApplicationList({
               </tr>
             )}
           </tbody>
-        </table>
+        </table>}
       </div>
 
       {list.page_count > 1 && (
@@ -578,7 +576,7 @@ export function ApplicationListSkeleton() {
     <Skeleton className="alist" label="신청 목록을 불러오는 중">
       <div className="alist__head">
         <div className="alist__tabs" aria-hidden="true">
-          {OFFICER_QUEUES.map((key) => (
+          {LIST_TABS.map((key) => (
             <span key={key} className="alist__tab">{QUEUE_COPY[key].label}</span>
           ))}
         </div>
