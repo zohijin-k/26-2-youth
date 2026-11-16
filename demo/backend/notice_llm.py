@@ -442,6 +442,128 @@ def values_match(candidate: Mapping[str, Any], values: Any) -> bool:
                for group in STATED_KEYS.get(candidate.get('type'), ()))
 
 
+# A reference shows what the provider read in a sentence the extractor left for
+# the officer. Besides one complete STATED_KEYS group it may carry these.
+_REFERENCE_EXTRA = {'income': ('operator',)}
+_QUOTE_DATE = re.compile(r'(\d{4})\s*[-./년]\s*(\d{1,2})\s*[-./월]\s*(\d{1,2})')
+_QUOTE_SHORT_DATE = re.compile(r"[‘’'`](\d{2})\s*\.\s*(\d{1,2})\s*\.\s*(\d{1,2})")
+
+
+def _quote_dates(quote: str) -> set[str]:
+    found = set()
+    for pattern, century in ((_QUOTE_DATE, 0), (_QUOTE_SHORT_DATE, 2000)):
+        for match in pattern.finditer(quote):
+            try:
+                found.add(date(century + int(match[1]), int(match[2]), int(match[3])).isoformat())
+            except ValueError:
+                continue
+    return found
+
+
+def _standalone(number: str, quote: str) -> bool:
+    return re.search(rf'(?<![\d.,]){re.escape(number)}(?![\d]|[.,]\d)', quote) is not None
+
+
+def _printed(key: str, value: Any, quote: str) -> Any:
+    """The value in display form when the cited sentence itself prints it, else None."""
+    normal = _normal(key, value)
+    if key in _NUMBER_KEYS:
+        if type(normal) is not float:
+            return None
+        shown = int(normal) if normal.is_integer() else normal
+        if _standalone(f'{shown}', quote):
+            return shown
+        years = re.search(r'(?<!\d)(\d{1,2})\s*년', quote) if key == 'months' else None
+        return shown if years and int(years[1]) * 12 == shown else None
+    if key in _DATE_KEYS:
+        return normal if type(normal) is str and normal in _quote_dates(quote) else None
+    if key == 'province':
+        if type(normal) is not str or not re.fullmatch(r'[가-힣]{2,12}', normal):
+            return None
+        names = {normal} | {alias for alias, full in _PROVINCE_ALIAS.items() if full == normal}
+        return normal if any(name in quote for name in names) else None
+    if key == 'operator':
+        return normal if normal in ('이하', '미만') and normal in quote else None
+    return None
+
+
+def stated_values(kind: Any, values: Any, quote: Any) -> dict[str, Any] | None:
+    """A proposal's directly stated values, only when the cited sentence prints every one of them.
+
+    Keys outside the rule type's stated vocabulary (basis dates, computed
+    ranges) are neither checked nor kept. One unverifiable stated value, or an
+    incomplete group, discards the proposal: a reference must be checkable
+    against its quotation at a glance.
+    """
+    groups = STATED_KEYS.get(kind) if type(kind) is str else None
+    if not groups or type(values) is not dict or type(quote) is not str:
+        return None
+    allowed = {key for group in groups for key in group} | set(_REFERENCE_EXTRA.get(kind, ()))
+    kept = {}
+    for key, value in values.items():
+        if key not in allowed:
+            continue
+        shown = _printed(key, value, quote)
+        if shown is None:
+            return None
+        kept[key] = shown
+    return kept if any(all(key in kept for key in group) for group in groups) else None
+
+
+def _read_text(kind: str, read: Mapping[str, Any]) -> str:
+    """Display text built from verified values; provider prose is never shown."""
+    if kind == 'age':
+        parts = []
+        if 'min_age' in read and 'max_age' in read:
+            parts.append(f"{read['min_age']}~{read['max_age']}세")
+        if 'birth_start' in read and 'birth_end' in read:
+            parts.append(f"{read['birth_start']} ~ {read['birth_end']} 출생")
+        return ', '.join(parts)
+    if kind == 'residence':
+        return read['province']
+    if kind == 'issue_date':
+        return read['date']
+    if kind == 'income':
+        return f"{read['percent']}%" + (f" {read['operator']}" if 'operator' in read else '')
+    return f"{read['months']}개월"
+
+
+def _same_sentence(candidate: Mapping[str, Any], proposal: Mapping[str, Any]) -> bool:
+    quote = candidate.get('quote', '')
+    return (candidate.get('page') == proposal['page'] and type(quote) is str and bool(quote)
+            and (quote in proposal['quote'] or proposal['quote'] in quote))
+
+
+def reference_for(proposal: Mapping[str, Any], values: Any, draft: Mapping[str, Any],
+                  source: str) -> dict[str, Any] | None:
+    """A display-only reference on an officer-check candidate of the cited sentence.
+
+    Nothing is produced where the extractor already has an automatic candidate
+    of that type (the value comparison decides there), where it has no
+    candidate at all, or where its own reading of the sentence differs. The
+    target candidate is not changed and no rule is bound.
+    """
+    rows = [row for row in draft.get('criteria', []) if isinstance(row, Mapping) and _same_sentence(row, proposal)]
+    if any(row.get('engine_rule') and row.get('type') == proposal['type'] for row in rows):
+        return None
+    manual = [row for row in rows if not row.get('engine_rule') and row.get('id')]
+    read = stated_values(proposal['type'], values, proposal['quote']) if manual else None
+    if read is None:
+        return None
+
+    def distance(row: Mapping[str, Any]) -> int:
+        kind = row.get('candidate_type', row.get('type'))
+        return 0 if kind == proposal['type'] else 1 if kind == 'checklist' else 2
+    target = min(manual, key=distance)
+    own = target.get('values') if type(target.get('values')) is dict else {}
+    if any(key in own and own[key] not in ('', None) and _normal(key, own[key]) != _normal(key, value)
+           for key, value in read.items()):
+        return None
+    return {'target_id': target['id'], 'type': proposal['type'], 'reference': True,
+            'read': _read_text(proposal['type'], read), 'read_values': read, 'page': proposal['page'],
+            'quote': proposal['quote'], 'source': source, 'confidence': 0.0, 'needs_review': True}
+
+
 def enrich_notice(draft: Mapping[str, Any], supplemental: str = '', *,
                   provider: DraftProvider | None = None) -> dict[str, Any]:
     """Draft guidance and append vetted suggestions without changing any rule candidate.
@@ -494,9 +616,17 @@ def enrich_notice(draft: Mapping[str, Any], supplemental: str = '', *,
                 'values': deepcopy(candidate['values']), 'page': proposal['page'],
                 'quote': proposal['quote'], 'source': selected.name, 'confidence': 0.0, 'needs_review': True})
             break
+        else:
+            # No automatic candidate agreed. On a sentence the extractor left for the
+            # officer, show what was read as a reference; the candidate stays as it is.
+            reference = reference_for(proposal, values, draft, selected.name)
+            if reference is not None:
+                suggestions.append(reference)
     if suggestions:
-        original['suggestions'] = list({(row['target_id'], row['quote']): row for row in suggestions}.values())
-    _log.info('llm_result purpose=notice_analysis guidance=%s criteria_received=%d criteria_accepted=%d',
-              state if state in GUIDANCE_STATES else 'none', len(body['criteria']),
-              len(original['suggestions']) if suggestions else 0)
+        original['suggestions'] = list({(row['target_id'], row['quote'], row['type'], row.get('reference', False)): row
+                                        for row in suggestions}.values())
+    kept = original['suggestions'] if suggestions else []
+    references = sum(1 for row in kept if row.get('reference'))
+    _log.info('llm_result purpose=notice_analysis guidance=%s criteria_received=%d criteria_accepted=%d criteria_reference=%d',
+              state if state in GUIDANCE_STATES else 'none', len(body['criteria']), len(kept) - references, references)
     return original

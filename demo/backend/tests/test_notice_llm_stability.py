@@ -113,7 +113,7 @@ def test_each_failure_is_recorded_and_then_the_single_fallback_answers(answer, o
     assert lines(caplog) == [
         f'llm_call purpose=notice_analysis mode=json_object attempt=1 outcome={outcome} seconds=0.5',
         'llm_call purpose=notice_analysis mode=prompt attempt=2 outcome=ok seconds=0.5',
-        'llm_result purpose=notice_analysis guidance=none criteria_received=1 criteria_accepted=1']
+        'llm_result purpose=notice_analysis guidance=none criteria_received=1 criteria_accepted=1 criteria_reference=0']
     text = caplog.text
     assert all(word not in text for word in (SECRET, BODY_MARK, KEY, 'example.invalid', 'synthetic-text-model', PUBLIC))
 
@@ -138,7 +138,7 @@ def test_validation_summary_names_why_a_guidance_was_dropped(guide, state, caplo
     caplog.set_level(logging.INFO, logger=LOGGER)
     content = json.dumps({'guidance': guide, 'criteria': []}, ensure_ascii=False)
     result = enrich_notice(draft(), provider=FakeProvider(content))
-    assert lines(caplog) == [f'llm_result purpose=notice_analysis guidance={state} criteria_received=0 criteria_accepted=0']
+    assert lines(caplog) == [f'llm_result purpose=notice_analysis guidance={state} criteria_received=0 criteria_accepted=0 criteria_reference=0']
     assert result['guidance'].get('ai_drafted', False) is (state == 'accepted')
     if isinstance(guide, dict):
         assert guidance_check(guide, notice_payload(draft()))[1] == state
