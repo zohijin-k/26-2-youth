@@ -361,6 +361,59 @@ def _criteria(lines: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return list({item['id']: item for item in result}.values())
 
 
+_OVERVIEW = re.compile(r'(모집|사업|공고|지원)\s*개\s*요')
+_MARKER = re.compile(r'^\s*(\(?\d{1,2}\s*[.)]|[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]\s*[.)]?|\(?[가나다라마바사아자차카타파하]\s*[.)]|[①-⑳]|[□■◆◇▣▶◈])')
+_BULLET = re.compile(r'^\s*(?:[-–·•※ㅇ○◦●▪*]|\(\d{1,2}\)|\d{1,2}\s*[.)]|[가나다라마바사아자차카타파하]\s*[.)]|[①-⑳])\s*')
+_SECTION_WORDS = re.compile(r'(자격|대상|방법|서류|선정|문의|유의|일정|절차|기준|내용|기간)\s*$')
+OVERVIEW_LINES = 30
+
+
+def _marker_style(text: str) -> str | None:
+    """Heading family a line opens with: '9.', '9)', 'R.', 'H.', 'C', or the box symbol itself."""
+    match = _MARKER.match(text)
+    if not match:
+        return None
+    marker = re.sub(r'\s', '', match[1])
+    marker = re.sub(r'\d{1,2}', '9', marker)
+    marker = re.sub(r'[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]', 'R', marker)
+    marker = re.sub(r'[가나다라마바사아자차카타파하]', 'H', marker)
+    return re.sub(r'[①-⑳]', 'C', marker)
+
+
+def _overview(lines: list[dict[str, Any]]) -> tuple[dict[str, Any], list[dict[str, Any]]] | None:
+    """The notice's '모집 개요' (or '사업 개요') section: its heading and body lines.
+
+    The body ends at the next heading of the same family as the overview's own
+    heading. A heading without a marker ends at the next short section-like line.
+    """
+    for index, row in enumerate(lines):
+        if len(row['text']) > 40 or not _OVERVIEW.search(row['text']):
+            continue
+        style = _marker_style(row['text'])
+        body = []
+        for line in lines[index + 1:index + 1 + OVERVIEW_LINES]:
+            if style is not None and _marker_style(line['text']) == style:
+                break
+            if style is None and len(line['text']) <= 20 and _SECTION_WORDS.search(line['text']) and not _BULLET.match(line['text']):
+                break
+            body.append(line)
+        if body:
+            return row, body
+    return None
+
+
+def _paragraphs(rows: list[dict[str, Any]]) -> list[str]:
+    """Join PDF-wrapped lines back into one paragraph per bullet."""
+    result: list[str] = []
+    for row in rows:
+        text = row['text']
+        if result and not _BULLET.match(text) and not re.search(r'[:：]', text[:12]):
+            result[-1] = f'{result[-1]} {text}'
+        else:
+            result.append(text)
+    return result
+
+
 def analyze_notice(pdf: bytes, supplemental: str = '') -> dict[str, Any]:
     if not isinstance(supplemental, str) or len(supplemental) > MAX_SUPPLEMENTAL:
         raise ValueError('부가 설명문은 4,000자 이하로 입력해 주세요.')
@@ -368,7 +421,8 @@ def analyze_notice(pdf: bytes, supplemental: str = '') -> dict[str, Any]:
     lines = _lines(pages, supplemental)
     notice_lines = [row for row in lines if row['source'] == 'notice']
     title_candidates = [row for row in notice_lines[:30] if re.search(r'(사업|지원|모집)', row['text'])
-                        and not re.search(r'기간|서류|대상|요건|자격|조건|방법|문의|제\s*\d+\s*호', row['text'])]
+                        and not re.search(r'기간|서류|대상|요건|자격|조건|방법|문의|개\s*요|목적|내용|인원|규모|제\s*\d+\s*호', row['text'])
+                        and not _BULLET.match(row['text']) and _marker_style(row['text']) is None]
     title_ambiguous = len({row['text'] for row in title_candidates}) > 1
     title_line = title_candidates[0] if title_candidates and not title_ambiguous else None
     if title_line is None and not title_ambiguous:
@@ -381,15 +435,29 @@ def analyze_notice(pdf: bytes, supplemental: str = '') -> dict[str, Any]:
     audience = next((row for row in lines if re.search(r'(지원|신청|모집)\s*대상\s*[:：]', row['text'])), None)
     method = next((row for row in lines if re.search(r'(신청|접수)\s*방법\s*[:：]', row['text'])), None)
     contact = next((row for row in lines if re.search(r'(문의|연락처)\s*[:：]', row['text'])), None)
-    guidance_parts = [f'{title_value} 신청 안내' if title_value else '사업 제목을 입력해 주세요.']
-    guidance_parts.append(audience['text'] if audience else '지원 대상: 공고문의 신청 자격을 확인해 주세요.')
     dates = period['value']
-    guidance_parts.append(f'신청 기간: {dates["apply_start"]} ~ {dates["apply_end"]}' if all(dates.values()) else '신청 기간: 공고문에서 확인하여 입력해 주세요.')
-    guidance_parts.append(method['text'] if method else '신청 방법: 공고문의 접수 방법을 확인해 주세요.')
-    guidance_parts.append('제출 서류: ' + ', '.join(row.get('original_label', row['label']) for row in documents) if documents else '제출 서류: 공고문에서 확인하여 입력해 주세요.')
-    guidance_parts.append(contact['text'] if contact else '문의: 공고문의 문의처를 확인해 주세요.')
-    guidance = _evidence('guidance', '\n'.join(guidance_parts), audience or title_line, .6)
-    guidance['sources'] = [_evidence(f'guidance_source_{index}', row['text'], row) for index, row in enumerate((audience, method, contact)) if row]
+    overview = _overview(notice_lines)
+    if overview:
+        # The notice's own overview section is the best applicant guidance:
+        # keep its wording, one paragraph per bullet, and add only what it lacks.
+        heading, body = overview
+        covered = ' '.join(row['text'] for row in body)
+        guidance_parts = [f'{title_value} 신청 안내' if title_value else '사업 제목을 입력해 주세요.', *_paragraphs(body)]
+        if not re.search(r'(신청|접수|모집)\s*기간', covered) and all(dates.values()):
+            guidance_parts.append(f'신청 기간: {dates["apply_start"]} ~ {dates["apply_end"]}')
+        guidance_parts.extend(row['text'] for row in (method, contact) if row and row['text'] not in covered)
+        guidance = _evidence('guidance', '\n'.join(guidance_parts), heading, .6)
+        sources = [heading, *body, *(row for row in (method, contact) if row and row['text'] not in covered)]
+    else:
+        guidance_parts = [f'{title_value} 신청 안내' if title_value else '사업 제목을 입력해 주세요.']
+        guidance_parts.append(audience['text'] if audience else '지원 대상: 공고문의 신청 자격을 확인해 주세요.')
+        guidance_parts.append(f'신청 기간: {dates["apply_start"]} ~ {dates["apply_end"]}' if all(dates.values()) else '신청 기간: 공고문에서 확인하여 입력해 주세요.')
+        guidance_parts.append(method['text'] if method else '신청 방법: 공고문의 접수 방법을 확인해 주세요.')
+        guidance_parts.append('제출 서류: ' + ', '.join(row.get('original_label', row['label']) for row in documents) if documents else '제출 서류: 공고문에서 확인하여 입력해 주세요.')
+        guidance_parts.append(contact['text'] if contact else '문의: 공고문의 문의처를 확인해 주세요.')
+        guidance = _evidence('guidance', '\n'.join(guidance_parts), audience or title_line, .6)
+        sources = [row for row in (audience, method, contact) if row]
+    guidance['sources'] = [_evidence(f'guidance_source_{index}', row['text'], row) for index, row in enumerate(sources)]
     has_text = bool(notice_lines)
     warnings = [] if has_text else ['자동 분석 불가 → 직접 입력: 공고문의 글자층이 없습니다.']
     if title_ambiguous:

@@ -92,7 +92,7 @@ def test_fake_provider_receives_only_notice_text_and_supplemental_not_candidates
     assert result['suggestions'][0]['needs_review']
 
 
-def test_transport_boundary_reprojects_again_and_forces_strict_json_schema_and_model():
+def test_transport_boundary_reprojects_again_and_sends_json_object_and_model():
     calls = []
 
     def fake_transport(url, headers, body, timeout):
@@ -104,9 +104,9 @@ def test_transport_boundary_reprojects_again_and_forces_strict_json_schema_and_m
         'identity_json': {'name': 'PRIVATE'}}], 'supplemental': '공개 설명', 'name': 'PRIVATE'}) == response()
     url, headers, body, timeout = calls[0]
     assert url == 'https://text.example.invalid/open-api/v1/chat/completions'
-    assert timeout == 10 and headers['Authorization'] == 'Bearer ' + KEY
+    assert timeout == 30 and headers['Authorization'] == 'Bearer ' + KEY
     assert body['model'] == 'synthetic-text-model'
-    assert body['response_format'] == {'type': 'json_schema', 'json_schema': NOTICE_SCHEMA}
+    assert body['response_format'] == {'type': 'json_object'}
     assert 'PRIVATE' not in json.dumps(body) and KEY not in json.dumps(body)
     assert KEY not in repr(provider)
 
@@ -148,18 +148,32 @@ def test_checklist_candidate_never_becomes_automatic_due_to_provider_confirmatio
     assert enrich_notice(value, provider=FakeProvider(response())) == value
 
 
-def test_extractively_polished_guidance_is_only_an_unconfirmed_suggestion():
+def test_provider_written_guidance_fills_the_guidance_field_but_stays_unconfirmed():
     value = draft()
-    guide = {'text': '온라인으로 신청하세요.', 'page': 1, 'quote': '온라인으로 신청하세요.'}
+    saved = deepcopy(value)
+    text = '합성 청년 사업 신청 안내입니다.\n대상은 만 18세 이상 39세 이하입니다.\n\n\n\n온라인으로 신청하세요.'
+    guide = {'text': text, 'page': 1, 'quote': QUOTE}
     result = enrich_notice(value, provider=FakeProvider(response(guidance=guide)))
-    assert result['guidance'] == value['guidance']
-    assert result['suggestions'][0] == {'target_id': 'guidance', 'type': 'guidance', **guide,
-                                       'source': 'fake', 'confidence': 0.0, 'needs_review': True}
+    assert value == saved
+    assert result['guidance'] == {'id': 'guidance', 'value': '합성 청년 사업 신청 안내입니다.\n대상은 만 18세 이상 39세 이하입니다.\n\n온라인으로 신청하세요.',
+                                  'page': 1, 'quote': QUOTE, 'source': 'fake', 'confidence': 0.6,
+                                  'needs_review': True, 'ai_drafted': True}
+    assert result['criteria'] == saved['criteria']
+    assert all(row['target_id'] != 'guidance' for row in result['suggestions'])
 
 
-def test_guidance_with_invented_eligibility_claim_is_discarded_despite_real_quote():
+@pytest.mark.parametrize('guide', [
+    # A number that is not in the public notice (invented age range or amount).
+    {'text': '만 19세 이상 45세 이하 청년이 신청할 수 있습니다.', 'page': 1, 'quote': QUOTE},
+    {'text': '월 300,000원을 지원합니다.', 'page': 1, 'quote': QUOTE},
+    # The citation must be verbatim on its page.
+    {'text': '온라인으로 신청하세요.', 'page': 1, 'quote': '인용이 없는 문장'},
+    {'text': '온라인으로 신청하세요.', 'page': 2, 'quote': QUOTE},
+    {'text': '```온라인```', 'page': 1, 'quote': QUOTE},
+    {'text': '짧음', 'page': 1, 'quote': QUOTE},
+])
+def test_guidance_with_invented_numbers_or_bad_citation_keeps_local_guidance(guide):
     value = draft()
-    guide = {'text': '누구나 자동 선정됩니다.', 'page': 1, 'quote': QUOTE}
     reply = json.dumps({'guidance': guide, 'criteria': []})
     assert enrich_notice(value, provider=FakeProvider(reply)) == value
 
@@ -213,3 +227,17 @@ def test_supplemental_evidence_can_suggest_only_preexisting_supported_candidate(
     result = enrich_notice(value, QUOTE, provider=FakeProvider(proposal))
     assert result['suggestions'][0]['page'] is None
     assert enrich_notice(value, '다른 공개 설명', provider=FakeProvider(proposal)) == value
+
+
+@pytest.mark.parametrize('text', ['신청하면 자동 선정됩니다.', '누구나 지원받을 수 있습니다.', '신청자 전원 지원합니다.'])
+def test_guidance_promising_selection_the_notice_does_not_promise_is_discarded(text):
+    value = draft()
+    reply = json.dumps({'guidance': {'text': text, 'page': 1, 'quote': QUOTE}, 'criteria': []})
+    assert enrich_notice(value, provider=FakeProvider(reply)) == value
+
+
+def test_guidance_may_repeat_wording_the_notice_itself_uses():
+    value = draft()
+    value['source_pages'][0]['text'] += '\n누구나 신청할 수 있습니다.'
+    reply = json.dumps({'guidance': {'text': '누구나 온라인으로 신청할 수 있습니다.', 'page': 1, 'quote': QUOTE}, 'criteria': []})
+    assert enrich_notice(value, provider=FakeProvider(reply))['guidance']['ai_drafted'] is True

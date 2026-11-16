@@ -4,6 +4,8 @@ import { officerSessionResponse } from './officer-session.ts'
 export interface DraftEvidence {
   id: string; page: number | null; quote: string; source?: string; confidence: number; needs_review: boolean
   basis_evidence?: DraftEvidence; table_evidence?: DraftEvidence[]; sources?: DraftEvidence[]
+  /** Guidance written by the notice provider from the overview section; still needs officer review. */
+  ai_drafted?: boolean
 }
 export interface DraftValue<T> extends DraftEvidence { value: T }
 export interface DraftDocument extends DraftEvidence { slot_key: string | null; label: string; original_label?: string; required: boolean; type: string }

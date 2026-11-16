@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { fetchOfficerPostings, isOfficerMockCounted, type OfficerPosting } from '../../api.ts'
+import { deletePosting, fetchOfficerPostings, isOfficerMockCounted, type OfficerPosting } from '../../api.ts'
 import { isPlainClick, routeHref, routeUrl } from '../../navigation-url.ts'
 import { formatPeriod } from '../../posting-format.ts'
-import { OfficerDrawer, OfficerMenu } from './OfficerModern.tsx'
+import { OfficerConfirm, OfficerDrawer, OfficerMenu } from './OfficerModern.tsx'
 import { officerLabel } from './officer-modern-model.ts'
 import './officer.css'
 import './program-list.css'
@@ -16,6 +16,9 @@ export default function ProgramList({ onNew, onOpen }: Props) {
   const [items, setItems] = useState<OfficerPosting[] | null>(null)
   const [failed, setFailed] = useState(false)
   const [attempt, setAttempt] = useState(0)
+  const [removing, setRemoving] = useState<OfficerPosting | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [notice, setNotice] = useState<{ text: string; error: boolean } | null>(null)
   useEffect(() => {
     let active = true
     fetchOfficerPostings().then((list) => {
@@ -26,12 +29,23 @@ export default function ProgramList({ onNew, onOpen }: Props) {
   }, [attempt])
   const retry = () => { setFailed(false); setItems(null); setAttempt((value) => value + 1) }
   const openTab = (item: OfficerPosting, tab: 'settings' | 'info') => { onOpen(item); routeUrl(`/officer/programs/${item.id}`, { tab }) }
+  const remove = async (item: OfficerPosting) => {
+    setBusy(true); setNotice(null)
+    try {
+      await deletePosting(item.id)
+      setItems((prior) => prior?.filter((row) => row.id !== item.id) ?? prior)
+      setNotice({ text: `“${item.title}” 사업을 지웠습니다.`, error: false })
+    } catch (problem: unknown) {
+      setNotice({ text: problem instanceof Error ? problem.message : '사업을 지우지 못했습니다.', error: true })
+    } finally { setBusy(false); setRemoving(null) }
+  }
   return <main className="om om-page om-entry-list plist">
     <header className="om-head plist__head"><OfficerDrawer current="list" /><h1 className="plist__title">사업 목록</h1>
       {items && <span className="om-subtle">전체 {items.length.toLocaleString('ko-KR')}개</span>}
       <button type="button" className="btn btn--primary plist__new" onClick={onNew}>새 사업 올리기</button>
     </header>
     {items && isOfficerMockCounted() && <p className="om-subtle">합성 목업 데이터입니다.</p>}
+    {notice && <p className={notice.error ? 'om-notice' : 'om-subtle'} role={notice.error ? 'alert' : 'status'}>{notice.text}</p>}
     <div className="plist__body">
       {failed || items === null || items.length === 0 ? <div className="om-notice om-row" role={failed ? 'alert' : items === null ? 'status' : undefined}>
         <span>{failed ? '사업 목록을 불러오지 못했습니다.' : items === null ? '사업 목록을 불러오고 있습니다.' : '등록된 사업이 없습니다.'}</span>
@@ -40,8 +54,9 @@ export default function ProgramList({ onNew, onOpen }: Props) {
         <div className="om-row om-program-top"><span className={`om-chip${displayStatus(item) === 'draft' ? ' om-chip--warning' : displayStatus(item) === 'published' ? ' om-chip--success' : ''}`}>{officerLabel(displayStatus(item))}</span>
           {item.builtin && <span className="om-subtle">기본 사업 · 읽기 전용</span>}
           {!item.builtin && <OfficerMenu label={`${item.title} 더보기`} actions={[
-            { label: '사업 설정', onSelect: () => openTab(item, 'settings') },
+            { label: '수정하기', onSelect: () => openTab(item, 'settings') },
             { label: '사업 정보', onSelect: () => openTab(item, 'info') },
+            { label: item.application_count > 0 ? '사업 삭제 (신청서가 있어 불가)' : '사업 삭제', danger: true, disabled: busy || item.application_count > 0, onSelect: () => setRemoving(item) },
           ]} />}
         </div>
         <a className="plist__card" href={routeHref(`/officer/programs/${item.id}`)} onClick={(event) => {
@@ -56,5 +71,8 @@ export default function ProgramList({ onNew, onOpen }: Props) {
         </a>
       </li>)}</ul>}
     </div>
+    {removing && <OfficerConfirm title="사업 삭제" busy={busy} onClose={() => setRemoving(null)} onConfirm={() => void remove(removing)}>
+      “{removing.title}” 사업을 지울까요? 올린 공고문과 서식도 함께 지워지며 되돌릴 수 없습니다.
+    </OfficerConfirm>}
   </main>
 }

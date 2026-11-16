@@ -545,13 +545,23 @@ def close_posting(posting_id: int) -> dict[str, Any]:
 
 @officer_router.delete("/{posting_id}", status_code=204)
 def delete_posting(posting_id: int) -> Response:
-    """작성 중인 사업을 파일과 함께 지운다. 게시한 적이 있는 사업과 기본 사업은 지우지 못한다."""
+    """잘못 올린 사업을 파일·서식과 함께 지운다.
+
+    게시 중이거나 마감한 사업도 지울 수 있다 — 실수로 올린 사업을 되돌리는 길이다.
+    다만 신청서(임시저장 포함)가 하나라도 있으면 신청자 기록이 사업을 잃으므로
+    지우지 않고 마감을 안내한다. 기본 사업은 지우지 못한다.
+    """
     with get_session() as s:
         posting = _find(s, posting_id)
         if posting.rule_code is not None:
             raise HTTPException(409, "기본 사업은 지울 수 없습니다.")
-        if posting.status != POSTING_DRAFT:
-            raise HTTPException(409, "작성 중인 사업만 지울 수 있습니다.")
+        applied = s.exec(
+            select(models.Application.id).where(models.Application.program_code == f"posting_{posting_id}").limit(1)
+        ).first()
+        if applied is not None:
+            raise HTTPException(409, "신청서가 있는 사업은 지울 수 없습니다. 대신 마감해 주세요.")
+        for form in s.exec(select(models.ProgramForm).where(models.ProgramForm.posting_id == posting_id)).all():
+            s.delete(form)
         s.delete(posting)
         s.commit()
     shutil.rmtree(_folder(posting_id), ignore_errors=True)

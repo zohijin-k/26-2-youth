@@ -221,7 +221,7 @@ def validate_analysis(raw: Any, stored: dict[str, Any], supplemental: str = '') 
         return clean_evidence
     output = {'version': 1, 'status': stored.get('status', 'draft'), 'source_pages': deepcopy(pages),
               'warnings': deepcopy(stored.get('warnings', []))}
-    allowed_basic = {'id', 'value', 'page', 'quote', 'source', 'confidence', 'needs_review', 'sources'}
+    allowed_basic = {'id', 'value', 'page', 'quote', 'source', 'confidence', 'needs_review', 'sources', 'ai_drafted'}
     for name, limit in (('title', 100), ('period', 0), ('guidance', postings.GUIDANCE_MAX)):
         item = raw.get(name)
         if type(item) is not dict or set(item) - allowed_basic or item.get('id') != name:
@@ -238,6 +238,12 @@ def validate_analysis(raw: Any, stored: dict[str, Any], supplemental: str = '') 
             if type(item['sources']) is not list or len(item['sources']) > 100:
                 _invalid()
             clean['sources'] = [citation(evidence, clean['needs_review']) for evidence in item['sources']]
+        if 'ai_drafted' in item:
+            # Display-only marker for provider-written guidance; never evidence.
+            if name != 'guidance' or type(item['ai_drafted']) is not bool:
+                _invalid()
+            if item['ai_drafted']:
+                clean['ai_drafted'] = True
         output[name] = clean
     for name in ('required_docs', 'criteria'):
         if type(raw.get(name)) is not list or len(raw[name]) > 100:
@@ -307,7 +313,7 @@ def analysis_blockers(posting: ProgramPosting) -> list[str]:
     if not start or not end or start > end or end < postings._today().isoformat():
         problems.append('신청 기간이 유효하지 않습니다.')
     if not draft.get('required_docs') or not draft.get('criteria'):
-        problems.append('제출 서류와 기준을 하나 이상 입력해 주세요.')
+        problems.append('업로드 서류와 신청 자격 기준을 하나 이상 입력해 주세요.')
     candidates = basics + draft.get('required_docs', []) + draft.get('criteria', [])
     pending = sum(item.get('needs_review', True) is not False for item in candidates)
     if pending:

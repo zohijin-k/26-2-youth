@@ -274,3 +274,58 @@ def test_disjunction_between_supported_conditions_is_not_silently_read_as_one_ra
     result = analyze_notice(public_pdf(['합성 지원사업', '공고일: 2026-11-15',
         '지원 대상: 만18세 ~ 39세 또는 만60세 ~ 65세']))
     assert result['criteria'] and all(row['type'] == 'checklist' and row['engine_rule'] is None for row in result['criteria'])
+
+
+OVERVIEW_NOTICE = [
+    '2026 합성 청년 지원사업 모집 공고',
+    '1. 모집개요',
+    '가. 사업목적: 지역 청년의 구직 활동을 돕습니다.',
+    '나. 지원대상: 전북특별자치도 거주 만 18세 이상 39세 이하 청년',
+    '다. 지원내용: 월 30만원, 최대 6개월 지원',
+    '(구직활동 계획서 제출자에 한함)',
+    '라. 모집인원: 100명',
+    '2. 신청자격',
+    '가. 공고일 현재 미취업 상태인 사람',
+    '3. 신청방법',
+    '신청 방법: 온라인 신청',
+    '문의: 합성청년센터 063-000-0000',
+]
+
+
+def test_overview_section_becomes_guidance_with_one_paragraph_per_item():
+    draft = analyze_notice(public_pdf(OVERVIEW_NOTICE))
+    guidance = draft['guidance']
+    assert guidance['value'].split('\n') == [
+        '2026 합성 청년 지원사업 모집 공고 신청 안내',
+        '가. 사업목적: 지역 청년의 구직 활동을 돕습니다.',
+        '나. 지원대상: 전북특별자치도 거주 만 18세 이상 39세 이하 청년',
+        '다. 지원내용: 월 30만원, 최대 6개월 지원 (구직활동 계획서 제출자에 한함)',
+        '라. 모집인원: 100명',
+        '신청 방법: 온라인 신청',
+        '문의: 합성청년센터 063-000-0000',
+    ]
+    # The next same-level heading ends the overview: eligibility text is not guidance.
+    assert '미취업' not in guidance['value']
+    assert guidance['quote'] == '1. 모집개요' and guidance['page'] == 1 and guidance['needs_review']
+    assert [row['value'] for row in guidance['sources']][:2] == ['1. 모집개요', '가. 사업목적: 지역 청년의 구직 활동을 돕습니다.']
+    assert all(row['page'] == 1 and row['quote'] for row in guidance['sources'])
+
+
+def test_overview_with_box_heading_stops_at_next_box_but_not_at_nested_numbers():
+    draft = analyze_notice(public_pdf([
+        '합성 지원사업 공고', '□ 사업 개요', '1) 지원대상: 합성 청년', '2) 지원규모: 50명',
+        '□ 신청 자격', '1) 미취업자']))
+    assert draft['guidance']['value'].split('\n') == [
+        '합성 지원사업 공고 신청 안내', '1) 지원대상: 합성 청년', '2) 지원규모: 50명']
+
+
+def test_overview_without_marker_stops_at_a_short_section_line():
+    draft = analyze_notice(public_pdf([
+        '합성 지원사업 공고', '모집 개요', '- 지원대상: 합성 청년', '- 지원내용: 교육비 지원', '신청 자격', '- 미취업자']))
+    assert draft['guidance']['value'].split('\n') == [
+        '합성 지원사업 공고 신청 안내', '- 지원대상: 합성 청년', '- 지원내용: 교육비 지원']
+
+
+def test_notice_without_overview_keeps_the_field_by_field_guidance():
+    draft = analyze_notice(public_pdf(['합성 지원사업 공고', '지원 대상: 합성 청년', '신청 방법: 온라인 신청']))
+    assert draft['guidance']['value'].split('\n')[1] == '지원 대상: 합성 청년'

@@ -48,7 +48,7 @@ def upload(client):
     return result.json()
 
 
-def test_upload_uses_fake_notice_provider_with_only_public_text_and_unconfirmed_suggestions(client, monkeypatch):
+def test_upload_uses_fake_notice_provider_with_only_public_text_and_unconfirmed_guidance(client, monkeypatch):
     from demo.backend import notice_llm
     captured = []
     class FakeProvider:
@@ -63,10 +63,36 @@ def test_upload_uses_fake_notice_provider_with_only_public_text_and_unconfirmed_
     assert set(captured[0][1]) == {'notice_pages', 'supplemental'}
     assert all(set(page) == {'page', 'text'} for page in captured[0][1]['notice_pages'])
     original = analyze_notice(notice(), '합성 공개 부가 설명')
-    assert data['analysis']['guidance'] == original['guidance']
-    suggestion = data['analysis']['suggestions'][0]
-    assert suggestion['needs_review'] is True and suggestion['confidence'] == 0
-    assert suggestion['quote'] == '신청 방법: 온라인 신청'
+    guidance = data['analysis']['guidance']
+    assert guidance['value'] == '신청 방법: 온라인 신청' != original['guidance']['value']
+    assert guidance['needs_review'] is True and guidance['ai_drafted'] is True and guidance['confidence'] == 0.6
+    assert guidance['quote'] == '신청 방법: 온라인 신청' and guidance['page'] == 1
+    assert data['posting']['guidance_text'] == '신청 방법: 온라인 신청'
+    assert data['analysis']['criteria'] == original['criteria']
+    assert not data['analysis'].get('suggestions')
+
+
+def test_ai_drafted_marker_survives_save_only_on_guidance_as_a_boolean(client, monkeypatch):
+    from demo.backend import notice_llm
+    class FakeProvider:
+        name = 'fake'
+        def generate(self, purpose, payload):
+            return json.dumps({'guidance': {'text': '신청 방법: 온라인 신청', 'page': 1,
+                'quote': '신청 방법: 온라인 신청'}, 'criteria': []})
+    monkeypatch.setattr(notice_llm, 'configured_notice_provider', lambda: FakeProvider())
+    data = upload(client)
+    path = f"/api/officer/postings/{data['posting']['id']}/analysis"
+    saved = client.put(path, json={'analysis': data['analysis']})
+    assert saved.status_code == 200, saved.text
+    assert saved.json()['analysis']['guidance']['ai_drafted'] is True
+    edited = deepcopy(data['analysis'])
+    edited['guidance'].update(value='담당자가 고친 안내', ai_drafted=False)
+    assert 'ai_drafted' not in client.put(path, json={'analysis': edited}).json()['analysis']['guidance']
+    for bad in ({'guidance': 'yes'}, {'title': True}):
+        forged = deepcopy(data['analysis'])
+        for name, value in bad.items():
+            forged[name]['ai_drafted'] = value
+        assert client.put(path, json={'analysis': forged}).status_code == 422
 
 
 def confirm_forms(client, workspace):

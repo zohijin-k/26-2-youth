@@ -364,12 +364,15 @@ def test_delete_rules(client, storage):
     assert client.get(f"/api/officer/postings/{draft['id']}").status_code == 404
     assert client.delete(f"/api/officer/postings/{draft['id']}").status_code == 404
 
+    # A program published by mistake can be removed while nobody has applied.
     live = published(client)
     live_folder = storage / "postings" / str(live["id"])
-    assert client.delete(f"/api/officer/postings/{live['id']}").status_code == 409
-    assert client.post(f"/api/officer/postings/{live['id']}/close").status_code == 200
-    assert client.delete(f"/api/officer/postings/{live['id']}").status_code == 409
-    assert sorted(path.name for path in live_folder.iterdir()) == ["forms.pdf", "notice.pdf"]
+    assert client.delete(f"/api/officer/postings/{live['id']}").status_code == 204
+    assert not live_folder.exists()
+    assert client.get(f"/api/postings/{live['id']}").status_code == 404
+    closed = published(client)
+    assert client.post(f"/api/officer/postings/{closed['id']}/close").status_code == 200
+    assert client.delete(f"/api/officer/postings/{closed['id']}").status_code == 204
 
     builtin_id = builtin_row().id
     assert client.delete(f"/api/officer/postings/{builtin_id}").status_code == 409
@@ -381,6 +384,17 @@ def test_delete_rules(client, storage):
     refused = client.delete(f"/api/officer/postings/{builtin_id}")
     assert refused.status_code == 409 and isinstance(refused.json()["detail"], str)
     assert builtin_row().id == builtin_id
+
+
+@pytest.mark.parametrize("status", [models.STATUS_DRAFT, models.STATUS_SUBMITTED])
+def test_program_with_any_application_cannot_be_deleted(client, storage, status):
+    live = published(client)
+    folder = storage / "postings" / str(live["id"])
+    add_application(1, program=f"posting_{live['id']}", status=status)
+    refused = client.delete(f"/api/officer/postings/{live['id']}")
+    assert refused.status_code == 409 and "마감" in refused.json()["detail"]
+    assert live["id"] in {row.id for row in stored_rows()}
+    assert sorted(path.name for path in folder.iterdir()) == ["forms.pdf", "notice.pdf"]
 
 
 # ---------------------------------------------------------------- patch
