@@ -63,7 +63,7 @@ export default function FinalCheck({
   if (error && !data) return <Notice tone="danger" role="alert">{error}<button type="button" className="btn" onClick={() => { setError(''); setReload((value) => value + 1) }}>다시 시도하기</button></Notice>
   if (!data) return showSkeleton ? (
     <Skeleton className="fcheck fcheck__skeleton">
-      <section className="fcheck__box"><h3>신청한 지원 항목</h3><table className="fcheck__docs"><thead><tr><th>항목</th><th>영수증 금액</th><th>지급 예정액</th><th>계산 근거</th></tr></thead><tbody>{[0, 1, 2].map((row) => <tr key={row}>{[0, 1, 2, 3].map((col) => <td data-label="항목" key={col}><SkeletonLine width={col === 3 ? '88%' : '64%'} /></td>)}</tr>)}</tbody></table></section>
+      <section className="fcheck__box"><h3>신청한 지원 항목</h3><table className="fcheck__docs"><thead><tr><th>항목</th><th>영수증 금액</th><th>지급 예정액</th></tr></thead><tbody>{[0, 1, 2].map((row) => <tr key={row}>{[0, 1, 2].map((col) => <td data-label="항목" key={col}><SkeletonLine width="64%" /></td>)}</tr>)}</tbody></table></section>
       <section className="fcheck__box"><h3>작성한 내용 확인하기</h3><dl className="fcheck__summary">{[0, 1, 2, 3, 4, 5].map((row) => <div key={row}><dt><SkeletonLine width="76%" /></dt><dd><SkeletonLine width="88%" /></dd></div>)}</dl></section>
       <div className="flow__actions"><button type="button" className="btn" disabled aria-disabled="true">이전</button><button type="button" className="btn btn--primary" disabled aria-disabled="true">제출하기</button></div>
     </Skeleton>
@@ -85,7 +85,6 @@ export default function FinalCheck({
                 <th>항목</th>
                 <th>영수증 금액</th>
                 <th>지급 예정액</th>
-                <th>계산 근거</th>
               </tr>
             </thead>
             <tbody>
@@ -102,12 +101,11 @@ export default function FinalCheck({
                   <td data-label="지급 예정액">
                     <strong>{line.granted_amount.toLocaleString('ko-KR')}원</strong>
                   </td>
-                  <td data-label="계산 근거">{line.calculation}</td>
                 </tr>
               ))}
               <tr>
                 <th colSpan={2}>합계</th>
-                <td data-label="지급 예정액" colSpan={2}>
+                <td data-label="지급 예정액">
                   <strong>
                     {data.subsidy.total_granted.toLocaleString('ko-KR')}원
                   </strong>

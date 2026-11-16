@@ -6,7 +6,7 @@
  *
  * 화면이 지키는 것 둘:
  *   1. 고르는 즉시 추가서류가 몇 장 늘어나는지 보인다 (R6.3)
- *   2. 영수증을 적는 즉시 **실지급액과 그 계산 근거**가 보인다 (R6.2)
+ *   2. 영수증을 적는 즉시 **실지급액**이 보인다 (R6.2)
  *      — "70,000원 결제했는데 왜 50,000원인가"를 묻지 않게 하는 것이 전부다.
  */
 
@@ -219,7 +219,7 @@ export default function SubsidyItems({
           <div className="sitem__body"><span>신청 회차</span><SkeletonBlock className="subsidy__input" /><p className="sitem__docs">추가서류: <SkeletonLine width="48%" /></p></div>
         </li>)}
       </ul>
-      <section className="subsidy__sum"><h3>예상 지원금</h3><table className="subsidy__table"><thead><tr><th>항목</th><th>영수증 금액</th><th>지급 예정액</th><th>계산 근거</th></tr></thead><tbody>{[0, 1].map((row) => <tr key={row}>{[0, 1, 2, 3].map((col) => <td data-label="항목" key={col}><SkeletonLine width={col === 3 ? '84%' : '62%'} /></td>)}</tr>)}</tbody><tfoot><tr><th colSpan={2}>합계</th><td data-label="지급 예정액"><SkeletonLine width="64%" /></td><td data-label="계산 근거" /></tr></tfoot></table></section>
+      <section className="subsidy__sum"><h3>예상 지원금</h3><table className="subsidy__table"><thead><tr><th>항목</th><th>영수증 금액</th><th>지급 예정액</th></tr></thead><tbody>{[0, 1].map((row) => <tr key={row}>{[0, 1, 2].map((col) => <td data-label="항목" key={col}><SkeletonLine width="62%" /></td>)}</tr>)}</tbody><tfoot><tr><th colSpan={2}>합계</th><td data-label="지급 예정액"><SkeletonLine width="64%" /></td></tr></tfoot></table></section>
     </Skeleton>
   ) : null
 
@@ -279,7 +279,6 @@ export default function SubsidyItems({
                   <th>항목</th>
                   <th>영수증 금액</th>
                   <th>지급 예정액</th>
-                  <th>계산 근거</th>
                 </tr>
               </thead>
               <tbody>
@@ -299,7 +298,6 @@ export default function SubsidyItems({
                     <td data-label="지급 예정액" className="subsidy__num subsidy__granted">
                       {won(line.granted_amount)}
                     </td>
-                    <td data-label="계산 근거" className="subsidy__basis">{line.calculation}</td>
                   </tr>
                 ))}
               </tbody>
@@ -309,7 +307,6 @@ export default function SubsidyItems({
                   <td data-label="지급 예정액" className="subsidy__num subsidy__total">
                     {won(estimate.total_granted)}
                   </td>
-                  <td data-label="계산 근거" />
                 </tr>
               </tfoot>
             </table>

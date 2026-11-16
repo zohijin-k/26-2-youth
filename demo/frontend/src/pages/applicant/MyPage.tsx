@@ -45,7 +45,7 @@ export default function MyPage({ applicationId }: { applicationId: number }) {
         {['접수', '서류검토', '자격심사', '선정심사', '결과발표'].map((label, index) => <li className="mpstep" key={label}><span className="mpstep__no">{index + 1}</span><span className="mpstep__label">{label}</span></li>)}
       </ol>
       <p className="mypage__notice"><SkeletonLine width="74%" /></p>
-      <section className="mypage__box"><h3>신청한 지원 항목</h3><table className="mypage__docs"><thead><tr><th>항목</th><th>영수증 금액</th><th>지급 예정액</th><th>계산 근거</th></tr></thead><tbody>{[0, 1].map((row) => <tr key={row}>{[0, 1, 2, 3].map((col) => <td data-label="항목" key={col}><SkeletonLine width={col === 3 ? '88%' : '64%'} /></td>)}</tr>)}</tbody></table></section>
+      <section className="mypage__box"><h3>신청한 지원 항목</h3><table className="mypage__docs"><thead><tr><th>항목</th><th>영수증 금액</th><th>지급 예정액</th></tr></thead><tbody>{[0, 1].map((row) => <tr key={row}>{[0, 1, 2].map((col) => <td data-label="항목" key={col}><SkeletonLine width="64%" /></td>)}</tr>)}</tbody></table></section>
       <section className="mypage__box"><h3>제출한 서류</h3><ul className="mypage__files">{[0, 1, 2].map((row) => <li key={row}><SkeletonLine width="48%" /></li>)}</ul></section>
       <section className="mypage__box"><h3>동의 이력</h3><table className="mypage__docs mypage__consents"><thead><tr><th>항목</th><th>동의 여부</th><th>일시</th></tr></thead><tbody>{[0, 1, 2].map((row) => <tr key={row}><td data-label="항목"><SkeletonLine width="70%" /></td><td data-label="동의 여부"><SkeletonLine width="60%" /></td><td data-label="일시"><SkeletonLine width="80%" /></td></tr>)}</tbody></table></section>
     </Skeleton>
@@ -124,7 +124,6 @@ export default function MyPage({ applicationId }: { applicationId: number }) {
                 <th>항목</th>
                 <th>영수증 금액</th>
                 <th>지급 예정액</th>
-                <th>계산 근거</th>
               </tr>
             </thead>
             <tbody>
@@ -141,12 +140,11 @@ export default function MyPage({ applicationId }: { applicationId: number }) {
                   <td data-label="지급 예정액">
                     <strong>{line.granted_amount.toLocaleString('ko-KR')}원</strong>
                   </td>
-                  <td data-label="계산 근거">{line.calculation}</td>
                 </tr>
               ))}
               <tr>
                 <th colSpan={2}>합계</th>
-                <td data-label="지급 예정액" colSpan={2}>
+                <td data-label="지급 예정액">
                   <strong>{data.subsidy.total_granted.toLocaleString('ko-KR')}원</strong>
                 </td>
               </tr>
