@@ -155,7 +155,7 @@ def markdown(rows: list[dict[str, Any]]) -> str:
         lines.append(f'| {row["template"]} | {row["reference_fields"]} | {row["draft_fields"]} | {row["iou_matches"]} | {row["iou_match_rate"]:.1%} | {row["kind_match_rate"]:.1%} | {row["precision"]:.1%} | {row["false_fields"]} | {row["oversized"]} | {added} |')
     lines.append("\n¹ 기하적으로 일치한 칸 중 기존 렌더링 종류(text/check/image) 일치 비율. 일치 칸이 없으면 0%. 모든 자동 칸은 담당자 확인이 필요합니다.")
     lines.append("² 쪽 면적의 15%를 넘는 자동 칸 수. 전체 줄의 일치율·정밀도는 칸 수 기준(micro) 평균입니다.")
-    lines.append("보충 칸: fixtures/form_draft_eval 의 측정 전용 보충 정답 수(사람 확인 필요). 보충 포함 열만 이 칸을 더해 계산합니다.")
+    lines.append("보충 칸: fixtures/form_draft_eval 의 측정 전용 보충 정답 수(사람 확인 완료 2026-11-16). 보충 포함 열만 이 칸을 더해 계산합니다.")
     return "\n".join(lines)
 
 

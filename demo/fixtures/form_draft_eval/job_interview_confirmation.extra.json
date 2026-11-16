@@ -1,7 +1,7 @@
 {
   "form_no": "job_interview_confirmation",
   "purpose": "측정 전용 보충 정답. 렌더링·신청 화면에서 쓰지 않음.",
-  "status": "사람 확인 필요",
+  "status": "사람 확인 완료(2026-11-16)",
   "source": "서식 PDF의 괘선과 인쇄 글자 위치에서 계산(build_eval_supplement.py)",
   "fields": {
     "supplement.company": {
