@@ -185,9 +185,9 @@ node --test src/forms/phone.test.ts src/pages/officer/bulk-actions.test.ts src/l
 
 ### 선택적 JBAI 공고문 제안
 
-기본 공급자는 `none`입니다. 공고문 분석용 제안을 켜려면 기존 실행 설정의 `JBAI_BASE_URL`·`JBAI_API_KEY=<API 키>`와 함께 `LLM_PROVIDER=jbai`, `JBAI_TEXT_MODEL=MainModel`을 명시합니다. 연결 확인은 합성 요약 문장 한 번으로 `/open-api/v1/chat/completions`의 HTTP 200을 확인했습니다. 실제 strict JSON schema 호환성은 추가 호출하지 않았으며 가짜 공급자로 검증했습니다. 공개 공고문 글자와 부가 설명문만 전송하고, 신청자 정보와 서류 판독값은 전송하지 않습니다. 근거가 맞는 제안만 담당자 화면에 덧붙이며 판정은 기존 엔진과 담당자가 확정한 기준이 수행합니다. 공급자 실패나 인용 불일치 시 규칙 초안을 유지합니다. 기존 안내·사유 설명의 별도 옵션 `PROGRAM_LLM_PROVIDER`·`PROGRAM_LLM_ENABLED`·`JBAI_LLM_MODEL`도 호환됩니다.
+기본 공급자는 `none`입니다. 공고문 분석용 제안을 켜려면 기존 실행 설정의 `JBAI_BASE_URL`·`JBAI_API_KEY=<API 키>`와 함께 `LLM_PROVIDER=jbai`, `JBAI_TEXT_MODEL=MainModel`을 명시합니다. 연결 확인은 합성 요약 문장 한 번으로 `/open-api/v1/chat/completions`의 HTTP 200을 확인했습니다. 실제 strict JSON schema 호환성은 추가 호출하지 않았으며 가짜 공급자로 검증했습니다. 공개 공고문 글자와 부가 설명문만 전송하고, 신청자 정보와 서류 판독값은 전송하지 않습니다. 공급자는 공고문의 모집 개요를 바탕으로 신청자 안내문 초안을 써서 안내문 칸에 바로 채우고(**AI 작성 · 공고문과 대조 필요** 칩, 담당자가 작성완료를 눌러야 게시 가능), 기준은 근거가 맞는 제안만 담당자 화면에 덧붙입니다. 판정은 기존 엔진과 담당자가 확정한 기준이 수행합니다. 공급자 실패나 인용 불일치 시 규칙 초안을 유지합니다. 기존 안내·사유 설명의 별도 옵션 `PROGRAM_LLM_PROVIDER`·`PROGRAM_LLM_ENABLED`·`JBAI_LLM_MODEL`도 호환됩니다.
 
-`JBAI_RESPONSE_FORMAT`(선택)은 JSON 요청 방식을 고릅니다: `json_schema`(기본, strict 스키마) · `json_object` · `prompt`(형식 지정 없이 "JSON만 출력" 지시). 그 방식이 오류·시간 초과(호출당 10초)·형식 오류로 끝나면 다음 방식(`json_schema`→`json_object`→`prompt`)으로 **한 번만** 다시 묻고, 그래도 안 되면 규칙 초안을 유지합니다. 인용·값·기준 종류 검증은 방식과 관계없이 같습니다. 2026-11-16 실측과 확인 도구는 아래 "JBAI 공고문 제안 시연"을 봅니다.
+`JBAI_RESPONSE_FORMAT`(선택)은 JSON 요청 방식을 고릅니다: `json_object`(기본) · `json_schema`(strict 스키마) · `prompt`(형식 지정 없이 "JSON만 출력" 지시). 그 방식이 오류·시간 초과(호출당 30초, 안내문 작성 시간 포함)·형식 오류로 끝나면 다음 방식(`json_schema`→`json_object`→`prompt`)으로 **한 번만** 다시 묻고, 그래도 안 되면 규칙 초안을 유지합니다. 인용·값·기준 종류 검증은 방식과 관계없이 같습니다. 2026-11-16 실측과 확인 도구는 아래 "JBAI 공고문 제안 시연"을 봅니다.
 
 ### 실행과 검증
 
@@ -227,12 +227,12 @@ node --test src/forms/phone.test.ts src/pages/officer/bulk-actions.test.ts src/l
 
 1. `LLM_PROVIDER=jbai`
 2. `JBAI_TEXT_MODEL`에 사용할 텍스트 모델 이름
-3. (권장) `JBAI_RESPONSE_FORMAT=json_object` — 실측에서 `json_schema`는 3회 중 2회 10초 시간 초과, `json_object`는 7회 중 6회 정상 응답(3~5초)이었습니다. 비우면 `json_schema`를 먼저 묻고 실패하면 `json_object`로 한 번 다시 묻습니다(최대 약 20초).
+3. (선택) `JBAI_RESPONSE_FORMAT` — 비우면 `json_object`입니다. 실측에서 `json_schema`는 3회 중 2회 10초 시간 초과, `json_object`는 7회 중 6회 정상 응답(3~5초)이었습니다.
 4. 백엔드를 다시 시작합니다(`--env-file .env`).
 
 끄는 법: `LLM_PROVIDER=none`으로 바꾸거나 줄을 지우고 백엔드를 다시 시작합니다.
 
-동작: 공고문 분석 때 공개 공고문 글자와 부가 설명문만 보냅니다. 응답은 담당자 화면 "추가 안내" 안에 **AI 제안 · 담당자 확인 필요** 칩이 붙은 카드로만 덧붙고, 규칙 초안의 기준·안내문은 바뀌지 않습니다. 인용이 원문에 없거나, 값이 규칙 후보와 다르거나, 허용 종류(`age`·`residence`·`issue_date`·`income`·`work_continuity`) 밖이면 버립니다. 오류·시간 초과·형식 오류·검증 실패는 모두 규칙 초안만 남깁니다.
+동작: 공고문 분석 때 공개 공고문 글자와 부가 설명문만 보냅니다. 안내문은 공급자가 모집 개요로 쓴 초안이 안내문 칸에 들어갑니다. 인용이 원문에 없거나, 공고문에 없는 숫자(나이·금액·날짜·인원)나 선정 약속('자동 선정'·'누구나' 등)이 들어 있으면 버리고 로컬 초안(공고문 모집 개요 발췌)을 씁니다. 기준 제안은 담당자 화면 "추가 안내" 안에 **AI 제안 · 담당자 확인 필요** 칩이 붙은 카드로만 덧붙고, 규칙 초안의 기준은 바뀌지 않습니다. 인용이 원문에 없거나, 값이 규칙 후보와 다르거나, 허용 종류(`age`·`residence`·`issue_date`·`income`·`work_continuity`) 밖이면 버립니다. 오류·시간 초과·형식 오류·검증 실패는 모두 규칙 초안만 남깁니다.
 
 시연 전 확인(합성 공고문만 보내며 키·주소·응답 본문은 출력하지 않음, 기본 최대 9회 호출):
 

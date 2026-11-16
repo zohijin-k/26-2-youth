@@ -46,7 +46,22 @@ values, booleans, NaN and infinity cannot establish trusted evidence.
 The optional notice provider uses LLM_PROVIDER=jbai and JBAI_TEXT_MODEL; its
 default is none. Project only notice page text and bounded public supplemental
 copy at both service and transport boundaries. Use the existing no-redirect HTTP
-transport, strict JSON schema and real source quotations. Keep proposals separate
-from rule candidates; accept only matching supported values and source evidence.
+transport (30s per call, default `json_object` format with one fallback) and real
+source quotations. Keep criterion proposals separate from rule candidates; accept
+only matching supported values and source evidence.
+
+The provider may write the applicant guidance from the notice's overview
+(모집 개요/사업 개요) section. That text replaces the local guidance value with
+`ai_drafted: true`, `needs_review: true` and its verbatim overview citation. Reject
+it (keeping the local guidance) unless the citation is verbatim, every number it
+states occurs in the public source, and it makes no selection promise
+('자동 선정', '누구나', '전원 지원' …) that the source does not make itself.
+`ai_drafted` is a display-only boolean, accepted on guidance only.
+
+Without a provider, guidance is built from the overview section when one exists:
+its heading's marker family ('1.', '1)', 'Ⅰ', '가.', '□', none) bounds the
+section, PDF-wrapped lines rejoin into one paragraph per bullet, and method and
+contact lines are appended when the overview lacks them. Overview headings and
+list-item lines are never title candidates.
 Invalid JSON, timeouts, mismatches and transport errors return the local draft.
 Never log provider exceptions or give a provider applicant records or OCR values.

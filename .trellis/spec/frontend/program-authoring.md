@@ -1,8 +1,19 @@
 # Program authoring and review
 
 New program creation accepts the notice, one or more form PDFs and optional
-public supplemental text. Analysis opens the four-section applicant-shaped editor
-directly. Reuse the shared guidance paragraphs and existing template editor; do
+public supplemental text. Analysis opens the five-section applicant-shaped editor
+directly: ① title/period, ② guidance, ③ forms, ④ upload documents split into
+필수 업로드 서류 (required) and 추가 업로드 서류 (not required) by the required flag,
+⑤ 신청 자격 기준 (criteria). Do not show the 지정/기타 서류 distinction as a chip;
+an unslotted document shows only 담당자 확인. Each confirmation button reads
+작성완료. Officer-entered items (source manual, no quote) show no chip and no
+근거 toggle. Guidance renders one paragraph per typed line break, both in the
+officer preview and for applicants.
+
+A program can be deleted at any status (editor menu or list card menu) while no
+application row, including applicant drafts, references `posting_{id}`; the
+server refuses otherwise and asks to close it instead. A published or closed
+program shows an outlined 수정하기 button that unpublishes after confirmation. Reuse the shared guidance paragraphs and existing template editor; do
 not import applicant global CSS into the officer entry.
 
 Every editable candidate retains its source evidence. Editing reopens human
