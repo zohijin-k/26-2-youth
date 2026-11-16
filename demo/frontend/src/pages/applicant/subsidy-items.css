@@ -19,9 +19,13 @@
 .sitem__receipts { display: grid; gap: var(--sp-3); }
 .sitem input:not([type=checkbox]), .sitem select { height: var(--control-lg); min-width: 0; max-width: 100%; padding: 0 var(--sp-3); border: 1px solid var(--color-border-strong); border-radius: var(--radius-8); background: var(--color-surface); color: var(--color-text); font: inherit; font-size: var(--fs-17); }
 .sitem__receipt input { width: 160px; }
+/* 신청 횟수 등 선택칸: 기본 화살표 대신 여백 있는 꺾쇠, 포커스는 테두리로 표시. */
+.sitem select { appearance: none; min-width: 120px; padding-right: 44px; border-color: var(--color-border); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none' stroke='%2358616a' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; background-size: 16px; cursor: pointer; transition: border-color var(--ease), box-shadow var(--ease); }
+.sitem select:hover { border-color: var(--color-border-strong); }
+.sitem select:focus-visible { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 1px var(--color-primary), 0 0 0 4px var(--brand-10); }
 .subsidy__sum { padding: var(--sp-6); border: 1px solid var(--color-border); border-radius: var(--radius-12); background: var(--color-surface); }
 .subsidy__sum h3 { margin-bottom: var(--sp-4); }
-.subsidy__busy, .subsidy__empty, .subsidy__basis { color: var(--color-text-subtle); font-size: var(--fs-15); }
+.subsidy__busy, .subsidy__empty { color: var(--color-text-subtle); font-size: var(--fs-15); }
 .subsidy__granted, .subsidy__total { color: var(--color-text-brand); font-weight: var(--fw-bold); }
 .subsidy__warn { color: var(--warning-60); font-size: var(--fs-15); }
 .subsidy__error { color: var(--danger-60); }
