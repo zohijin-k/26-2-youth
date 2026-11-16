@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend spec entry point and quality checks"}
+{"file": ".trellis/spec/backend/notice-drafts.md", "reason": "Verify the provider boundary, validation and never-log rule still hold after the change"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Confirm no frontend-visible contract change"}
+{"file": ".trellis/tasks/11-16-jbai-llm-stabilize/research/current-state.md", "reason": "List of existing test contracts and the two intentional expectation changes to check against"}
