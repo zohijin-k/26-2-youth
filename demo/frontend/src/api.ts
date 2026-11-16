@@ -676,6 +676,10 @@ export interface OfficerRow {
   items_label?: string | null
   /** 확인 필요 항목 수(적합이 아닌 서류 + 안 올린 필수 서류). 담당자가 판단한 건은 0. 중요도순의 기준이다. */
   check_count?: number
+  /** 담당자가 판단한 시각. */
+  decided_at?: string | null
+  /** 반려 페이지에서 신청자에게 보낸 안내. 반려가 아니거나 일괄 반려면 null. */
+  reject_notice?: string | null
 }
 
 /**
@@ -751,6 +755,8 @@ export interface OfficerList {
    * 세 숫자가 같다.
    */
   queues: Record<OfficerQueue, number>
+  /** 처리 완료 가운데 반려한 건수. 목록의 '반려' 탭 숫자다. */
+  rejected?: number
   total: number
   page: number
   page_size: number

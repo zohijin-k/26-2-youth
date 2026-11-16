@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import {
   OFFICER_QUEUES, fetchApplicationReasons, fetchOfficerList, fetchOfficerRoles, fetchReasonExplanation, postBulkDecision,
-  type ApplicationReasons, type DecisionKey, type OfficerList, type OfficerListQuery, type OfficerQueue, type OfficerRole,
+  type ApplicationReasons, type DecisionKey, type OfficerList, type OfficerListQuery, type OfficerRole,
 } from '../../api.ts'
 import { formatDayTime } from '../../posting-format.ts'
 import { bulkActionsFor } from './bulk-actions.ts'
 import SortToggle from './SortToggle.tsx'
+import RejectionTable from './RejectionTable.tsx'
+import { LIST_TABS, nextTab, shownTabOf, tabCount, tabOf, tabQuery, type ListTab } from './list-tabs.ts'
 import { OfficerDialog, OfficerMenu } from './OfficerModern.tsx'
 import { officerLabel } from './officer-modern-model.ts'
 import './program-modern-workspace.css'
 
-const QUEUE_LABELS: Record<OfficerQueue, string> = { needs_check: '확인 필요', pass: '충족', done: '처리 완료' }
+const QUEUE_LABELS: Record<ListTab, string> = { needs_check: '확인 필요', pass: '충족', done: '처리 완료', rejected: '반려' }
 export default function GenericApplicationList({ postingId, onOpen = () => undefined }: { postingId: number; onOpen?: (id: number) => void }) {
   const [query, setQuery] = useState<OfficerListQuery>({ role: 'province', program: `posting_${postingId}`, sort: 'importance', queue: 'needs_check', page: 1, page_size: 20 })
   const [list, setList] = useState<OfficerList | null>(null)
@@ -30,7 +32,7 @@ export default function GenericApplicationList({ postingId, onOpen = () => undef
   const [reasonAttempt, setReasonAttempt] = useState(0)
   const request = useRef(0)
   const selectAll = useRef<HTMLInputElement>(null)
-  const tabs = useRef<Partial<Record<OfficerQueue, HTMLButtonElement | null>>>({})
+  const tabs = useRef<Partial<Record<ListTab, HTMLButtonElement | null>>>({})
   const uid = useId()
   useEffect(() => {
     let current = true
@@ -69,6 +71,7 @@ export default function GenericApplicationList({ postingId, onOpen = () => undef
     return () => { current = false }
   }, [reasonTarget, reasonAttempt, query.role])
   const queue = query.queue || 'needs_check'
+  const tab = tabOf(query)
   const shownQueue = OFFICER_QUEUES.find((key) => key === list?.filters.applied.queue) || queue
   const pageIds = list?.rows.map((row) => row.application_id) || []
   const allSelected = pageIds.length > 0 && pageIds.every((id) => selected.includes(id))
@@ -77,10 +80,9 @@ export default function GenericApplicationList({ postingId, onOpen = () => undef
   useEffect(() => { if (selectAll.current) selectAll.current.indeterminate = !allSelected && someSelected }, [allSelected, someSelected])
   const change = (patch: Partial<OfficerListQuery>) => { setQuery((current) => ({ ...current, ...patch, program: `posting_${postingId}` })); setSelected([]); setNotice('') }
   const queueKey = (event: KeyboardEvent<HTMLButtonElement>) => {
-    const at = OFFICER_QUEUES.indexOf(queue)
-    const next = event.key === 'ArrowRight' ? (at + 1) % 3 : event.key === 'ArrowLeft' ? (at + 2) % 3 : event.key === 'Home' ? 0 : event.key === 'End' ? 2 : -1
-    if (next < 0) return
-    event.preventDefault(); change({ queue: OFFICER_QUEUES[next], page: 1 }); tabs.current[OFFICER_QUEUES[next]]?.focus()
+    const next = nextTab(tab, event.key)
+    if (!next) return
+    event.preventDefault(); change({ ...tabQuery(next), page: 1 }); tabs.current[next]?.focus()
   }
   const bulk = async (decision: DecisionKey) => {
     if (blocked || !selected.length || !list?.role.can_bulk || !bulkActionsFor(shownQueue, list.role.actions).some((action) => action.key === decision)) return
@@ -92,7 +94,7 @@ export default function GenericApplicationList({ postingId, onOpen = () => undef
   }
   return <section className="om om-generic-list managed-program__applications" aria-label="사업 신청 목록">
     <div className="om-generic-list__head"><h2>신청 목록</h2><label>담당 역할<select value={query.role} disabled={blocked} onChange={(event) => change({ role: event.target.value, region: undefined, town: undefined, page: 1 })}>{roles.length ? roles.map((role) => <option key={role.key} value={role.key}>{role.name}</option>) : <option value={query.role}>담당 역할 불러오는 중</option>}</select></label></div>
-    <div className="om-chips" role="tablist" aria-label="신청 구분">{OFFICER_QUEUES.map((key) => <button ref={(element) => { tabs.current[key] = element }} key={key} type="button" role="tab" id={`${uid}-${key}`} aria-selected={key === queue} aria-controls={`${uid}-rows`} tabIndex={key === queue ? 0 : -1} className={`om-chip${key === 'needs_check' && (list?.queues[key] || 0) > 0 ? ' om-chip--warning' : ''}`} disabled={busy} onClick={() => change({ queue: key, page: 1 })} onKeyDown={queueKey}>{QUEUE_LABELS[key]} {list?.queues[key] ?? 0}</button>)}</div>
+    <div className="om-chips" role="tablist" aria-label="신청 구분">{LIST_TABS.map((key) => <button ref={(element) => { tabs.current[key] = element }} key={key} type="button" role="tab" id={`${uid}-${key}`} aria-selected={key === tab} aria-controls={`${uid}-rows`} tabIndex={key === tab ? 0 : -1} className={`om-chip${key === 'needs_check' && (list?.queues[key] || 0) > 0 ? ' om-chip--warning' : ''}`} disabled={busy} onClick={() => change({ ...tabQuery(key), page: 1 })} onKeyDown={queueKey}>{QUEUE_LABELS[key]} {list ? tabCount(list, key) : 0}</button>)}</div>
     <form className="om-generic-list__filters" role="search" onSubmit={(event) => { event.preventDefault(); change({ q: search.trim() || undefined, page: 1 }) }}>
       <label>신청번호 또는 성명<input type="search" aria-label="신청번호 또는 성명 검색" maxLength={50} autoComplete="off" value={search} disabled={busy} onChange={(event) => { setSearch(event.target.value); setSelected([]) }} /></label>
       <label>접수일 시작<input type="date" max={query.submitted_to || undefined} value={query.submitted_from || ''} disabled={busy} onChange={(event) => change({ submitted_from: event.target.value || undefined, page: 1 })} /></label>
@@ -105,8 +107,8 @@ export default function GenericApplicationList({ postingId, onOpen = () => undef
     {(error || rolesError) && <p className="om-notice" role="alert">{error || rolesError} <button type="button" className="om-text" disabled={blocked} onClick={() => { setRolesAttempt((value) => value + 1); setLoadedQuery(''); void reload() }}>다시 시도</button></p>}
     {notice && <p className="om-notice" role="status">{notice}</p>}
     {selected.length > 0 && list?.role.can_bulk && <div className="om-generic-list__selection"><strong>{selected.length}건 선택</strong><label>일괄 보류·반려 사유<input aria-label="일괄 보류·반려 사유" maxLength={2000} value={memo} disabled={busy} onChange={(event) => setMemo(event.target.value)} /></label><div className="om-row">{bulkActionsFor(shownQueue, list.role.actions).map((action) => <button type="button" className="btn" key={action.key} disabled={blocked || (action.key !== 'approve' && !memo.trim())} onClick={() => void bulk(action.key)}>{action.result_label}</button>)}<button type="button" className="om-text" disabled={busy} onClick={() => setSelected([])}>선택 해제</button></div></div>}
-    <div id={`${uid}-rows`} role="tabpanel" aria-labelledby={`${uid}-${queue}`} aria-busy={loading}>
-      {!list ? !error && <p className="om-notice" role="status">신청 목록을 불러오는 중입니다.</p> : <table className="om-generic-list__table"><colgroup>{list.role.can_bulk && <col className="om-generic-list__check-col" />}<col /><col className="om-generic-list__name-col" /><col className="om-generic-list__time-col" /><col className="om-generic-list__status-col" /><col className="om-generic-list__more-col" /></colgroup><thead><tr>{list.role.can_bulk && <th scope="col"><input ref={selectAll} type="checkbox" aria-label="전체 선택" checked={allSelected} disabled={blocked || !pageIds.length} onChange={() => setSelected(allSelected ? [] : pageIds)} /></th>}<th scope="col">신청번호</th><th scope="col">성명</th><th scope="col">접수일시</th><th scope="col">처리상태</th><th scope="col"><span className="om-generic-list__sr">더보기</span></th></tr></thead><tbody>{list.rows.map((row) => <tr key={row.application_id}>
+    <div id={`${uid}-rows`} role="tabpanel" aria-labelledby={`${uid}-${tab}`} aria-busy={loading}>
+      {!list ? !error && <p className="om-notice" role="status">신청 목록을 불러오는 중입니다.</p> : shownTabOf(list) === 'rejected' ? <RejectionTable rows={list.rows} tableClassName="om-generic-list__table" onOpen={onOpen} /> : <table className="om-generic-list__table"><colgroup>{list.role.can_bulk && <col className="om-generic-list__check-col" />}<col /><col className="om-generic-list__name-col" /><col className="om-generic-list__time-col" /><col className="om-generic-list__status-col" /><col className="om-generic-list__more-col" /></colgroup><thead><tr>{list.role.can_bulk && <th scope="col"><input ref={selectAll} type="checkbox" aria-label="전체 선택" checked={allSelected} disabled={blocked || !pageIds.length} onChange={() => setSelected(allSelected ? [] : pageIds)} /></th>}<th scope="col">신청번호</th><th scope="col">성명</th><th scope="col">접수일시</th><th scope="col">처리상태</th><th scope="col"><span className="om-generic-list__sr">더보기</span></th></tr></thead><tbody>{list.rows.map((row) => <tr key={row.application_id}>
         {list.role.can_bulk && <td><input type="checkbox" aria-label={`${row.application_no} 선택`} disabled={blocked} checked={selected.includes(row.application_id)} onChange={() => setSelected(selected.includes(row.application_id) ? selected.filter((id) => id !== row.application_id) : [...selected, row.application_id])} /></td>}
         <td><button type="button" className="alist__open om-text" disabled={blocked} onClick={() => onOpen(row.application_id)}>{row.application_no}</button></td><td><strong>{row.name}</strong></td><td>{formatDayTime(row.submitted_at)}</td><td><span className={`om-chip${row.decision === 'approve' || (!row.decision && row.ai_status === 'PASS') ? ' om-chip--success' : row.decision === 'reject' || (!row.decision && row.ai_status === 'FAIL') ? ' om-chip--danger' : ' om-chip--warning'}`}>{row.decision ? officerLabel(row.decision) : officerLabel(row.ai_status)}</span>{!row.decision && !!row.check_count && <span className="alist__checks">확인 {row.check_count}건</span>}</td>
         <td><OfficerMenu label={`${row.application_no} 더보기`} disabled={blocked} actions={[{ label: '심사 화면 열기', onSelect: () => onOpen(row.application_id) }, { label: '확인 필요 사유', onSelect: () => { setReasonData(null); setReasonError(''); setReasonTarget({ id: row.application_id, number: row.application_no }) } }]} /></td>

@@ -42,3 +42,7 @@ Decision requests take an optional `notice` (≤2000). Only a reject stores it i
 `Review.reject_notice`; any other decision clears it. Applicant status responses
 expose `rejection: {notice, decided_at}` only when the application is decided
 and the decision is reject. `officer_memo` never reaches the applicant.
+
+List rows also carry `decided_at` and `reject_notice` (reject only; never the
+memo). The response has `rejected`: rejected rows under the same base filters as
+`queues`; it is a subset of `queues.done`, not a fourth queue.

@@ -512,6 +512,16 @@ def _row(
             entry.review.officer_role if entry.review else None, entry.decision
         ),
         "officer_role": entry.review.officer_role if entry.review else None,
+        #: 담당자가 판단한 시각. 반려 목록의 처리일이다.
+        "decided_at": (
+            entry.review.decided_at.isoformat(timespec="seconds")
+            if entry.review and entry.review.decided_at else None
+        ),
+        #: 반려 페이지에서 신청자에게 보낸 안내. 반려가 아니거나 일괄 반려면 None이다.
+        "reject_notice": (
+            entry.review.reject_notice
+            if entry.review and entry.decision == DECISION_REJECT else None
+        ),
         #: 시군 내 고득점순 순위. 커트라인 판단의 근거다.
         "rank": None if generic.is_generic(app.program_code) else rank,
         #: 서류 칸. 두배적금이 아니면 빈 배열이다.
@@ -614,6 +624,8 @@ def list_applications(
     queue_counts = dict.fromkeys(QUEUES, 0)
     for e in rows:
         queue_counts[queue_of(e)] += 1
+    # 처리 완료 가운데 반려한 건. 목록의 '반려' 탭 건수이며 처리 완료 건수에 이미 들어 있다.
+    rejected_count = sum(1 for e in rows if e.decision == DECISION_REJECT)
 
     if queue:
         rows = [e for e in rows if queue_of(e) == queue]
@@ -696,6 +708,7 @@ def list_applications(
         "quota": quota,
         "first_come": _first_come_summary(entries, program),
         "queues": queue_counts,
+        "rejected": rejected_count,
         "total": total,
         "page": page,
         "page_size": page_size,

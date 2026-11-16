@@ -47,3 +47,10 @@ Picked 확인 필요 reasons become `- ` lines in an editable applicant notice
 (`reject-notice.ts`); confirmation goes through OfficerConfirm and sends
 `notice` plus `memo` (internal memo, or the notice when empty). Bulk reject is
 unchanged and stores no notice.
+
+Both lists' queue tabs are `확인 필요 · 적합 · 처리 완료 · 반려` (`list-tabs.ts`). 반려
+is `queue=done` + `status=reject`, counted by the list response's `rejected`, and
+renders RejectionTable (application number, name, `decided_at`, `reject_notice`).
+Pick the table shape from the server-applied filters (`shownTabOf`), never the tab
+just clicked, or the previous tab's rows flash as rejections. The built-in console
+keeps `status=reject` in the URL.

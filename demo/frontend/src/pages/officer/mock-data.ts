@@ -1221,6 +1221,7 @@ export function mockOfficerList(query: OfficerListQuery): OfficerList {
   // 구분별 건수는 여기까지 건 조건(관할·검색어·기간)으로 센다.
   const queues: OfficerList['queues'] = { needs_check: 0, pass: 0, done: 0 }
   for (const e of rows) queues[queueOf(e.row)] += 1
+  const rejected = rows.filter((e) => e.row.decision === 'reject').length
   if (query.queue) rows = rows.filter((e) => queueOf(e.row) === query.queue)
   if (query.ai_status) rows = rows.filter((e) => e.row.ai_status === query.ai_status)
   if (query.status === PENDING) rows = rows.filter((e) => !e.row.decision)
@@ -1246,8 +1247,9 @@ export function mockOfficerList(query: OfficerListQuery): OfficerList {
     columns: FIRST_COME_COLUMNS,
     first_come: firstComeSummary(JOB_PACKAGE),
     queues,
+    rejected,
     total, page, page_size: pageSize, page_count: Math.max(1, Math.ceil(total / pageSize)),
-    rows: rows.slice((page - 1) * pageSize, page * pageSize).map((e) => ({ ...e.row, check_count: checkCount(e) })),
+    rows: rows.slice((page - 1) * pageSize, page * pageSize).map((e) => ({ ...e.row, check_count: checkCount(e), decided_at: e.decidedAt, reject_notice: null })),
   }
 }
 

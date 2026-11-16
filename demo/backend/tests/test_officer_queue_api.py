@@ -146,7 +146,7 @@ def test_queue_combines_with_the_existing_status_and_ai_filters(client):
 def test_existing_parameters_and_response_keys_keep_working(client):
     made = seed_queues()
     body = listing(client)
-    assert OLD_LIST_KEYS <= set(body) and set(body) - OLD_LIST_KEYS == {"queues"}
+    assert OLD_LIST_KEYS <= set(body) and set(body) - OLD_LIST_KEYS == {"queues", "rejected"}
     applied = body["filters"]["applied"]
     assert OLD_APPLIED_KEYS <= set(applied) and set(applied) - OLD_APPLIED_KEYS == {"queue", "q"}
     assert (applied["queue"], applied["q"], applied["sort"]) == (None, None, "submitted")
@@ -588,3 +588,30 @@ def test_status_shows_the_notice_only_for_a_final_rejection_without_the_memo():
     app.status = models.STATUS_REVIEWING
     assert rejection_of(app, review) is None
     assert rejection_of(app, None) is None
+
+
+def test_rejection_list_rows_carry_the_notice_and_decision_time(client):
+    rejected = add_application(51, ai="FAIL")
+    held = add_application(52, ai="FAIL")
+    bulk = add_application(53, ai="FAIL")
+    decide(client, rejected, decision="reject", memo="FAKE 메모", notice="FAKE 신청자 안내")
+    decide(client, held, decision="hold", memo="FAKE 보류")
+    decide(client, bulk, decision="reject", memo="FAKE 일괄")
+    body = listing(client, queue="done", status="reject", sort="latest")
+    assert ids(body) == [bulk, rejected]
+    rows = {row["application_id"]: row for row in body["rows"]}
+    assert rows[rejected]["reject_notice"] == "FAKE 신청자 안내" and rows[rejected]["decided_at"]
+    assert rows[bulk]["reject_notice"] is None
+    held_row = next(row for row in listing(client, queue="done")["rows"] if row["application_id"] == held)
+    assert held_row["reject_notice"] is None and held_row["decided_at"]
+    # The internal memo is not part of the list row.
+    assert "FAKE 메모" not in str(body)
+
+
+def test_rejected_count_is_the_reject_part_of_done_under_the_same_filters(client):
+    made = seed_queues()
+    body = listing(client)
+    assert body["rejected"] == 1 and body["queues"]["done"] == 3
+    assert listing(client, queue="pass")["rejected"] == 1
+    assert ids(listing(client, queue="done", status="reject")) == [made["rejected"]]
+    assert listing(client, q="없는이름")["rejected"] == 0

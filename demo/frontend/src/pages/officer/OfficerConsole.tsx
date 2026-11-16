@@ -87,6 +87,8 @@ function savedOfficerPage(basePath: string): {
   }
   query.q = query.q?.trim().slice(0, SEARCH_MAX) || undefined
   query.queue = savedQueue(params)
+  // 반려 탭은 처리 완료 + 반려 필터다(list-tabs.ts).
+  if (query.queue === 'done' && (params.get('status') ?? params.get('o_status')) === 'reject') query.status = 'reject'
   const sort = params.get('sort') as OfficerSort
   if (OFFICER_SORTS.some((item) => item.key === sort)) query.sort = sort
   const page = Number(params.get('page') ?? params.get('o_page'))
@@ -162,6 +164,7 @@ export default function OfficerConsole({ basePath }: { basePath: string }) {
       page: query.page === DEFAULT_QUERY.page ? null : String(query.page ?? 1),
       page_size: query.page_size === DEFAULT_QUERY.page_size ? null : String(query.page_size ?? 20),
       sort: !query.sort || query.sort === DEFAULT_QUERY.sort ? null : String(query.sort),
+      status: query.status === 'reject' ? 'reject' : null,
       slot: open?.slot ?? null,
     }
     for (const key of QUERY_KEYS) params[key] = query[key] ?? null
