@@ -30,6 +30,8 @@ interface Props {
   applicationId: number
   role: string
   onBack: () => void
+  /** 반려는 여기서 바로 처리하지 않고 반려 페이지로 넘긴다. */
+  onReject: () => void
   /** 판단이 기록되면 목록을 다시 읽어야 한다. */
   onDecided: () => void
   /**
@@ -98,6 +100,7 @@ export default function ReviewDetail({
   role,
   onBack,
   onDecided,
+  onReject,
   initialSlotKey,
 }: Props) {
   const [detail, setDetail] = useState<ReviewDetailData | null>(null)
@@ -468,7 +471,7 @@ export default function ReviewDetail({
                   type="button"
                   className={`btn btn--${a.tone}`}
                   disabled={saving}
-                  onClick={() => decide(a.key)}
+                  onClick={() => (a.key === 'reject' ? onReject() : decide(a.key))}
                 >
                   {a.label}
                 </button>

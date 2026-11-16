@@ -5,13 +5,14 @@ import {
 } from '../../api.ts'
 import { formatDayTime } from '../../posting-format.ts'
 import { bulkActionsFor } from './bulk-actions.ts'
+import SortToggle from './SortToggle.tsx'
 import { OfficerDialog, OfficerMenu } from './OfficerModern.tsx'
 import { officerLabel } from './officer-modern-model.ts'
 import './program-modern-workspace.css'
 
 const QUEUE_LABELS: Record<OfficerQueue, string> = { needs_check: '확인 필요', pass: '충족', done: '처리 완료' }
 export default function GenericApplicationList({ postingId, onOpen = () => undefined }: { postingId: number; onOpen?: (id: number) => void }) {
-  const [query, setQuery] = useState<OfficerListQuery>({ role: 'province', program: `posting_${postingId}`, sort: 'submitted', queue: 'needs_check', page: 1, page_size: 20 })
+  const [query, setQuery] = useState<OfficerListQuery>({ role: 'province', program: `posting_${postingId}`, sort: 'importance', queue: 'needs_check', page: 1, page_size: 20 })
   const [list, setList] = useState<OfficerList | null>(null)
   const [roles, setRoles] = useState<OfficerRole[]>([])
   const [rolesError, setRolesError] = useState('')
@@ -99,6 +100,7 @@ export default function GenericApplicationList({ postingId, onOpen = () => undef
       {list?.scope.region_locked && <label>시군<select value={list.scope.region} disabled={blocked} onChange={(event) => change({ region: event.target.value, town: '', page: 1 })}>{list.scope.regions.map((region) => <option key={region} value={region}>{region}</option>)}</select></label>}
       {list?.scope.town_locked && <label>읍·면·동<select value={list.scope.town} disabled={blocked} onChange={(event) => change({ town: event.target.value, page: 1 })}>{list.scope.towns.length ? list.scope.towns.map((town) => <option key={town} value={town}>{town}</option>) : <option value="">접수 없음</option>}</select></label>}
       {(search || query.submitted_from || query.submitted_to) && <button type="button" className="om-text" disabled={busy} onClick={() => { setSearch(''); change({ q: undefined, submitted_from: undefined, submitted_to: undefined, page: 1 }) }}>조건 지우기</button>}
+      <SortToggle value={query.sort} disabled={blocked} onChange={(sort) => change({ sort, page: 1 })} />
     </form>
     {(error || rolesError) && <p className="om-notice" role="alert">{error || rolesError} <button type="button" className="om-text" disabled={blocked} onClick={() => { setRolesAttempt((value) => value + 1); setLoadedQuery(''); void reload() }}>다시 시도</button></p>}
     {notice && <p className="om-notice" role="status">{notice}</p>}
@@ -106,7 +108,7 @@ export default function GenericApplicationList({ postingId, onOpen = () => undef
     <div id={`${uid}-rows`} role="tabpanel" aria-labelledby={`${uid}-${queue}`} aria-busy={loading}>
       {!list ? !error && <p className="om-notice" role="status">신청 목록을 불러오는 중입니다.</p> : <table className="om-generic-list__table"><colgroup>{list.role.can_bulk && <col className="om-generic-list__check-col" />}<col /><col className="om-generic-list__name-col" /><col className="om-generic-list__time-col" /><col className="om-generic-list__status-col" /><col className="om-generic-list__more-col" /></colgroup><thead><tr>{list.role.can_bulk && <th scope="col"><input ref={selectAll} type="checkbox" aria-label="전체 선택" checked={allSelected} disabled={blocked || !pageIds.length} onChange={() => setSelected(allSelected ? [] : pageIds)} /></th>}<th scope="col">신청번호</th><th scope="col">성명</th><th scope="col">접수일시</th><th scope="col">처리상태</th><th scope="col"><span className="om-generic-list__sr">더보기</span></th></tr></thead><tbody>{list.rows.map((row) => <tr key={row.application_id}>
         {list.role.can_bulk && <td><input type="checkbox" aria-label={`${row.application_no} 선택`} disabled={blocked} checked={selected.includes(row.application_id)} onChange={() => setSelected(selected.includes(row.application_id) ? selected.filter((id) => id !== row.application_id) : [...selected, row.application_id])} /></td>}
-        <td><button type="button" className="alist__open om-text" disabled={blocked} onClick={() => onOpen(row.application_id)}>{row.application_no}</button></td><td><strong>{row.name}</strong></td><td>{formatDayTime(row.submitted_at)}</td><td><span className={`om-chip${row.decision === 'approve' || (!row.decision && row.ai_status === 'PASS') ? ' om-chip--success' : row.decision === 'reject' || (!row.decision && row.ai_status === 'FAIL') ? ' om-chip--danger' : ' om-chip--warning'}`}>{row.decision ? officerLabel(row.decision) : officerLabel(row.ai_status)}</span></td>
+        <td><button type="button" className="alist__open om-text" disabled={blocked} onClick={() => onOpen(row.application_id)}>{row.application_no}</button></td><td><strong>{row.name}</strong></td><td>{formatDayTime(row.submitted_at)}</td><td><span className={`om-chip${row.decision === 'approve' || (!row.decision && row.ai_status === 'PASS') ? ' om-chip--success' : row.decision === 'reject' || (!row.decision && row.ai_status === 'FAIL') ? ' om-chip--danger' : ' om-chip--warning'}`}>{row.decision ? officerLabel(row.decision) : officerLabel(row.ai_status)}</span>{!row.decision && !!row.check_count && <span className="alist__checks">확인 {row.check_count}건</span>}</td>
         <td><OfficerMenu label={`${row.application_no} 더보기`} disabled={blocked} actions={[{ label: '심사 화면 열기', onSelect: () => onOpen(row.application_id) }, { label: '확인 필요 사유', onSelect: () => { setReasonData(null); setReasonError(''); setReasonTarget({ id: row.application_id, number: row.application_no }) } }]} /></td>
       </tr>)}{list.rows.length === 0 && <tr><td colSpan={list.role.can_bulk ? 6 : 5}><p className="om-generic-list__empty">{query.q || query.submitted_from || query.submitted_to ? '조건에 맞는 신청이 없습니다.' : '이 구분의 신청이 없습니다.'} <button type="button" className="om-text" disabled={blocked} onClick={() => { setLoadedQuery(''); void reload() }}>다시 불러오기</button></p></td></tr>}</tbody></table>}
     </div>

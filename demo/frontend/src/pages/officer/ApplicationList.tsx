@@ -22,6 +22,7 @@ import { Skeleton, SkeletonLine } from '../../components/Skeleton.tsx'
 import useDelayedFlag from '../../hooks/useDelayedFlag.ts'
 import { formatDayTime } from '../../posting-format.ts'
 import { bulkActionsFor, queueOf } from './bulk-actions.ts'
+import SortToggle from './SortToggle.tsx'
 import './application-list.css'
 
 const QUEUE_COPY: Record<OfficerQueue, { label: string; empty: string }> = {
@@ -332,6 +333,7 @@ export default function ApplicationList({
         )}
 
         <span className="alist__notice" role="status">{notice}</span>
+        <SortToggle value={query.sort} disabled={busy} onChange={(sort) => change({ sort, page: 1 })} />
       </div>
 
       <div
@@ -413,7 +415,7 @@ export default function ApplicationList({
                     </td>
                     <td className="alist__name">{row.name}</td>
                     <td className="alist__time">{formatDayTime(row.submitted_at)}</td>
-                    <td><StatusChip row={row} /></td>
+                    <td><StatusChip row={row} />{!row.decision && !!row.check_count && <span className="alist__checks">확인 {row.check_count}건</span>}</td>
                     <td className="alist__more" onClick={(event) => event.stopPropagation()}>
                       {(generic || needsCheck(row)) && (
                         <button

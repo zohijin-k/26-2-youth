@@ -169,6 +169,8 @@ class Review(SQLModel, table=True):
     officer_role: Optional[str] = None
     officer_decision: Optional[str] = None
     officer_memo: Optional[str] = None
+    #: 반려할 때 신청자에게 보이는 안내. 담당자 메모(`officer_memo`)와 달리 마이페이지에 나간다.
+    reject_notice: Optional[str] = None
     decided_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=datetime.now)
 

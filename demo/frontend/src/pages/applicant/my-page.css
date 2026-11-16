@@ -32,3 +32,5 @@
 @media (max-width: 600px) { .mypage__consents th:nth-child(n), .mypage__consents td:nth-child(n) { width: auto; white-space: normal; } .mypage__box { padding: var(--sp-4); } .mpstep__label { font-size: var(--fs-15); } .mpstep__no { width: var(--sp-6); height: var(--sp-6); font-size: var(--fs-13); } .mpstep + .mpstep::before { top: 11px; } }
 
 .mpstep--current .mpstep__no::after { content: ''; width: var(--sp-3); height: var(--sp-3); border-radius: var(--radius-pill); background: var(--color-primary); }
+.mypage__rejection-text{margin:0;white-space:pre-line;line-height:1.6}
+.mypage__rejection-date{margin:var(--sp-2) 0 0;color:var(--color-text-subtle);font-size:var(--fs-15)}

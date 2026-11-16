@@ -23,5 +23,5 @@ const path = (posting: number, application: number) => `/api/officer/programs/${
 export const fetchGenericReview = (posting: number, application: number) => request<GenericReviewData>(path(posting, application))
 export const saveGenericChecks = (posting: number, application: number, checks: { document_ids: string[]; checklist_ids: string[]; fingerprint: string }) =>
   request<GenericReviewData>(`${path(posting, application)}/checks`, { method: 'PUT', body: JSON.stringify(checks) })
-export const decideGeneric = (posting: number, application: number, decision: DecisionKey, memo: string) =>
-  request<GenericReviewData>(`${path(posting, application)}/decision`, { method: 'POST', body: JSON.stringify({ role: 'province', decision, memo }) })
+export const decideGeneric = (posting: number, application: number, decision: DecisionKey, memo: string, notice?: string) =>
+  request<GenericReviewData>(`${path(posting, application)}/decision`, { method: 'POST', body: JSON.stringify({ role: 'province', decision, memo, ...(notice === undefined ? {} : { notice }) }) })

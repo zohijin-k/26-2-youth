@@ -372,7 +372,15 @@ def status(app:Application) -> dict[str,Any]:
         'eligibility_blockers':[],'submitted_at':app.submitted_at.isoformat(timespec='seconds') if app.submitted_at else None,
         'progress':[{'label':label,'state':'todo' if current<0 or index>current else 'current' if index==current else 'done'} for index,label in enumerate(labels)],
         'result_notice':'최종 선정 여부는 담당자 확인 후 안내됩니다.','first_come':None,'supplement':None,'subsidy':None,
-        'documents':[document_dict(row) for row in list_documents(app.id or 0)],'consents':[],'call_center':''}
+        'documents':[document_dict(row) for row in list_documents(app.id or 0)],'consents':[],'call_center':'',
+        'rejection':_rejection(app)}
+
+
+def _rejection(app:Application) -> dict[str,Any]|None:
+    from .api.review import rejection_of
+    with get_session() as session:
+        review=session.exec(select(Review).where(Review.application_id==app.id)).first()
+    return rejection_of(app,review)
 
 
 def checklist_response(app:Application) -> dict[str,Any]:

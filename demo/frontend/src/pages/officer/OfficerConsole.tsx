@@ -14,7 +14,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import {
   OFFICER_QUEUES,
+  OFFICER_SORTS,
   fetchOfficerList,
+  fetchReviewDetail,
+  postDecision,
   fetchOfficerRoles,
   isOfficerMockActive,
   isOfficerMockId as isMockId,
@@ -24,17 +27,19 @@ import {
   type OfficerListQuery,
   type OfficerQueue,
   type OfficerRole,
+  type OfficerSort,
 } from '../../api.ts'
 import ApplicationList, { ApplicationListSkeleton } from './ApplicationList.tsx'
+import RejectApplication from './RejectApplication.tsx'
 import ReviewDetail from './ReviewDetail.tsx'
 import useDelayedFlag from '../../hooks/useDelayedFlag.ts'
 import { currentParams, routeUrl } from '../../navigation-url.ts'
 import { YOUTH_PROGRAM } from '../../officer-scope.ts'
 import './officer.css'
 
-/** 처음 여는 구분은 확인 필요다 — 담당자가 지금 봐야 할 건부터 보인다. */
+/** 처음 여는 구분은 확인 필요, 정렬은 중요도순이다 — 담당자가 지금 봐야 할 건부터 보인다. */
 const DEFAULT_QUERY: OfficerListQuery = {
-  role: 'province', program: YOUTH_PROGRAM, sort: 'submitted', queue: 'needs_check', page: 1, page_size: 20,
+  role: 'province', program: YOUTH_PROGRAM, sort: 'importance', queue: 'needs_check', page: 1, page_size: 20,
 }
 /** 주소에 그대로 싣는 목록 조건. 구분은 기본값이면 싣지 않으므로 따로 다룬다. */
 const QUERY_KEYS = ['region', 'town', 'submitted_from', 'submitted_to', 'q'] as const
@@ -58,7 +63,7 @@ function savedQueue(params: URLSearchParams): OfficerQueue {
 
 function savedOfficerPage(basePath: string): {
   query: OfficerListQuery
-  open: { id: number; slot: string | null } | null
+  open: { id: number; slot: string | null; reject?: boolean } | null
   showCriteria: boolean
 } | null {
   const params = currentParams()
@@ -68,7 +73,7 @@ function savedOfficerPage(basePath: string): {
     || (!window.location.pathname.startsWith('/officer') && params.get('mode') === 'applicant')) return null
   // 바닥 경로 뒤에 붙은 부분만 읽는다. 다른 사업의 주소면 아무것도 복원하지 않는다.
   const rest = window.location.pathname.startsWith(basePath) ? window.location.pathname.slice(basePath.length) : null
-  const detailRoute = rest === null ? null : /^(?:\/([^/]+))?(?:\/review\/([1-9]\d*))?\/?$/.exec(rest)
+  const detailRoute = rest === null ? null : /^(?:\/([^/]+))?(?:\/review\/([1-9]\d*)(\/reject)?)?\/?$/.exec(rest)
   const criteriaRoute = rest === null ? null : /^\/criteria\/([^/]+)\/?$/.exec(rest)
   const legacy = [...QUERY_KEYS.map((key) => `o_${key}`), 'o_status', 'o_ai_status', 'o_role', 'o_page', 'o_page_size', 'o_open', 'o_slot', 'o_criteria', 'o_criteria_program'].some((key) => params.has(key))
   if (!detailRoute && !criteriaRoute && !legacy) return null
@@ -82,6 +87,8 @@ function savedOfficerPage(basePath: string): {
   }
   query.q = query.q?.trim().slice(0, SEARCH_MAX) || undefined
   query.queue = savedQueue(params)
+  const sort = params.get('sort') as OfficerSort
+  if (OFFICER_SORTS.some((item) => item.key === sort)) query.sort = sort
   const page = Number(params.get('page') ?? params.get('o_page'))
   const pageSize = Number(params.get('page_size') ?? params.get('o_page_size'))
   if (Number.isSafeInteger(page) && page > 0) query.page = page
@@ -89,7 +96,7 @@ function savedOfficerPage(basePath: string): {
   const openId = Number(detailRoute?.[2] ?? params.get('o_open'))
   return {
     query,
-    open: Number.isSafeInteger(openId) && openId > 0 ? { id: openId, slot: params.get('slot') ?? params.get('o_slot') } : null,
+    open: Number.isSafeInteger(openId) && openId > 0 ? { id: openId, slot: params.get('slot') ?? params.get('o_slot'), reject: !!detailRoute?.[3] } : null,
     showCriteria: criteriaRoute?.[1] === YOUTH_PROGRAM || (params.get('o_criteria') === '1' && params.get('o_criteria_program') !== 'double_savings'),
   }
 }
@@ -104,7 +111,7 @@ export default function OfficerConsole({ basePath }: { basePath: string }) {
    * 열려 있는 심사 건. `slot`은 목록의 서류 칸을 눌러 들어왔을 때 띄울 서류다 —
    * 행을 눌러 들어오면 null이고 상세가 첫 서류를 연다.
    */
-  const [open, setOpen] = useState<{ id: number; slot: string | null } | null>(initialPage?.open ?? null)
+  const [open, setOpen] = useState<{ id: number; slot: string | null; reject?: boolean } | null>(initialPage?.open ?? null)
   const [selected, setSelected] = useState<number[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -148,12 +155,13 @@ export default function OfficerConsole({ basePath }: { basePath: string }) {
   useEffect(() => {
     const path = showCriteria
       ? `${basePath}/criteria/${YOUTH_PROGRAM}`
-      : open ? `${basePath}/${encodeURIComponent(query.role)}/review/${open.id}`
+      : open ? `${basePath}/${encodeURIComponent(query.role)}/review/${open.id}${open.reject ? '/reject' : ''}`
         : query.role === DEFAULT_QUERY.role ? basePath : `${basePath}/${encodeURIComponent(query.role)}`
     const params: Record<string, string | null> = {
       queue: !query.queue || query.queue === DEFAULT_QUERY.queue ? null : query.queue,
       page: query.page === DEFAULT_QUERY.page ? null : String(query.page ?? 1),
       page_size: query.page_size === DEFAULT_QUERY.page_size ? null : String(query.page_size ?? 20),
+      sort: !query.sort || query.sort === DEFAULT_QUERY.sort ? null : String(query.sort),
       slot: open?.slot ?? null,
     }
     for (const key of QUERY_KEYS) params[key] = query[key] ?? null
@@ -162,7 +170,7 @@ export default function OfficerConsole({ basePath }: { basePath: string }) {
   }, [query, open, showCriteria, basePath])
 
   const patch = (next: Partial<OfficerListQuery>) => {
-    setQuery((prev) => ({ ...prev, ...next, program: YOUTH_PROGRAM, sort: 'submitted' }))
+    setQuery((prev) => ({ ...prev, ...next, program: YOUTH_PROGRAM }))
     setSelected([])
     setNotice('')
   }
@@ -199,6 +207,8 @@ export default function OfficerConsole({ basePath }: { basePath: string }) {
   }
 
   const activeRole = list?.role ?? roles.find((r) => r.key === query.role) ?? null
+  const openId = open?.id
+  const loadSummary = useCallback(() => openId ? fetchReviewDetail(openId, query.role) : Promise.reject(new Error('신청 건이 없습니다.')), [openId, query.role])
 
   return (
     <div className="officer">
@@ -246,6 +256,20 @@ export default function OfficerConsole({ basePath }: { basePath: string }) {
 
       {showCriteria && query.role === 'province' ? (
         <section className="panel"><h2 className="panel__title">심사 기준 · 읽기 전용</h2><div className="panel__body"><p>취업지원패키지는 기존에 확정된 기준으로 운영합니다. 사업 설정 탭에서 기간과 안내를 확인할 수 있습니다.</p></div></section>
+      ) : open?.reject ? (
+        <RejectApplication
+          key={`reject:${open.id}`}
+          applicationId={open.id}
+          role={query.role}
+          load={loadSummary}
+          onCancel={() => setOpen({ id: open.id, slot: open.slot })}
+          onSubmit={async (notice, memo) => {
+            await postDecision(open.id, { role: query.role, decision: 'reject', memo, notice })
+            setOpen(null)
+            setNotice('반려했습니다. 처리 완료 구분에서 확인할 수 있습니다.')
+            await reload()
+          }}
+        />
       ) : open !== null ? (
         <ReviewDetail
           // 같은 건의 다른 서류로 다시 들어올 때 초기 탭 선택이 확실히 다시 돌게
@@ -255,6 +279,7 @@ export default function OfficerConsole({ basePath }: { basePath: string }) {
           role={query.role}
           initialSlotKey={open.slot}
           onBack={() => setOpen(null)}
+          onReject={() => setOpen({ id: open.id, slot: open.slot, reject: true })}
           onDecided={reload}
         />
       ) : list ? (
