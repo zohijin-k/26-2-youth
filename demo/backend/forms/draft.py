@@ -65,6 +65,17 @@ def _autofill(label: str) -> str | None:
     return _AUTOFILL.get(compact)
 
 
+_CLOSERS = {"(": ")", "（": "）", "[": "]"}
+
+
+def _clean_label(text: str) -> str:
+    """Drop trailing colons/spaces and leading opening brackets that never close."""
+    label = re.sub(r"[\s:：]+$", "", text.strip())
+    while label and label[0] in _CLOSERS and _CLOSERS[label[0]] not in label:
+        label = re.sub(r"[\s:：]+$", "", label[1:].lstrip())
+    return label
+
+
 def _field(box: Any, page: int, label: str, kind: str, confidence: float, **extra: Any) -> dict[str, Any]:
     rect = pymupdf.Rect(box)
     size = min(11.0, max(7.0, rect.height * .5))
@@ -78,8 +89,9 @@ def _field(box: Any, page: int, label: str, kind: str, confidence: float, **extr
         "size": size,
         "align": "left",
         "font_family": "sans",
-        # Trailing colons and spaces are layout, not label; the anchor keeps the source text.
-        "label": re.sub(r"[\s:：]+$", "", label.strip())[:200] or "입력칸",
+        # Trailing colons/spaces and an unpaired opening bracket are layout, not label;
+        # the anchor keeps the source text.
+        "label": _clean_label(label)[:200] or "입력칸",
         "anchor": label.strip()[:200],
         "required": False,
         "autofill_source": _autofill(label),

@@ -43,10 +43,10 @@ def test_general_labels_with_colons_yield_blanks_without_autofill():
     _text(page, 40, 220, "보호자:")
     fields = _fields(document)
     labels = {field["label"]: field for field in fields}
-    assert set(labels) == {"(은행명", "계좌번호", "예금주", "근무처 명", "보호자"}
+    assert set(labels) == {"은행명", "계좌번호", "예금주", "근무처 명", "보호자"}
     assert all(field["autofill_source"] is None and field["field_type"] == "text" for field in fields)
     # Each blank ends before the next printed separator on the row.
-    assert labels["(은행명"]["box"][2] < 150 and labels["계좌번호"]["box"][2] < 330
+    assert labels["은행명"]["box"][2] < 150 and labels["계좌번호"]["box"][2] < 330
     assert labels["예금주"]["box"][2] < 470
 
 

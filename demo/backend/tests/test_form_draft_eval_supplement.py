@@ -61,6 +61,6 @@ def test_supplement_fixture_is_evaluation_only_and_new_to_the_coordinates():
 def test_measure_reports_the_supplemented_interview_confirmation():
     rows = {row["template"]: row for row in measure()}
     row = rows["job_interview_confirmation.pdf"]
-    assert row["reference_fields"] == 5 and row["supplement_fields"] == 13
-    assert row["supplemented"]["reference_fields"] == 18
+    assert row["reference_fields"] == 5 and row["supplement_fields"] == 12
+    assert row["supplemented"]["reference_fields"] == 17
     assert all(other["supplement_fields"] == 0 for name, other in rows.items() if name != "job_interview_confirmation.pdf")

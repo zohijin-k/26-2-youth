@@ -1,5 +1,5 @@
-"""Synthetic PDFs for the follow-up decisions: four more plain labels and the
-"(서명/인)" signature mark.
+"""Synthetic PDFs for the follow-up decisions: four more plain labels, the
+"(서명/인)" signature mark and dropping an unpaired leading bracket from labels.
 
 Every document is generated here with PyMuPDF; no fixture file is read.
 """
@@ -79,3 +79,23 @@ def test_sign_or_seal_text_in_sentence_or_attached_is_not_a_mark():
     _text(page, 60, 100, "서명/인 란에 날인합니다")
     _text(page, 60, 140, "홍길동(서명/인)")
     assert _fields(document) == []
+
+
+# Unpaired leading bracket -------------------------------------------------------------
+
+def test_unpaired_leading_bracket_is_dropped_and_the_anchor_kept():
+    document, page = _page()
+    _text(page, 40, 100, "(은행명 :")
+    _text(page, 40, 160, "[소속 :")
+    fields = {field["anchor"]: field for field in _fields(document)}
+    assert {anchor: field["label"] for anchor, field in fields.items()} == {"(은행명 :": "은행명", "[소속 :": "소속"}
+
+
+def test_paired_brackets_stay_in_the_label():
+    document, page = _page()
+    _text(page, 100, 100, "확인자")
+    _text(page, 260, 100, "(서명)")
+    _text(page, 100, 200, "보호자")
+    _text(page, 260, 200, "(인)")
+    labels = sorted(field["label"] for field in _fields(document))
+    assert labels == ["(서명)", "(인)"]

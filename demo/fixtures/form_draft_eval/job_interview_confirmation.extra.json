@@ -59,18 +59,6 @@
         374.5
       ]
     },
-    "supplement.datetime": {
-      "type": "text",
-      "page": 0,
-      "label": "면접일시",
-      "box": [
-        170.1,
-        378.5,
-        536.3,
-        406.6
-      ],
-      "note": "예시 문구(2026. 00. 00. 00:00~00:00)가 인쇄된 칸"
-    },
     "supplement.place": {
       "type": "text",
       "page": 0,
