@@ -51,7 +51,7 @@ def test_supplement_fixture_is_evaluation_only_and_new_to_the_coordinates():
     assert [path.name for path in files] == ["job_interview_confirmation.extra.json"]
     for path in files:
         raw = json.loads(path.read_text())
-        assert raw["status"] == "사람 확인 필요" and raw["fields"]
+        assert raw["status"] == "사람 확인 완료(2026-11-16)" and raw["fields"]
         coords = json.loads((COORDS / path.name.replace(".extra.json", ".json")).read_text())
         for key, field in raw["fields"].items():
             assert key.startswith("supplement.") and key not in coords["fields"]
