@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 1
-- **Last Active**: 2026-09-15
+- **Total Sessions**: 3
+- **Last Active**: 2026-11-17
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~29 | Active |
+| `journal-1.md` | ~106 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,8 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 3 | 2026-11-17 | AI 참고 제안 (담당자 확인 항목) | `7cd16c9`, `343b693`, `74b9054` | `feat/ai-reference-suggestions` |
+| 2 | 2026-11-17 | JBAI LLM 안정화 | `eab7155`, `6a0072f`, `90a6911` | `feat/jbai-llm-stabilize` |
 | 1 | 2026-09-15 | 현황 대시보드 초안 | `1ef266d` | `main` |
 <!-- @@@/auto:session-history -->
 
