@@ -36,6 +36,12 @@ export function evidencePresentation(item: { needs_review: boolean; source?: str
     chip: item.ai_drafted ? (item.needs_review ? 'AI 작성 · 공고문과 대조 필요' : 'AI 작성') : !hasSource ? null : item.confidence < 0.6 ? '근거 약함' : null }
 }
 
+/** A reference shows what the provider read on an officer-check item; it never changes that item. */
+export function suggestionPresentation(suggestion: { type: string; reference?: boolean; read?: string }): { chip: string; read: string | null } {
+  if (!suggestion.reference) return { chip: 'AI 제안 · 담당자 확인 필요', read: null }
+  return { chip: 'AI 참고 · 담당자가 직접 확인', read: suggestion.read ? `${officerLabel(suggestion.type, '기준')} · ${suggestion.read}` : null }
+}
+
 export type MenuKeyResult = { kind: 'close' } | { kind: 'focus'; index: number } | { kind: 'none' }
 /** Shared by DOM menus/drawers; disabled actions are filtered before passing count. */
 export function menuKeyResult(key: string, index: number, count: number, shift = false): MenuKeyResult {
