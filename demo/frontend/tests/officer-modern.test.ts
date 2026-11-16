@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { canStartPublication, evidencePresentation, menuKeyResult, officerLabel, restorePanelFocus } from '../src/pages/officer/officer-modern-model.ts'
+import { canStartPublication, evidencePresentation, menuKeyResult, officerLabel, restorePanelFocus, suggestionPresentation } from '../src/pages/officer/officer-modern-model.ts'
 
 function declarations(css: string): Record<string, string[]> {
   const tokens: Record<string, string[]> = {}
@@ -68,4 +68,13 @@ test('closing a panel returns focus to its connected opener', () => {
   restorePanelFocus({ isConnected: false, focus: () => { focused += 1 } })
   restorePanelFocus(null)
   assert.equal(focused, 1)
+})
+
+test('a reference card is told apart from a suggestion and shows the kind with the read values', () => {
+  assert.deepEqual(suggestionPresentation({ type: 'age' }), { chip: 'AI 제안 · 담당자 확인 필요', read: null })
+  assert.deepEqual(suggestionPresentation({ type: 'age', reference: false, read: '18~39세' }), { chip: 'AI 제안 · 담당자 확인 필요', read: null })
+  assert.deepEqual(suggestionPresentation({ type: 'age', reference: true, read: '18~39세' }), { chip: 'AI 참고 · 담당자가 직접 확인', read: '나이 범위 · 18~39세' })
+  assert.deepEqual(suggestionPresentation({ type: 'income', reference: true, read: '60% 이하' }), { chip: 'AI 참고 · 담당자가 직접 확인', read: '중위소득 · 60% 이하' })
+  assert.deepEqual(suggestionPresentation({ type: 'unknown_kind', reference: true, read: '값' }), { chip: 'AI 참고 · 담당자가 직접 확인', read: '기준 · 값' })
+  assert.deepEqual(suggestionPresentation({ type: 'residence', reference: true }), { chip: 'AI 참고 · 담당자가 직접 확인', read: null })
 })

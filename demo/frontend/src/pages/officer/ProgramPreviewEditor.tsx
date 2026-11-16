@@ -7,7 +7,7 @@ import PdfPages from '../../components/PdfPages.tsx'
 import useBeforeUnload from '../../hooks/useBeforeUnload.ts'
 import ProgramTemplateEditor from './ProgramTemplateEditor.tsx'
 import { OfficerConfirm, OfficerDialog, OfficerDrawer, OfficerMenu } from './OfficerModern.tsx'
-import { canStartPublication, evidencePresentation, officerLabel } from './officer-modern-model.ts'
+import { canStartPublication, evidencePresentation, officerLabel, suggestionPresentation } from './officer-modern-model.ts'
 import { publishReviewedProgram } from './officer-publication.ts'
 import './managed-program.css'
 import './program-preview.css'
@@ -219,7 +219,7 @@ export default function ProgramPreviewEditor({ postingId, onBack, onPostingChang
     {error && <p role="alert" className="program-preview__error">{error} <button className="om-text" disabled={busy || templateBusy} onClick={() => { if (failedAction === 'save') void save(); else if (failedAction === 'delete') void removeProgram(); else if (failedAction) void transition(failedAction); else setAttempt((value) => value + 1) }}>다시 시도</button></p>}{message && <p role="status" className="program-preview__saved">{message}</p>}
     {(!!draft.warnings.length || !!draft.suggestions?.length) && <details className="program-preview__notice"><summary>추가 안내 {draft.warnings.length + (draft.suggestions?.length || 0)}개</summary>
       {draft.warnings.map((warning) => <p key={warning}>{warning}</p>)}
-      {draft.suggestions?.map((suggestion, index) => <section key={`${suggestion.target_id}-${index}`} aria-label="제안 확인"><strong>{labels.get(suggestion.target_id) || '기준 확인'}</strong> <span className="om-chip">AI 제안 · 담당자 확인 필요</span><blockquote>{suggestion.text || suggestion.quote}</blockquote>
+      {draft.suggestions?.map((suggestion, index) => <section key={`${suggestion.target_id}-${index}`} aria-label="제안 확인"><strong>{labels.get(suggestion.target_id) || '기준 확인'}</strong> <span className="om-chip">{suggestionPresentation(suggestion).chip}</span>{suggestionPresentation(suggestion).read && <p>AI가 읽은 조건: {suggestionPresentation(suggestion).read}</p>}<blockquote>{suggestion.text || suggestion.quote}</blockquote>
         {suggestion.page && <button className="om-text" onClick={() => setPage(suggestion.page)}>공고문 {suggestion.page}쪽 보기</button>}
         {suggestion.type === 'guidance' && suggestion.text && <button className="btn" disabled={readonly} onClick={() => update({ ...draft, guidance: { ...draft.guidance, value: suggestion.text!, needs_review: true }, suggestions: draft.suggestions?.filter((_, at) => at !== index) })}>안내문에 반영</button>}
         <button className="om-text" onClick={() => jump(suggestion.target_id)}>항목 확인하기</button>

@@ -37,7 +37,8 @@ from ..llm_drafts import _http_transport
 from ..notice_analysis import analyze_notice
 from ..notice_llm import (
     JSON_ONLY, MAX_RESPONSE, RESPONSE_FORMATS, RULE_TYPES, _canonical, _json_text, _object_json, _quote_valid,
-    _response, configured_notice_provider, enrich_notice, format_body, guidance_text, notice_payload, values_match,
+    _response, configured_notice_provider, enrich_notice, format_body, guidance_text, notice_payload, stated_values,
+    values_match,
 )
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -164,7 +165,7 @@ def classify(content: Any, draft: Mapping[str, Any], supplemental: str,
             reasons.append('json')
         elif not _quote_valid(item['page'], item['quote'], payload):
             reasons.append('quote')
-        elif not _value_matches(item, draft):
+        elif not _value_matches(item, draft) and not _is_reference(item, result):
             reasons.append('value')
         else:
             reasons.append(None)
@@ -178,6 +179,12 @@ def classify(content: Any, draft: Mapping[str, Any], supplemental: str,
     explained = counts['quote'] + counts['value'] + counts['kind'] + counts['json']
     counts['other'] = max(0, counts['received'] - counts['passed'] - explained)
     return counts
+
+
+def _is_reference(item: Mapping[str, Any], result: Mapping[str, Any]) -> bool:
+    """The proposal reached the screen as a display-only reference on an officer-check candidate."""
+    return any(row.get('reference') is True and row.get('type') == item['type'] and row.get('quote') == item['quote']
+               for row in result.get('suggestions', []))
 
 
 def _value_matches(item: Mapping[str, Any], draft: Mapping[str, Any]) -> bool:
@@ -211,6 +218,14 @@ def screen_violations(draft: Mapping[str, Any], payload: Mapping[str, Any], resu
               and _quote_valid(row.get('page'), row.get('quote'), payload))
         if row.get('target_id') == 'guidance':
             ok = ok and type(row.get('text')) is str and row['text'] in row['quote']
+        elif 'reference' in row:
+            # A reference sits only on a candidate without a rule, carries no candidate
+            # values, and every value it shows is printed in its own quotation.
+            target = candidates.get(row.get('target_id'))
+            read = row.get('read_values')
+            ok = (ok and row['reference'] is True and 'values' not in row and target is not None
+                  and not target.get('engine_rule') and type(read) is dict and bool(read)
+                  and stated_values(row.get('type'), read, row.get('quote')) == read)
         else:
             target = candidates.get(row.get('target_id'))
             ok = ok and target is not None and target.get('type') == row.get('type') \
@@ -241,6 +256,7 @@ def run_once(recorder: Recorder, provider: Any, notice: str, mode: str, phase: s
            'json_ok': parsed is not None, 'schema_ok': _response(content) is not None}
     row.update(classify(content, draft, supplemental, result))
     row['discarded'] = row['received'] - row['passed']
+    row['references'] = sum(1 for item in result.get('suggestions', []) if item.get('reference'))
     del content, parsed, last
     recorder.last = {}
     return row
@@ -301,7 +317,7 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 COLUMNS = (('phase', '구분'), ('mode', '모드'), ('notice', '공고문'), ('repeat', '회'), ('status', 'HTTP'),
            ('json_ok', 'JSON'), ('schema_ok', '스키마'), ('seconds', '초'), ('received', '제안'),
-           ('passed', '통과'), ('discarded', '버림'), ('quote', '인용 불일치'), ('value', '값 불일치'),
+           ('passed', '통과'), ('references', '그중 참고'), ('discarded', '버림'), ('quote', '인용 불일치'), ('value', '값 불일치'),
            ('kind', '종류 밖'), ('json', 'JSON 오류'), ('screen_violation', '화면 위반'))
 
 
@@ -316,7 +332,7 @@ def table(report: Mapping[str, Any]) -> str:
         values = {'phase': '평균', 'mode': report['mode'], 'notice': notice, 'repeat': item['runs'],
                   'status': '-', 'json_ok': '-', 'schema_ok': '-',
                   'seconds': f"{item['avg_seconds']} (최대 {item['max_seconds']})",
-                  'received': item['avg_received'], 'passed': item['avg_passed'],
+                  'received': item['avg_received'], 'passed': item['avg_passed'], 'references': '-',
                   'discarded': item['discarded'], 'quote': '-', 'value': '-', 'kind': '-', 'json': '-',
                   'screen_violation': item['screen_violation']}
         lines.append('| ' + ' | '.join(cell(values[key]) for key, _ in COLUMNS) + ' |')

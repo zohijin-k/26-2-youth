@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/notice-drafts.md", "reason": "Verify references never change a candidate, rule binding or publication check"}
+{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend quality checks: tsc, oxlint, build, unit tests"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Confirm old responses without the new fields still render"}
+{"file": ".trellis/tasks/11-17-ai-reference-suggestions/research/findings.md", "reason": "Tests that must stay unchanged and the three intentional expectation changes"}

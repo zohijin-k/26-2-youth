@@ -1,0 +1,498 @@
+{
+  "code": "feat/ai-reference-suggestions (working tree on 90a6911)",
+  "date": "2026-11-17",
+  "mode": "json_object",
+  "calls": 9,
+  "note": "same three public notice PDFs as 11-16-jbai-llm-stabilize/measure-real-notices.json, three calls each",
+  "summary": {
+    "두배적금": {
+      "runs": 3,
+      "http_200": 3,
+      "min_seconds": 10.35,
+      "max_seconds": 13.78,
+      "guidance_accepted": 3,
+      "automatic_candidates": 3,
+      "criteria_received_per_run": [
+        4,
+        4,
+        6
+      ],
+      "criteria_accepted_per_run": [
+        0,
+        0,
+        0
+      ],
+      "criteria_reference_per_run": [
+        3,
+        3,
+        4
+      ],
+      "reference_kinds_per_run": [
+        [
+          "age",
+          "income",
+          "residence"
+        ],
+        [
+          "age",
+          "income",
+          "residence"
+        ],
+        [
+          "age",
+          "income",
+          "issue_date",
+          "residence"
+        ]
+      ],
+      "screen_violation": 0,
+      "proposal_reasons": {
+        "age:참고로 표시": 3,
+        "income:참고로 표시": 3,
+        "issue_date:참고로 표시": 1,
+        "residence:참고로 표시": 3,
+        "work_continuity:인용 불일치": 3,
+        "work_continuity:추출기 후보 없는 문장": 1
+      }
+    },
+    "직무인턴": {
+      "runs": 3,
+      "http_200": 3,
+      "min_seconds": 7.09,
+      "max_seconds": 12.58,
+      "guidance_accepted": 3,
+      "automatic_candidates": 0,
+      "criteria_received_per_run": [
+        2,
+        2,
+        2
+      ],
+      "criteria_accepted_per_run": [
+        0,
+        0,
+        0
+      ],
+      "criteria_reference_per_run": [
+        2,
+        2,
+        2
+      ],
+      "reference_kinds_per_run": [
+        [
+          "age",
+          "residence"
+        ],
+        [
+          "age",
+          "residence"
+        ],
+        [
+          "age",
+          "residence"
+        ]
+      ],
+      "screen_violation": 0,
+      "proposal_reasons": {
+        "age:참고로 표시": 3,
+        "residence:참고로 표시": 3
+      }
+    },
+    "청년월세": {
+      "runs": 3,
+      "http_200": 3,
+      "min_seconds": 7.93,
+      "max_seconds": 11.72,
+      "guidance_accepted": 3,
+      "automatic_candidates": 0,
+      "criteria_received_per_run": [
+        4,
+        3,
+        4
+      ],
+      "criteria_accepted_per_run": [
+        0,
+        0,
+        0
+      ],
+      "criteria_reference_per_run": [
+        3,
+        2,
+        3
+      ],
+      "reference_kinds_per_run": [
+        [
+          "age",
+          "income",
+          "residence"
+        ],
+        [
+          "age",
+          "income"
+        ],
+        [
+          "age",
+          "income",
+          "residence"
+        ]
+      ],
+      "screen_violation": 0,
+      "proposal_reasons": {
+        "age:참고로 표시": 3,
+        "income:참고로 표시": 3,
+        "income:추출기 읽기와 다름": 3,
+        "residence:참고로 표시": 2
+      }
+    }
+  },
+  "rows": [
+    {
+      "notice": "두배적금",
+      "repeat": 1,
+      "status": 200,
+      "seconds": 11.42,
+      "automatic_candidates": 3,
+      "log": [
+        "llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=11.4",
+        "llm_result purpose=notice_analysis guidance=accepted criteria_received=4 criteria_accepted=0 criteria_reference=3"
+      ],
+      "received": 5,
+      "passed": 4,
+      "quote": 0,
+      "value": 1,
+      "kind": 0,
+      "json": 0,
+      "other": 0,
+      "screen_violation": 0,
+      "guidance_state": "accepted",
+      "criteria_received": 4,
+      "criteria_accepted": 0,
+      "criteria_reference": 3,
+      "reference_kinds": [
+        "age",
+        "income",
+        "residence"
+      ],
+      "guidance_chars": 358,
+      "proposal_reasons": {
+        "residence:참고로 표시": 1,
+        "age:참고로 표시": 1,
+        "income:참고로 표시": 1,
+        "work_continuity:추출기 후보 없는 문장": 1
+      },
+      "guidance_reason": "accepted"
+    },
+    {
+      "notice": "두배적금",
+      "repeat": 2,
+      "status": 200,
+      "seconds": 10.35,
+      "automatic_candidates": 3,
+      "log": [
+        "llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=10.4",
+        "llm_result purpose=notice_analysis guidance=accepted criteria_received=4 criteria_accepted=0 criteria_reference=3"
+      ],
+      "received": 5,
+      "passed": 4,
+      "quote": 1,
+      "value": 0,
+      "kind": 0,
+      "json": 0,
+      "other": 0,
+      "screen_violation": 0,
+      "guidance_state": "accepted",
+      "criteria_received": 4,
+      "criteria_accepted": 0,
+      "criteria_reference": 3,
+      "reference_kinds": [
+        "age",
+        "income",
+        "residence"
+      ],
+      "guidance_chars": 360,
+      "proposal_reasons": {
+        "residence:참고로 표시": 1,
+        "age:참고로 표시": 1,
+        "income:참고로 표시": 1,
+        "work_continuity:인용 불일치": 1
+      },
+      "guidance_reason": "accepted"
+    },
+    {
+      "notice": "두배적금",
+      "repeat": 3,
+      "status": 200,
+      "seconds": 13.78,
+      "automatic_candidates": 3,
+      "log": [
+        "llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=13.8",
+        "llm_result purpose=notice_analysis guidance=accepted criteria_received=6 criteria_accepted=0 criteria_reference=4"
+      ],
+      "received": 7,
+      "passed": 5,
+      "quote": 2,
+      "value": 0,
+      "kind": 0,
+      "json": 0,
+      "other": 0,
+      "screen_violation": 0,
+      "guidance_state": "accepted",
+      "criteria_received": 6,
+      "criteria_accepted": 0,
+      "criteria_reference": 4,
+      "reference_kinds": [
+        "age",
+        "income",
+        "issue_date",
+        "residence"
+      ],
+      "guidance_chars": 310,
+      "proposal_reasons": {
+        "age:참고로 표시": 1,
+        "residence:참고로 표시": 1,
+        "income:참고로 표시": 1,
+        "work_continuity:인용 불일치": 2,
+        "issue_date:참고로 표시": 1
+      },
+      "guidance_reason": "accepted"
+    },
+    {
+      "notice": "직무인턴",
+      "repeat": 1,
+      "status": 200,
+      "seconds": 8.91,
+      "automatic_candidates": 0,
+      "log": [
+        "llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=8.9",
+        "llm_result purpose=notice_analysis guidance=accepted criteria_received=2 criteria_accepted=0 criteria_reference=2"
+      ],
+      "received": 3,
+      "passed": 3,
+      "quote": 0,
+      "value": 0,
+      "kind": 0,
+      "json": 0,
+      "other": 0,
+      "screen_violation": 0,
+      "guidance_state": "accepted",
+      "criteria_received": 2,
+      "criteria_accepted": 0,
+      "criteria_reference": 2,
+      "reference_kinds": [
+        "age",
+        "residence"
+      ],
+      "guidance_chars": 580,
+      "proposal_reasons": {
+        "age:참고로 표시": 1,
+        "residence:참고로 표시": 1
+      },
+      "guidance_reason": "accepted"
+    },
+    {
+      "notice": "직무인턴",
+      "repeat": 2,
+      "status": 200,
+      "seconds": 7.09,
+      "automatic_candidates": 0,
+      "log": [
+        "llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=7.1",
+        "llm_result purpose=notice_analysis guidance=accepted criteria_received=2 criteria_accepted=0 criteria_reference=2"
+      ],
+      "received": 3,
+      "passed": 3,
+      "quote": 0,
+      "value": 0,
+      "kind": 0,
+      "json": 0,
+      "other": 0,
+      "screen_violation": 0,
+      "guidance_state": "accepted",
+      "criteria_received": 2,
+      "criteria_accepted": 0,
+      "criteria_reference": 2,
+      "reference_kinds": [
+        "age",
+        "residence"
+      ],
+      "guidance_chars": 532,
+      "proposal_reasons": {
+        "age:참고로 표시": 1,
+        "residence:참고로 표시": 1
+      },
+      "guidance_reason": "accepted"
+    },
+    {
+      "notice": "직무인턴",
+      "repeat": 3,
+      "status": 200,
+      "seconds": 12.58,
+      "automatic_candidates": 0,
+      "log": [
+        "llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=12.6",
+        "llm_result purpose=notice_analysis guidance=accepted criteria_received=2 criteria_accepted=0 criteria_reference=2"
+      ],
+      "received": 3,
+      "passed": 3,
+      "quote": 0,
+      "value": 0,
+      "kind": 0,
+      "json": 0,
+      "other": 0,
+      "screen_violation": 0,
+      "guidance_state": "accepted",
+      "criteria_received": 2,
+      "criteria_accepted": 0,
+      "criteria_reference": 2,
+      "reference_kinds": [
+        "age",
+        "residence"
+      ],
+      "guidance_chars": 504,
+      "proposal_reasons": {
+        "age:참고로 표시": 1,
+        "residence:참고로 표시": 1
+      },
+      "guidance_reason": "accepted"
+    },
+    {
+      "notice": "청년월세",
+      "repeat": 1,
+      "status": 200,
+      "seconds": 11.72,
+      "automatic_candidates": 0,
+      "log": [
+        "llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=11.7",
+        "llm_result purpose=notice_analysis guidance=accepted criteria_received=4 criteria_accepted=0 criteria_reference=3"
+      ],
+      "received": 5,
+      "passed": 4,
+      "quote": 0,
+      "value": 1,
+      "kind": 0,
+      "json": 0,
+      "other": 0,
+      "screen_violation": 0,
+      "guidance_state": "accepted",
+      "criteria_received": 4,
+      "criteria_accepted": 0,
+      "criteria_reference": 3,
+      "reference_kinds": [
+        "age",
+        "income",
+        "residence"
+      ],
+      "guidance_chars": 471,
+      "proposal_reasons": {
+        "age:참고로 표시": 1,
+        "residence:참고로 표시": 1,
+        "income:참고로 표시": 1,
+        "income:추출기 읽기와 다름": 1
+      },
+      "guidance_reason": "accepted"
+    },
+    {
+      "notice": "청년월세",
+      "repeat": 2,
+      "status": 200,
+      "seconds": 7.93,
+      "automatic_candidates": 0,
+      "log": [
+        "llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=7.9",
+        "llm_result purpose=notice_analysis guidance=accepted criteria_received=3 criteria_accepted=0 criteria_reference=2"
+      ],
+      "received": 4,
+      "passed": 3,
+      "quote": 0,
+      "value": 1,
+      "kind": 0,
+      "json": 0,
+      "other": 0,
+      "screen_violation": 0,
+      "guidance_state": "accepted",
+      "criteria_received": 3,
+      "criteria_accepted": 0,
+      "criteria_reference": 2,
+      "reference_kinds": [
+        "age",
+        "income"
+      ],
+      "guidance_chars": 400,
+      "proposal_reasons": {
+        "age:참고로 표시": 1,
+        "income:참고로 표시": 1,
+        "income:추출기 읽기와 다름": 1
+      },
+      "guidance_reason": "accepted"
+    },
+    {
+      "notice": "청년월세",
+      "repeat": 3,
+      "status": 200,
+      "seconds": 10.84,
+      "automatic_candidates": 0,
+      "log": [
+        "llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=10.8",
+        "llm_result purpose=notice_analysis guidance=accepted criteria_received=4 criteria_accepted=0 criteria_reference=3"
+      ],
+      "received": 5,
+      "passed": 4,
+      "quote": 0,
+      "value": 1,
+      "kind": 0,
+      "json": 0,
+      "other": 0,
+      "screen_violation": 0,
+      "guidance_state": "accepted",
+      "criteria_received": 4,
+      "criteria_accepted": 0,
+      "criteria_reference": 3,
+      "reference_kinds": [
+        "age",
+        "income",
+        "residence"
+      ],
+      "guidance_chars": 485,
+      "proposal_reasons": {
+        "age:참고로 표시": 1,
+        "residence:참고로 표시": 1,
+        "income:참고로 표시": 1,
+        "income:추출기 읽기와 다름": 1
+      },
+      "guidance_reason": "accepted"
+    }
+  ],
+  "screen_check": {
+    "calls": 1,
+    "notice": "두배적금",
+    "server": "isolated backend with the provider on, temporary DB and storage",
+    "log": [
+      "llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=19.2",
+      "llm_result purpose=notice_analysis guidance=accepted criteria_received=5 criteria_accepted=0 criteria_reference=4"
+    ],
+    "cards": [
+      {
+        "chip": "AI 참고 · 담당자가 직접 확인",
+        "read": "거주지 · 전북특별자치도",
+        "page": 1
+      },
+      {
+        "chip": "AI 참고 · 담당자가 직접 확인",
+        "read": "나이 범위 · 18~39세",
+        "page": 1
+      },
+      {
+        "chip": "AI 참고 · 담당자가 직접 확인",
+        "read": "중위소득 · 140% 이하",
+        "page": 1
+      },
+      {
+        "chip": "AI 참고 · 담당자가 직접 확인",
+        "read": "서류 발급일 · 2026-03-03",
+        "page": 2
+      }
+    ],
+    "guidance_chip": "AI 작성 · 공고문과 대조 필요",
+    "publish_button": "disabled",
+    "save": "PUT /api/officer/postings/{id}/analysis 200; reference cards are not kept after saving (unchanged behaviour of suggestions)"
+  }
+}
