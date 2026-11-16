@@ -1,0 +1,29 @@
+{
+  "assertions": [
+    {
+      "name": "only verified suggestions reach the screen",
+      "detail": 2
+    },
+    {
+      "name": "every suggestion card carries the AI chip; warning lines do not",
+      "detail": {
+        "cards": 2,
+        "warnings": 0
+      }
+    },
+    {
+      "name": "no page errors",
+      "detail": "O"
+    }
+  ],
+  "page_errors": [],
+  "request_failures": [
+    "/src/assets/fonts/PretendardGOV/PretendardGOV-Medium.subset.woff2",
+    "/api/officer/session",
+    "/api/officer/session",
+    "/api/officer/session",
+    "/api/officer/session"
+  ],
+  "shot": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-jbai-schema-check/shots/preview-ai-suggestions.png",
+  "result": "passed"
+}

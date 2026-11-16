@@ -1,0 +1,75 @@
+{
+  "configured": true,
+  "calls": 1,
+  "mode": "json_schema",
+  "rows": [
+    {
+      "phase": "run",
+      "mode": "json_schema",
+      "notice": "A",
+      "repeat": 1,
+      "status": "timeout",
+      "seconds": 10.07,
+      "json_ok": false,
+      "schema_ok": false,
+      "received": 0,
+      "passed": 0,
+      "quote": 0,
+      "value": 0,
+      "kind": 0,
+      "json": 1,
+      "other": 0,
+      "screen_violation": 0,
+      "discarded": 0
+    },
+    {
+      "phase": "run",
+      "mode": "json_schema",
+      "notice": "B",
+      "repeat": 1,
+      "status": "budget",
+      "seconds": 0.0,
+      "json_ok": false,
+      "schema_ok": false,
+      "received": 0,
+      "passed": 0,
+      "quote": 0,
+      "value": 0,
+      "kind": 0,
+      "json": 1,
+      "other": 0,
+      "screen_violation": 0,
+      "discarded": 0
+    },
+    {
+      "phase": "run",
+      "mode": "json_schema",
+      "notice": "C",
+      "repeat": 1,
+      "status": "budget",
+      "seconds": 0.0,
+      "json_ok": false,
+      "schema_ok": false,
+      "received": 0,
+      "passed": 0,
+      "quote": 0,
+      "value": 0,
+      "kind": 0,
+      "json": 1,
+      "other": 0,
+      "screen_violation": 0,
+      "discarded": 0
+    }
+  ],
+  "summary": {
+    "A": {
+      "runs": 1,
+      "avg_seconds": 10.07,
+      "max_seconds": 10.07,
+      "avg_received": 0.0,
+      "avg_passed": 0.0,
+      "discarded": 0,
+      "screen_violation": 0
+    }
+  }
+}

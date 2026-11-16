@@ -218,3 +218,24 @@ cd demo/frontend
 npx tsc -b && npx oxlint && npx vite build
 node --test src/forms/phone.test.ts src/pages/officer/bulk-actions.test.ts src/lib/*.test.ts tests/*.test.ts
 ```
+
+### JBAI 공고문 제안 시연
+
+기본은 꺼짐(`LLM_PROVIDER=none`)이며 꺼져 있으면 외부 호출이 없습니다. 2026-11-16 합성 공고문 3종 실측(실제 호출 11회) 결과 형식이 맞는 응답은 받았으나 검증을 통과한 제안이 공고문당 평균 0~0.5개였으므로, **시연은 끈 상태(규칙 초안만)를 권장**합니다. 자세한 수치는 `.trellis/tasks/11-16-jbai-schema-check/report.md`에 있습니다.
+
+켜는 법(백엔드 실행 설정 파일에서, 기존 `JBAI_BASE_URL`·API 키 설정은 그대로 둠):
+
+1. `LLM_PROVIDER=jbai`
+2. `JBAI_TEXT_MODEL`에 사용할 텍스트 모델 이름
+3. (권장) `JBAI_RESPONSE_FORMAT=json_object` — 실측에서 `json_schema`는 3회 중 2회 10초 시간 초과, `json_object`는 7회 중 6회 정상 응답(3~5초)이었습니다. 비우면 `json_schema`를 먼저 묻고 실패하면 `json_object`로 한 번 다시 묻습니다(최대 약 20초).
+4. 백엔드를 다시 시작합니다(`--env-file .env`).
+
+끄는 법: `LLM_PROVIDER=none`으로 바꾸거나 줄을 지우고 백엔드를 다시 시작합니다.
+
+동작: 공고문 분석 때 공개 공고문 글자와 부가 설명문만 보냅니다. 응답은 담당자 화면 "추가 안내" 안에 **AI 제안 · 담당자 확인 필요** 칩이 붙은 카드로만 덧붙고, 규칙 초안의 기준·안내문은 바뀌지 않습니다. 인용이 원문에 없거나, 값이 규칙 후보와 다르거나, 허용 종류(`age`·`residence`·`issue_date`·`income`·`work_continuity`) 밖이면 버립니다. 오류·시간 초과·형식 오류·검증 실패는 모두 규칙 초안만 남깁니다.
+
+시연 전 확인(합성 공고문만 보내며 키·주소·응답 본문은 출력하지 않음, 기본 최대 9회 호출):
+
+```bash
+.venv/bin/python -m demo.backend.tools.probe_jbai_notice --all-modes
+```
