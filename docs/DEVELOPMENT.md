@@ -225,7 +225,7 @@ node --test src/forms/phone.test.ts src/pages/officer/bulk-actions.test.ts src/l
 
 ### JBAI 공고문 제안 시연
 
-기본은 꺼짐(`LLM_PROVIDER=none`)이며 꺼져 있으면 외부 호출이 없습니다. 2026-11-16 첫 실측(실제 호출 11회, `.trellis/tasks/11-16-jbai-schema-check/report.md`)에서는 검증을 통과한 제안이 공고문당 평균 0~0.5개였고, 버려진 이유는 거의 전부 값 불일치였습니다. 그래서 값 일치 규칙, 응답 해석, 시간 상한을 바꾸고 같은 날 다시 쟀습니다(`.trellis/tasks/11-16-jbai-llm-stabilize/report.md`).
+기본은 꺼짐(`LLM_PROVIDER=none`)이며 꺼져 있으면 외부 호출이 없습니다. 2026-11-16 첫 실측(실제 호출 11회, `.trellis/tasks/11-16-jbai-schema-check/report.md`)에서는 검증을 통과한 제안이 공고문당 평균 0~0.5개였고, 버려진 이유는 거의 전부 값 불일치였습니다. 그래서 값 일치 규칙, 응답 해석, 시간 상한을 바꾸고 같은 날 다시 쟀습니다(`.trellis/tasks/archive/2026-11/11-16-jbai-llm-stabilize/report.md`).
 
 재측정은 합성 공고문 3종을 `json_object` 방식으로 4회씩, 바꾸기 전 코드 12회와 바꾼 코드 12회입니다.
 
@@ -243,7 +243,7 @@ node --test src/forms/phone.test.ts src/pages/officer/bulk-actions.test.ts src/l
 - AI 안내문은 9회 모두 채택됐습니다. 2단으로 편집된 실제 공고문에서는 규칙 초안의 문장이 끊기고 제목이 비는데, AI 안내문은 지원 대상·지원 내용·모집 인원·신청 기간·신청 방법·문의처를 정리해 냈습니다.
 - 기준 제안은 하나도 붙지 않았습니다. 받은 제안 30건의 인용은 모두 원문과 일치했지만, 인용한 문장이 규칙 추출기에서 자동 규칙이 아닌 "담당자 확인" 후보였습니다(자동 후보는 3종에서 3개, 0개, 0개). "AI 제안"은 자동 후보에만 붙습니다.
 
-그래서 같은 날 담당자 확인 항목에 **AI 참고** 카드를 붙이는 동작을 더하고, 같은 PDF 3종으로 3회씩 다시 쟀습니다(`.trellis/tasks/11-17-ai-reference-suggestions/report.md`).
+그래서 같은 날 담당자 확인 항목에 **AI 참고** 카드를 붙이는 동작을 더하고, 같은 PDF 3종으로 3회씩 다시 쟀습니다(`.trellis/tasks/archive/2026-11/11-17-ai-reference-suggestions/report.md`).
 
 | 공고문 | 응답 시간 | AI 안내문 채택 | 받은 제안 | AI 참고 카드 | 참고가 된 종류 |
 |---|---|---|---|---|---|
