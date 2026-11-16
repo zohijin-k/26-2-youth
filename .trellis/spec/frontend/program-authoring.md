@@ -33,3 +33,17 @@ Program workspaces have application, settings and information tabs. Generic rows
 open the separate generic detail and the unchanged DocumentViewer. Bind check
 saves to the server fingerprint. Final selection remains disabled until server
 approval checks pass. Bulk hold/reject actions need a supplied reason.
+
+## Application list sorting and rejection
+
+Both application lists (built-in ApplicationList and GenericApplicationList) show
+the shared SortToggle: 중요도순 (`importance`, default), 최신순 (`latest`), 등록순
+(`submitted`). The built-in console keeps a non-default sort in the `sort` query
+parameter. Rows carry `check_count`; undecided rows with a count show "확인 N건".
+
+The 반려 action never decides in place. It opens RejectApplication at
+`.../review/<id>/reject` (built-in) or `.../applications/<id>/reject` (generic).
+Picked 확인 필요 reasons become `- ` lines in an editable applicant notice
+(`reject-notice.ts`); confirmation goes through OfficerConfirm and sends
+`notice` plus `memo` (internal memo, or the notice when empty). Bulk reject is
+unchanged and stores no notice.

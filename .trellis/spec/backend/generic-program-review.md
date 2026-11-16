@@ -29,3 +29,16 @@ and pass it to the unchanged viewer's image mode. Keep the original PDF URL and
 bytes intact. Scope the preview to the posting, submitted application and owned
 document (or its written archive); wrong scope returns 404 and missing session
 returns 401. This display adapter does not change a document verdict.
+
+## List sort and rejection notice
+
+`/api/officer/applications` accepts `sort` = importance | latest | submitted | score.
+Registration order (submitted_at, id) is the base and tie-breaker. `importance`
+sorts by `check_count` = non-PASS uploaded documents + missing required upload
+slots (decided rows count 0), computed by `_pending_reasons`, the same helper as
+the reasons endpoint, over all filtered rows before paging.
+
+Decision requests take an optional `notice` (≤2000). Only a reject stores it in
+`Review.reject_notice`; any other decision clears it. Applicant status responses
+expose `rejection: {notice, decided_at}` only when the application is decided
+and the decision is reject. `officer_memo` never reaches the applicant.
