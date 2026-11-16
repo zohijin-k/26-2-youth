@@ -187,6 +187,8 @@ node --test src/forms/phone.test.ts src/pages/officer/bulk-actions.test.ts src/l
 
 기본 공급자는 `none`입니다. 공고문 분석용 제안을 켜려면 기존 실행 설정의 `JBAI_BASE_URL`·`JBAI_API_KEY=<API 키>`와 함께 `LLM_PROVIDER=jbai`, `JBAI_TEXT_MODEL=MainModel`을 명시합니다. 연결 확인은 합성 요약 문장 한 번으로 `/open-api/v1/chat/completions`의 HTTP 200을 확인했습니다. 실제 strict JSON schema 호환성은 추가 호출하지 않았으며 가짜 공급자로 검증했습니다. 공개 공고문 글자와 부가 설명문만 전송하고, 신청자 정보와 서류 판독값은 전송하지 않습니다. 근거가 맞는 제안만 담당자 화면에 덧붙이며 판정은 기존 엔진과 담당자가 확정한 기준이 수행합니다. 공급자 실패나 인용 불일치 시 규칙 초안을 유지합니다. 기존 안내·사유 설명의 별도 옵션 `PROGRAM_LLM_PROVIDER`·`PROGRAM_LLM_ENABLED`·`JBAI_LLM_MODEL`도 호환됩니다.
 
+`JBAI_RESPONSE_FORMAT`(선택)은 JSON 요청 방식을 고릅니다: `json_schema`(기본, strict 스키마) · `json_object` · `prompt`(형식 지정 없이 "JSON만 출력" 지시). 그 방식이 오류·시간 초과(호출당 10초)·형식 오류로 끝나면 다음 방식(`json_schema`→`json_object`→`prompt`)으로 **한 번만** 다시 묻고, 그래도 안 되면 규칙 초안을 유지합니다. 인용·값·기준 종류 검증은 방식과 관계없이 같습니다. 2026-11-16 실측과 확인 도구는 아래 "JBAI 공고문 제안 시연"을 봅니다.
+
 ### 실행과 검증
 
 2026-11-15 합성 검증: 엔진 **1,267**, 백엔드 **1,645**, 프런트 단위 시험 **52** 통과, 시나리오 **18개 모듈 실패 0**, lint·빌드 청크 경고 0입니다. 기존 심사 상세 보호 파일은 변경하지 않았습니다.

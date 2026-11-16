@@ -11,13 +11,14 @@ kept in memory only and never printed, logged or written.
 
 Format modes are tried in order: ``json_schema`` (strict, the provider
 default) -> ``json_object`` -> ``prompt`` (no response_format, "JSON only"
-instruction). The first mode that answers HTTP 200 with schema-valid JSON is
+instruction), built by the provider's own ``format_body`` with its automatic
+fallback switched off so that each row measures exactly one mode. The first mode that answers HTTP 200 with schema-valid JSON is
 used for the timed runs. ``--all-modes`` probes every mode once.
 """
 from __future__ import annotations
 
 import argparse
-from copy import deepcopy
+from dataclasses import replace
 import json
 from pathlib import Path
 import socket
@@ -31,18 +32,14 @@ import pymupdf
 from ..llm_drafts import _http_transport
 from ..notice_analysis import analyze_notice
 from ..notice_llm import (
-    MAX_RESPONSE, RULE_TYPES, _canonical, _object_json, _quote_valid, _response,
-    configured_notice_provider, enrich_notice, notice_payload,
+    JSON_ONLY, MAX_RESPONSE, RESPONSE_FORMATS, RULE_TYPES, _canonical, _object_json, _quote_valid,
+    _response, configured_notice_provider, enrich_notice, format_body, notice_payload,
 )
 
 ROOT = Path(__file__).resolve().parents[3]
-MODES = ('json_schema', 'json_object', 'prompt')
+MODES = RESPONSE_FORMATS
 HARD_CALL_LIMIT = 15
-JSON_ONLY = (
-    '응답은 설명이나 코드 블록 없이 JSON 객체 하나만 출력하세요. 형식: '
-    '{"guidance": null 또는 {"text": 문자열, "page": 정수 또는 null, "quote": 문자열}, '
-    '"criteria": [{"type": 문자열, "values_json": 문자열, "page": 정수 또는 null, "quote": 문자열}]}'
-)
+apply_mode = format_body
 
 # The three synthetic public notices below are copied verbatim from existing
 # tests: A/B from tests/test_notice_analysis.py, C from tests/test_program_analysis.py.
@@ -71,22 +68,6 @@ def public_pdf(pages: list[list[str]]) -> bytes:
         return document.tobytes()
 
 
-def apply_mode(body: Mapping[str, Any], mode: str) -> dict[str, Any]:
-    """Rewrite only response_format and the system instruction; payload is untouched."""
-    if mode not in MODES:
-        raise ValueError('unknown mode')
-    result = deepcopy(dict(body))
-    if mode == 'json_schema':
-        return result
-    if mode == 'json_object':
-        result['response_format'] = {'type': 'json_object'}
-    else:
-        result.pop('response_format', None)
-    result['messages'][0] = {**result['messages'][0],
-                             'content': result['messages'][0]['content'] + ' ' + JSON_ONLY}
-    return result
-
-
 class BudgetExceeded(Exception):
     pass
 
@@ -96,7 +77,6 @@ class Recorder:
 
     def __init__(self, inner: Callable[..., Mapping[str, Any]], budget: int):
         self.inner, self.budget, self.calls = inner, budget, 0
-        self.mode = 'json_schema'
         self.last: dict[str, Any] = {}
 
     def __call__(self, url: str, headers: dict[str, str], body: dict[str, Any], timeout: float):
@@ -108,7 +88,7 @@ class Recorder:
         content = None
         started = time.perf_counter()
         try:
-            response = self.inner(url, headers, apply_mode(body, self.mode), timeout)
+            response = self.inner(url, headers, body, timeout)
             status = 200
             try:
                 content = response['choices'][0]['message']['content']
@@ -222,11 +202,12 @@ def _env(path: Path) -> dict[str, str]:
 
 def run_once(recorder: Recorder, provider: Any, notice: str, mode: str, phase: str, repeat: int,
              drafts: dict[str, dict[str, Any]]) -> dict[str, Any]:
-    recorder.mode = mode
     recorder.last = {}
     draft = drafts[notice]
     supplemental = NOTICES[notice][1]
-    result = enrich_notice(draft, supplemental, provider=provider)
+    # One mode per measurement: the provider's own format body, without its fallback.
+    pinned = replace(provider, environ={**provider.environ, 'JBAI_RESPONSE_FORMAT': mode}, fallback=False)
+    result = enrich_notice(draft, supplemental, provider=pinned)
     last = recorder.last or {'status': 'skipped', 'seconds': 0.0, 'content': None}
     content = last['content']
     parsed = _object_json(content) if type(content) is str else None

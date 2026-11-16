@@ -19,6 +19,16 @@ MAX_TEXT = 200_000
 MAX_SUPPLEMENTAL = 4_000
 MAX_RESPONSE = 32_000
 RULE_TYPES = ('age', 'residence', 'issue_date', 'income', 'work_continuity')
+# JBAI_RESPONSE_FORMAT selects how JSON is requested. A failed or unusable
+# answer falls back exactly once to the next mode; local validation in
+# enrich_notice is identical for every mode.
+RESPONSE_FORMATS = ('json_schema', 'json_object', 'prompt')
+FORMAT_FALLBACK = {'json_schema': 'json_object', 'json_object': 'prompt', 'prompt': None}
+JSON_ONLY = (
+    '응답은 설명이나 코드 블록 없이 JSON 객체 하나만 출력하세요. 형식: '
+    '{"guidance": null 또는 {"text": 문자열, "page": 정수 또는 null, "quote": 문자열}, '
+    '"criteria": [{"type": 문자열, "values_json": 문자열, "page": 정수 또는 null, "quote": 문자열}]}'
+)
 
 # values_json deliberately carries a serialized object. The provider may suggest
 # only exact existing extractor values; the local equality check below is the
@@ -73,12 +83,34 @@ def notice_payload(raw: Mapping[str, Any], supplemental: Any = '') -> dict[str, 
             'supplemental': supplemental[:MAX_SUPPLEMENTAL] if type(supplemental) is str else ''}
 
 
+def response_format(environ: Mapping[str, str]) -> str:
+    value = environ.get('JBAI_RESPONSE_FORMAT', '').strip().lower()
+    return value if value in RESPONSE_FORMATS else 'json_schema'
+
+
+def format_body(body: Mapping[str, Any], mode: str) -> dict[str, Any]:
+    """Change only response_format and the system instruction; the public payload is untouched."""
+    if mode not in RESPONSE_FORMATS:
+        raise ValueError('unknown response format')
+    result = deepcopy(dict(body))
+    if mode == 'json_schema':
+        return result
+    if mode == 'json_object':
+        result['response_format'] = {'type': 'json_object'}
+    else:
+        result.pop('response_format', None)
+    result['messages'][0] = {**result['messages'][0],
+                             'content': result['messages'][0]['content'] + ' ' + JSON_ONLY}
+    return result
+
+
 @dataclass(frozen=True, repr=False)
 class JbaiNoticeProvider:
     base_url: str
     environ: Mapping[str, str]
     transport: Any = _http_transport
     name: str = 'jbai'
+    fallback: bool = True
 
     def generate(self, purpose: str, payload: Mapping[str, Any]) -> str | None:
         if purpose != 'notice_analysis':
@@ -107,15 +139,23 @@ class JbaiNoticeProvider:
                 {'role': 'user', 'content': json.dumps(safe, ensure_ascii=False)},
             ],
         }
-        try:
-            response = self.transport(self.base_url + '/chat/completions',
-                {'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'}, body, 10.0)
-            content = response['choices'][0]['message']['content']
-            return content if type(content) is str and 0 < len(content) <= MAX_RESPONSE else None
-        except Exception:
-            # Network error objects may contain keys, URLs, prompts or bodies.
-            # Return the existing local draft without logging/interpolating them.
-            return None
+        mode = response_format(self.environ)
+        modes = [mode] + ([FORMAT_FALLBACK[mode]] if self.fallback and FORMAT_FALLBACK[mode] else [])
+        for current in modes:
+            try:
+                response = self.transport(self.base_url + '/chat/completions',
+                    {'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'},
+                    format_body(body, current), 10.0)
+                content = response['choices'][0]['message']['content']
+            except Exception:
+                # Network error objects may contain keys, URLs, prompts or bodies.
+                # Try the single fallback mode, never logging/interpolating them.
+                continue
+            # A shape check only chooses whether to fall back; enrich_notice
+            # still applies the full local validation to whatever is returned.
+            if type(content) is str and 0 < len(content) <= MAX_RESPONSE and _response(content) is not None:
+                return content
+        return None
 
     def __repr__(self) -> str:
         return "JbaiNoticeProvider(name='jbai')"
