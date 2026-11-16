@@ -1,0 +1,26 @@
+llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=8.0
+llm_result purpose=notice_analysis guidance=accepted criteria_received=4 criteria_accepted=4
+llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=3.6
+llm_result purpose=notice_analysis guidance=accepted criteria_received=4 criteria_accepted=4
+llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=5.8
+llm_result purpose=notice_analysis guidance=accepted criteria_received=4 criteria_accepted=4
+llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=5.8
+llm_result purpose=notice_analysis guidance=accepted criteria_received=4 criteria_accepted=4
+llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=7.2
+llm_result purpose=notice_analysis guidance=accepted criteria_received=2 criteria_accepted=2
+llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=6.8
+llm_result purpose=notice_analysis guidance=accepted criteria_received=3 criteria_accepted=2
+llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=6.7
+llm_result purpose=notice_analysis guidance=accepted criteria_received=3 criteria_accepted=2
+llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=3.8
+llm_result purpose=notice_analysis guidance=none criteria_received=2 criteria_accepted=2
+llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=3.8
+llm_result purpose=notice_analysis guidance=accepted criteria_received=1 criteria_accepted=1
+llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=4.6
+llm_result purpose=notice_analysis guidance=accepted criteria_received=1 criteria_accepted=1
+llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=6.7
+llm_result purpose=notice_analysis guidance=accepted criteria_received=2 criteria_accepted=1
+llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=2.8
+llm_result purpose=notice_analysis guidance=accepted criteria_received=1 criteria_accepted=1
+llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=6.3
+llm_result purpose=notice_analysis guidance=accepted criteria_received=4 criteria_accepted=4

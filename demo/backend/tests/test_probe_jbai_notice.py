@@ -58,7 +58,7 @@ def test_modes_fall_back_in_order_and_stop_at_first_schema_valid_mode():
         if kind == 'json_schema':
             return HTTPError('https://' + HOST, 400, 'bad request', Message(), None)
         if kind == 'json_object':
-            return reply('```json\n' + valid_body() + '\n```')
+            return reply('합성 설명 문장일 뿐 JSON 이 아님')
         return reply(valid_body())
     transport = FakeTransport(answer)
     report = probe.probe(environ=environ(), transport=transport, max_calls=9)
@@ -73,6 +73,19 @@ def test_modes_fall_back_in_order_and_stop_at_first_schema_valid_mode():
     assert all(probe.JSON_ONLY in body['messages'][0]['content'] for body in transport.bodies[1:])
     # The user payload is the same public projection in every mode.
     assert len({body['messages'][1]['content'] for body in transport.bodies[:3]}) == 1
+
+
+def test_fenced_valid_answer_is_readable_and_chosen():
+    def answer(body):
+        if body.get('response_format', {}).get('type') == 'json_schema':
+            return HTTPError('https://' + HOST, 400, 'bad request', Message(), None)
+        return reply('```json\n' + valid_body() + '\n```')
+    report = probe.probe(environ=environ(), transport=FakeTransport(answer), max_calls=9)
+    modes = [row for row in report['rows'] if row['phase'] == 'mode']
+    assert [(row['mode'], row['status'], row['json_ok'], row['schema_ok']) for row in modes] == [
+        ('json_schema', 400, False, False), ('json_object', 200, True, True)]
+    assert report['mode'] == 'json_object'
+    assert all(row['passed'] == 2 and row['screen_violation'] == 0 for row in report['rows'] if row['notice'] == 'A' and row['status'] == 200)
 
 
 def test_working_json_schema_skips_other_modes_unless_all_modes_requested():
@@ -108,7 +121,9 @@ def test_discard_reasons_are_classified_and_only_verified_items_pass():
         ]}, ensure_ascii=False)
     result = probe.enrich_notice(draft, '합성 공개 부가 설명', provider=_Fixed(content))
     counts = probe.classify(content, draft, '합성 공개 부가 설명', result)
-    assert counts == {'received': 5, 'passed': 1, 'quote': 1, 'value': 3, 'kind': 0, 'json': 0,
+    # The age proposal and the residence proposal ('전북' is the extractor's own alias of the
+    # candidate province) pass; the promise guidance and the non-JSON value are value failures.
+    assert counts == {'received': 5, 'passed': 2, 'quote': 1, 'value': 2, 'kind': 0, 'json': 0,
                       'other': 0, 'screen_violation': 0}
 
     kind = json.dumps({'guidance': None, 'criteria': [

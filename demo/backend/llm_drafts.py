@@ -10,8 +10,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 import json
+import logging
 import os
+import socket
+import time
 from typing import Any, Mapping, Protocol, Sequence
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
@@ -19,6 +23,42 @@ from .rules.doc_types import DocType
 
 MAX_NOTICE_CHARACTERS = 16_000
 MAX_DRAFT_CHARACTERS = 4_000
+
+# Provider calls are recorded with this fixed vocabulary only. A log line holds
+# these words, a static purpose/mode name and numbers; never exception text,
+# URLs, model names, keys, prompts or response bodies.
+OUTCOMES = ('ok', 'timeout', 'http_429', 'http_4xx', 'http_5xx', 'network', 'bad_transport',
+            'no_content', 'truncated', 'too_large', 'bad_shape', 'budget_exhausted')
+CALL_PURPOSES = ('notice_analysis', 'guidance', 'review')
+CALL_MODES = ('json_schema', 'json_object', 'prompt', 'text')
+_log = logging.getLogger('demo.backend.llm')
+
+
+def failure_outcome(error: BaseException) -> str:
+    """Name a transport failure from its exception type and status code alone."""
+    if isinstance(error, HTTPError):
+        code = error.code if type(error.code) is int else 0
+        if code == 429:
+            return 'http_429'
+        return 'http_5xx' if code >= 500 else 'http_4xx' if code >= 400 else 'bad_transport'
+    if isinstance(error, (TimeoutError, socket.timeout)):
+        return 'timeout'
+    if isinstance(error, URLError):
+        return 'timeout' if isinstance(error.reason, (TimeoutError, socket.timeout)) else 'network'
+    if isinstance(error, OSError):
+        return 'network'
+    if isinstance(error, (KeyError, IndexError, TypeError)):
+        return 'no_content'
+    return 'bad_transport'
+
+
+def log_call(purpose: str, mode: str, attempt: int, outcome: str, seconds: float) -> None:
+    """One line per provider call. Failures use WARNING so they show without logging setup."""
+    _log.log(logging.INFO if outcome == 'ok' else logging.WARNING,
+             'llm_call purpose=%s mode=%s attempt=%d outcome=%s seconds=%.1f',
+             purpose if purpose in CALL_PURPOSES else 'other', mode if mode in CALL_MODES else 'other',
+             attempt if type(attempt) is int else 0, outcome if outcome in OUTCOMES else 'bad_transport',
+             seconds if type(seconds) in (int, float) and seconds > 0 else 0.0)
 
 # Values are reviewed static rule descriptions, never findings' interpolated
 # messages, extracted fields, stored evidence or applicant-authored field labels.
@@ -155,15 +195,20 @@ class JbaiProvider:
         model = self.environ.get("JBAI_LLM_MODEL", "").strip()
         if model:
             body["model"] = model
+        started = time.monotonic()
         try:
             response = self.transport(self.base_url + "/chat/completions",
                                       {"Authorization": "Bearer " + key, "Content-Type": "application/json"}, body, 10.0)
             text = response["choices"][0]["message"]["content"]
-            return text.strip()[:MAX_DRAFT_CHARACTERS] if type(text) is str and text.strip() else None
-        except Exception:
+        except Exception as error:
             # Never log transport exceptions: their repr may contain credentials,
-            # provider response bodies or prompts. A static fallback is sufficient.
+            # provider response bodies or prompts. Only the failure kind is
+            # recorded; a static fallback is sufficient.
+            log_call(purpose, 'text', 1, failure_outcome(error), time.monotonic() - started)
             return None
+        usable = type(text) is str and bool(text.strip())
+        log_call(purpose, 'text', 1, 'ok' if usable else 'no_content', time.monotonic() - started)
+        return text.strip()[:MAX_DRAFT_CHARACTERS] if usable else None
 
     def __repr__(self) -> str:
         return "JbaiProvider(name='jbai')"
