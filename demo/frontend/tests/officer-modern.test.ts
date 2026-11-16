@@ -29,13 +29,20 @@ test('unconfirmed or unsaved templates cannot start publication', () => {
   assert.equal(canStartPublication({ pendingCount: 0, formsConfirmed: true, busy: true }), false)
 })
 test('pending evidence shows one-line preview while confirmed evidence starts collapsed', () => {
-  assert.deepEqual(evidencePresentation({ needs_review: true, confidence: 0.8, quote: '공고문 근거' }), { showPreview: true, expanded: false, chip: null })
-  assert.deepEqual(evidencePresentation({ needs_review: false, confidence: 0.8, quote: '공고문 근거' }), { showPreview: false, expanded: false, chip: null })
+  assert.deepEqual(evidencePresentation({ needs_review: true, confidence: 0.8, quote: '공고문 근거' }), { showPreview: true, expanded: false, chip: null, hasSource: true })
+  assert.deepEqual(evidencePresentation({ needs_review: false, confidence: 0.8, quote: '공고문 근거' }), { showPreview: false, expanded: false, chip: null, hasSource: true })
 })
-test('weak and manual evidence have labels without exposing confidence numbers', () => {
-  assert.equal(evidencePresentation({ needs_review: true, source: 'manual', confidence: 0 }).chip, '근거 없음·직접 입력')
-  assert.equal(evidencePresentation({ needs_review: true, confidence: 0.59 }).chip, '근거 약함')
-  assert.equal(evidencePresentation({ needs_review: true, confidence: 0.6 }).chip, null)
+test('weak evidence is labelled without exposing confidence numbers', () => {
+  assert.equal(evidencePresentation({ needs_review: true, confidence: 0.59, quote: '공고문 근거' }).chip, '근거 약함')
+  assert.equal(evidencePresentation({ needs_review: true, confidence: 0.6, quote: '공고문 근거' }).chip, null)
+})
+test('officer-entered items show no chip and no source toggle', () => {
+  assert.deepEqual(evidencePresentation({ needs_review: true, source: 'manual', confidence: 0 }), { showPreview: false, expanded: false, chip: null, hasSource: false })
+  assert.equal(evidencePresentation({ needs_review: true, source: 'manual', confidence: 0, quote: '' }).hasSource, false)
+})
+test('provider-written guidance is marked as an AI draft until confirmed', () => {
+  assert.equal(evidencePresentation({ needs_review: true, confidence: 0, quote: '1. 모집개요', ai_drafted: true }).chip, 'AI 작성 · 공고문과 대조 필요')
+  assert.equal(evidencePresentation({ needs_review: false, confidence: 0, quote: '1. 모집개요', ai_drafted: true }).chip, 'AI 작성')
 })
 test('menu keyboard closes on Escape and cycles arrows and trapped Tab', () => {
   assert.deepEqual(menuKeyResult('Escape', 1, 3), { kind: 'close' })

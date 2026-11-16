@@ -42,18 +42,21 @@ def provider(transport, mode=None):
 
 
 @pytest.mark.parametrize(('value', 'expected'), [
-    (None, 'json_schema'), ('', 'json_schema'), ('json_schema', 'json_schema'), ('JSON_OBJECT', 'json_object'),
-    (' prompt ', 'prompt'), ('xml', 'json_schema'),
+    (None, 'json_object'), ('', 'json_object'), ('json_schema', 'json_schema'), ('JSON_OBJECT', 'json_object'),
+    (' prompt ', 'prompt'), ('xml', 'json_object'),
 ])
-def test_response_format_setting_defaults_to_strict_json_schema(value, expected):
+def test_response_format_setting_defaults_to_json_object(value, expected):
     values = env() if value is None else env(JBAI_RESPONSE_FORMAT=value)
     assert response_format(values) == expected
 
 
-def test_default_still_sends_strict_schema_first_and_provider_default_stays_none():
+def test_default_sends_json_object_first_and_provider_default_stays_none():
     transport = Transport()
     assert enrich_notice(draft(), provider=provider(transport))['suggestions']
-    assert [mode for mode, _, _ in transport.calls] == ['json_schema']
+    assert [mode for mode, _, _ in transport.calls] == ['json_object']
+    assert transport.calls[0][1]['response_format'] == {'type': 'json_object'}
+    transport = Transport()
+    enrich_notice(draft(), provider=provider(transport, 'json_schema'))
     assert transport.calls[0][1]['response_format'] == {'type': 'json_schema', 'json_schema': NOTICE_SCHEMA}
     values = env()
     del values['LLM_PROVIDER']
@@ -65,7 +68,7 @@ def test_each_mode_builds_its_request_with_the_same_public_payload(mode):
     transport = Transport()
     enrich_notice(draft(), '합성 공개 설명', provider=provider(transport, mode))
     (sent, body, timeout), = transport.calls
-    assert sent == mode and timeout == 10.0
+    assert sent == mode and timeout == 30.0
     assert (JSON_ONLY in body['messages'][0]['content']) is (mode != 'json_schema')
     assert ('response_format' in body) is (mode != 'prompt')
     assert json.loads(body['messages'][1]['content']) == {'notice_pages': [{'page': 1, 'text': PUBLIC}],
@@ -90,7 +93,7 @@ def test_failed_or_ignored_format_falls_back_exactly_once(primary, second, failu
 def test_fallback_happens_only_once_and_then_rules_are_kept(caplog, capsys):
     transport = Transport(json_schema=TimeoutError(KEY), json_object=TimeoutError(KEY), prompt=reply(response()))
     value = draft()
-    assert enrich_notice(value, provider=provider(transport)) == value
+    assert enrich_notice(value, provider=provider(transport, 'json_schema')) == value
     assert [mode for mode, _, _ in transport.calls] == ['json_schema', 'json_object']
     transport = Transport(prompt=TimeoutError(KEY))
     assert enrich_notice(value, provider=provider(transport, 'prompt')) == value

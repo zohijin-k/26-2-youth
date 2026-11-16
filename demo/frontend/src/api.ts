@@ -1146,7 +1146,7 @@ export const publishPosting = (id: number) =>
 export const closePosting = (id: number) =>
   writePosting<OfficerPosting>(`/api/officer/postings/${id}/close`, { method: 'POST' })
 
-/** 작성 중인 사업만 지울 수 있다. 올린 PDF도 함께 지워진다. */
+/** 잘못 올린 사업을 지운다(게시 중·마감 포함). 신청서가 있는 사업과 기본 사업은 서버가 거절한다. 올린 PDF도 함께 지워진다. */
 export const deletePosting = (id: number) =>
   writePosting<void>(`/api/officer/postings/${id}`, { method: 'DELETE' })
 

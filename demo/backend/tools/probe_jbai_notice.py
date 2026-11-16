@@ -33,7 +33,7 @@ from ..llm_drafts import _http_transport
 from ..notice_analysis import analyze_notice
 from ..notice_llm import (
     JSON_ONLY, MAX_RESPONSE, RESPONSE_FORMATS, RULE_TYPES, _canonical, _object_json, _quote_valid,
-    _response, configured_notice_provider, enrich_notice, format_body, notice_payload,
+    _response, configured_notice_provider, enrich_notice, format_body, guidance_text, notice_payload,
 )
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -118,7 +118,8 @@ def classify(content: Any, draft: Mapping[str, Any], supplemental: str,
     (values/text do not match a local candidate), kind (type outside
     RULE_TYPES) and json (unparseable response or wrong shape).
     """
-    counts = {'received': 0, 'passed': len(result.get('suggestions', [])),
+    drafted = isinstance(result.get('guidance'), Mapping) and result['guidance'].get('ai_drafted') is True
+    counts = {'received': 0, 'passed': len(result.get('suggestions', [])) + int(drafted),
               'quote': 0, 'value': 0, 'kind': 0, 'json': 0, 'other': 0, 'screen_violation': 0}
     payload = notice_payload(draft, supplemental)
     counts['screen_violation'] = screen_violations(draft, payload, result)
@@ -134,7 +135,7 @@ def classify(content: Any, draft: Mapping[str, Any], supplemental: str,
             reasons.append('json')
         elif not _quote_valid(guide['page'], guide['quote'], payload):
             reasons.append('quote')
-        elif not (4 <= len(guide['text'].strip()) <= 4000 and guide['text'].strip() in guide['quote']):
+        elif guidance_text(guide, payload) is None:
             reasons.append('value')
         else:
             reasons.append(None)
@@ -178,8 +179,16 @@ def _value_matches(item: Mapping[str, Any], draft: Mapping[str, Any]) -> bool:
 
 
 def screen_violations(draft: Mapping[str, Any], payload: Mapping[str, Any], result: Mapping[str, Any]) -> int:
-    """Accepted suggestions that would reach the screen without passing re-validation."""
-    bad = int({key: value for key, value in result.items() if key != 'suggestions'} != dict(draft))
+    """Accepted suggestions or drafted guidance that would reach the screen without passing re-validation."""
+    ignored = {'suggestions', 'guidance'}
+    bad = int({key: value for key, value in result.items() if key not in ignored}
+              != {key: value for key, value in draft.items() if key not in ignored})
+    guide = result.get('guidance')
+    if guide != draft.get('guidance'):
+        ok = (isinstance(guide, Mapping) and guide.get('ai_drafted') is True and guide.get('needs_review') is True
+              and guidance_text({'text': guide.get('value'), 'page': guide.get('page'), 'quote': guide.get('quote')},
+                                payload) == guide.get('value'))
+        bad += not ok
     candidates = {row.get('id'): row for row in draft.get('criteria', []) if isinstance(row, Mapping)}
     for row in result.get('suggestions', []):
         ok = (row.get('needs_review') is True and row.get('confidence') == 0.0

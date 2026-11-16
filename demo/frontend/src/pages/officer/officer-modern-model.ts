@@ -27,11 +27,13 @@ export function canStartPublication(state: PublishReadiness): boolean {
   return !state.busy && state.pendingCount === 0 && state.formsConfirmed && !state.layoutDirty
 }
 
-export function evidencePresentation(item: { needs_review: boolean; source?: string; confidence: number; quote?: string }): {
-  showPreview: boolean; expanded: boolean; chip: string | null
+/** Officer-entered items have no source, so they show neither a chip nor a source toggle. */
+export function evidencePresentation(item: { needs_review: boolean; source?: string; confidence: number; quote?: string; ai_drafted?: boolean }): {
+  showPreview: boolean; expanded: boolean; chip: string | null; hasSource: boolean
 } {
-  return { showPreview: item.needs_review && !!item.quote, expanded: false,
-    chip: item.source === 'manual' ? '근거 없음·직접 입력' : item.confidence < 0.6 ? '근거 약함' : null }
+  const hasSource = item.source !== 'manual' && !!item.quote
+  return { showPreview: item.needs_review && !!item.quote, expanded: false, hasSource,
+    chip: item.ai_drafted ? (item.needs_review ? 'AI 작성 · 공고문과 대조 필요' : 'AI 작성') : !hasSource ? null : item.confidence < 0.6 ? '근거 약함' : null }
 }
 
 export type MenuKeyResult = { kind: 'close' } | { kind: 'focus'; index: number } | { kind: 'none' }
