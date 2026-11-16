@@ -1,0 +1,275 @@
+{
+  "code": "feat/jbai-llm-stabilize 6a0072f",
+  "date": "2026-11-17",
+  "mode": "json_object",
+  "calls": 9,
+  "note": "three public notices, three calls each; one more call (not listed) was made to read the accepted guidance text of the first notice",
+  "notices": {
+    "두배적금": "2026년 전북청년 함께 두배적금 참여자 모집 공고 (8쪽, 28,814자, 한글 원본을 PDF로 저장)",
+    "직무인턴": "전북창조경제혁신센터 공고 제2026-55호 (8쪽, 8,336자)",
+    "청년월세": "전주시 공고 제2026-812호 (6쪽, 6,743자)"
+  },
+  "rows": [
+    {
+      "notice": "두배적금",
+      "repeat": 1,
+      "status": 200,
+      "seconds": 15.04,
+      "automatic_candidates": 3,
+      "log": [
+        "llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=15.0",
+        "llm_result purpose=notice_analysis guidance=accepted criteria_received=4 criteria_accepted=0"
+      ],
+      "received": 5,
+      "passed": 1,
+      "quote": 0,
+      "value": 4,
+      "kind": 0,
+      "json": 0,
+      "other": 0,
+      "screen_violation": 0,
+      "guidance_state": "accepted",
+      "criteria_received": 4,
+      "criteria_accepted": 0,
+      "guidance_chars": 380,
+      "proposal_reasons": {
+        "residence:체크리스트 후보의 문장(자동 규칙 아님)": 1,
+        "age:체크리스트 후보의 문장(자동 규칙 아님)": 1,
+        "income:체크리스트 후보의 문장(자동 규칙 아님)": 1,
+        "work_continuity:추출기 후보 없는 문장": 1
+      },
+      "guidance_reason": "accepted"
+    },
+    {
+      "notice": "두배적금",
+      "repeat": 2,
+      "status": 200,
+      "seconds": 21.6,
+      "automatic_candidates": 3,
+      "log": [
+        "llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=21.6",
+        "llm_result purpose=notice_analysis guidance=accepted criteria_received=5 criteria_accepted=0"
+      ],
+      "received": 6,
+      "passed": 1,
+      "quote": 0,
+      "value": 5,
+      "kind": 0,
+      "json": 0,
+      "other": 0,
+      "screen_violation": 0,
+      "guidance_state": "accepted",
+      "criteria_received": 5,
+      "criteria_accepted": 0,
+      "guidance_chars": 408,
+      "proposal_reasons": {
+        "age:체크리스트 후보의 문장(자동 규칙 아님)": 1,
+        "residence:체크리스트 후보의 문장(자동 규칙 아님)": 1,
+        "issue_date:체크리스트 후보의 문장(자동 규칙 아님)": 1,
+        "income:체크리스트 후보의 문장(자동 규칙 아님)": 1,
+        "work_continuity:추출기 후보 없는 문장": 1
+      },
+      "guidance_reason": "accepted"
+    },
+    {
+      "notice": "두배적금",
+      "repeat": 3,
+      "status": 200,
+      "seconds": 14.49,
+      "automatic_candidates": 3,
+      "log": [
+        "llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=14.5",
+        "llm_result purpose=notice_analysis guidance=accepted criteria_received=4 criteria_accepted=0"
+      ],
+      "received": 5,
+      "passed": 1,
+      "quote": 0,
+      "value": 4,
+      "kind": 0,
+      "json": 0,
+      "other": 0,
+      "screen_violation": 0,
+      "guidance_state": "accepted",
+      "criteria_received": 4,
+      "criteria_accepted": 0,
+      "guidance_chars": 352,
+      "proposal_reasons": {
+        "age:체크리스트 후보의 문장(자동 규칙 아님)": 1,
+        "residence:체크리스트 후보의 문장(자동 규칙 아님)": 1,
+        "income:체크리스트 후보의 문장(자동 규칙 아님)": 1,
+        "work_continuity:추출기 후보 없는 문장": 1
+      },
+      "guidance_reason": "accepted"
+    },
+    {
+      "notice": "직무인턴",
+      "repeat": 1,
+      "status": 200,
+      "seconds": 13.58,
+      "automatic_candidates": 0,
+      "log": [
+        "llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=13.6",
+        "llm_result purpose=notice_analysis guidance=accepted criteria_received=2 criteria_accepted=0"
+      ],
+      "received": 3,
+      "passed": 1,
+      "quote": 0,
+      "value": 2,
+      "kind": 0,
+      "json": 0,
+      "other": 0,
+      "screen_violation": 0,
+      "guidance_state": "accepted",
+      "criteria_received": 2,
+      "criteria_accepted": 0,
+      "guidance_chars": 329,
+      "proposal_reasons": {
+        "age:체크리스트 후보의 문장(자동 규칙 아님)": 1,
+        "residence:체크리스트 후보의 문장(자동 규칙 아님)": 1
+      },
+      "guidance_reason": "accepted"
+    },
+    {
+      "notice": "직무인턴",
+      "repeat": 2,
+      "status": 200,
+      "seconds": 7.64,
+      "automatic_candidates": 0,
+      "log": [
+        "llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=7.6",
+        "llm_result purpose=notice_analysis guidance=accepted criteria_received=2 criteria_accepted=0"
+      ],
+      "received": 3,
+      "passed": 1,
+      "quote": 0,
+      "value": 2,
+      "kind": 0,
+      "json": 0,
+      "other": 0,
+      "screen_violation": 0,
+      "guidance_state": "accepted",
+      "criteria_received": 2,
+      "criteria_accepted": 0,
+      "guidance_chars": 567,
+      "proposal_reasons": {
+        "age:체크리스트 후보의 문장(자동 규칙 아님)": 1,
+        "residence:체크리스트 후보의 문장(자동 규칙 아님)": 1
+      },
+      "guidance_reason": "accepted"
+    },
+    {
+      "notice": "직무인턴",
+      "repeat": 3,
+      "status": 200,
+      "seconds": 7.97,
+      "automatic_candidates": 0,
+      "log": [
+        "llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=8.0",
+        "llm_result purpose=notice_analysis guidance=accepted criteria_received=2 criteria_accepted=0"
+      ],
+      "received": 3,
+      "passed": 1,
+      "quote": 0,
+      "value": 2,
+      "kind": 0,
+      "json": 0,
+      "other": 0,
+      "screen_violation": 0,
+      "guidance_state": "accepted",
+      "criteria_received": 2,
+      "criteria_accepted": 0,
+      "guidance_chars": 551,
+      "proposal_reasons": {
+        "age:체크리스트 후보의 문장(자동 규칙 아님)": 1,
+        "residence:체크리스트 후보의 문장(자동 규칙 아님)": 1
+      },
+      "guidance_reason": "accepted"
+    },
+    {
+      "notice": "청년월세",
+      "repeat": 1,
+      "status": 200,
+      "seconds": 15.23,
+      "automatic_candidates": 0,
+      "log": [
+        "llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=15.2",
+        "llm_result purpose=notice_analysis guidance=accepted criteria_received=3 criteria_accepted=0"
+      ],
+      "received": 4,
+      "passed": 1,
+      "quote": 0,
+      "value": 3,
+      "kind": 0,
+      "json": 0,
+      "other": 0,
+      "screen_violation": 0,
+      "guidance_state": "accepted",
+      "criteria_received": 3,
+      "criteria_accepted": 0,
+      "guidance_chars": 486,
+      "proposal_reasons": {
+        "age:체크리스트 후보의 문장(자동 규칙 아님)": 1,
+        "income:체크리스트 후보의 문장(자동 규칙 아님)": 2
+      },
+      "guidance_reason": "accepted"
+    },
+    {
+      "notice": "청년월세",
+      "repeat": 2,
+      "status": 200,
+      "seconds": 13.82,
+      "automatic_candidates": 0,
+      "log": [
+        "llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=13.8",
+        "llm_result purpose=notice_analysis guidance=accepted criteria_received=4 criteria_accepted=0"
+      ],
+      "received": 5,
+      "passed": 1,
+      "quote": 0,
+      "value": 4,
+      "kind": 0,
+      "json": 0,
+      "other": 0,
+      "screen_violation": 0,
+      "guidance_state": "accepted",
+      "criteria_received": 4,
+      "criteria_accepted": 0,
+      "guidance_chars": 428,
+      "proposal_reasons": {
+        "age:체크리스트 후보의 문장(자동 규칙 아님)": 1,
+        "residence:체크리스트 후보의 문장(자동 규칙 아님)": 1,
+        "income:체크리스트 후보의 문장(자동 규칙 아님)": 2
+      },
+      "guidance_reason": "accepted"
+    },
+    {
+      "notice": "청년월세",
+      "repeat": 3,
+      "status": 200,
+      "seconds": 12.81,
+      "automatic_candidates": 0,
+      "log": [
+        "llm_call purpose=notice_analysis mode=json_object attempt=1 outcome=ok seconds=12.8",
+        "llm_result purpose=notice_analysis guidance=accepted criteria_received=4 criteria_accepted=0"
+      ],
+      "received": 5,
+      "passed": 1,
+      "quote": 0,
+      "value": 4,
+      "kind": 0,
+      "json": 0,
+      "other": 0,
+      "screen_violation": 0,
+      "guidance_state": "accepted",
+      "criteria_received": 4,
+      "criteria_accepted": 0,
+      "guidance_chars": 475,
+      "proposal_reasons": {
+        "age:체크리스트 후보의 문장(자동 규칙 아님)": 1,
+        "residence:체크리스트 후보의 문장(자동 규칙 아님)": 1,
+        "income:체크리스트 후보의 문장(자동 규칙 아님)": 2
+      },
+      "guidance_reason": "accepted"
+    }
+  ]
+}
