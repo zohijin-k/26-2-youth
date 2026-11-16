@@ -913,6 +913,17 @@ def status(application_id: int) -> dict[str, Any]:
         "documents": [document_dict(d) for d in documents],
         "consents": consents,
         "call_center": program.call_center,
+        "rejection": rejection_of(app, review),
+    }
+
+
+def rejection_of(app: Application, review: Review | None) -> dict[str, Any] | None:
+    """반려로 최종 처리된 건의 신청자 안내. 담당자 메모는 싣지 않는다."""
+    if app.status != STATUS_DECIDED or review is None or review.officer_decision != "reject":
+        return None
+    return {
+        "notice": review.reject_notice or "",
+        "decided_at": review.decided_at.isoformat(timespec="seconds") if review.decided_at else None,
     }
 
 

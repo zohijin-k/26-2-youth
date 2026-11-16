@@ -7,7 +7,7 @@ import { officerDestination, officerLabel } from './officer-modern-model.ts'
 import './generic-review.css'
 import './program-modern-workspace.css'
 
-export default function GenericReviewDetail({ postingId, applicationId, onBack }: { postingId: number; applicationId: number; onBack: () => void }) {
+export default function GenericReviewDetail({ postingId, applicationId, onBack, onReject }: { postingId: number; applicationId: number; onBack: () => void; onReject: () => void }) {
   const [data, setData] = useState<GenericReviewData | null>(null)
   const [active, setActive] = useState<number | null>(null)
   const [error, setError] = useState('')
@@ -72,9 +72,9 @@ export default function GenericReviewDetail({ postingId, applicationId, onBack }
             </section>
           })}
         </div>
-        <div className="om-review__process"><label htmlFor="generic-review-memo">처리 사유 <span className="om-subtle">(보류·반려 시 필수)</span></label><textarea id="generic-review-memo" maxLength={2000} value={memo} disabled={busy || data.status === 'decided'} onChange={(event) => setMemo(event.target.value)} />
+        <div className="om-review__process"><label htmlFor="generic-review-memo">처리 사유 <span className="om-subtle">(보류 시 필수 · 반려는 다음 화면에서 씁니다)</span></label><textarea id="generic-review-memo" maxLength={2000} value={memo} disabled={busy || data.status === 'decided'} onChange={(event) => setMemo(event.target.value)} />
           {!!data.approval_blockers.length && <details className="om-review__blockers"><summary>선정 전 남은 확인 {data.approval_blockers.length}개</summary><ul>{data.approval_blockers.map((item) => <li key={item}>{item}</li>)}</ul></details>}
-          <div className="generic-review__actions"><button type="button" className="btn btn--primary" disabled={busy || !data.can_approve || data.status === 'decided'} onClick={() => decide('approve')}>최종 선정</button><button type="button" className="btn" disabled={busy || !memo.trim() || data.status === 'decided'} onClick={() => decide('hold')}>보류</button><button type="button" className="btn" disabled={busy || !memo.trim() || data.status === 'decided'} onClick={() => decide('reject')}>반려</button></div>
+          <div className="generic-review__actions"><button type="button" className="btn btn--primary" disabled={busy || !data.can_approve || data.status === 'decided'} onClick={() => decide('approve')}>최종 선정</button><button type="button" className="btn" disabled={busy || !memo.trim() || data.status === 'decided'} onClick={() => decide('hold')}>보류</button><button type="button" className="btn" disabled={busy || data.status === 'decided'} onClick={onReject}>반려</button></div>
         </div>
       </aside></div>
     </>}

@@ -168,7 +168,7 @@ def decide(posting_id: int, application_id: int, body: officer.DecisionRequest) 
     _load(posting_id, application_id)
     role = _role(body.role)
     officer._check_action(role, body.decision)
-    officer._apply_decision(application_id, role, body.decision, body.memo)
+    officer._apply_decision(application_id, role, body.decision, body.memo, body.notice)
     return detail(posting_id, application_id, body.role)
 
 

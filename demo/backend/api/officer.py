@@ -20,7 +20,7 @@ from datetime import date, datetime
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlmodel import select
 from engine_v2.pipeline.privacy import mask_data
 
@@ -232,6 +232,14 @@ QUEUES = (QUEUE_NEEDS_CHECK, QUEUE_PASS, QUEUE_DONE)
 
 #: 검색어 길이 상한.
 SEARCH_MAX = 50
+
+#: 목록 정렬. 중요도순은 확인 필요 항목이 많은 건부터, 등록순은 먼저 접수한 건부터다.
+SORTS = {
+    "importance": "중요도순",
+    "latest": "최신순",
+    "submitted": "등록순",
+    "score": "점수순 (두배적금)",
+}
 
 
 def queue_of(entry: Entry) -> str:
@@ -547,7 +555,7 @@ def list_applications(
     ai_status: str | None = Query(None, description="PASS | FAIL | NEEDS_REVIEW"),
     submitted_from: str | None = None,
     submitted_to: str | None = None,
-    sort: str | None = Query(None, description="score | submitted"),
+    sort: str | None = Query(None, description="importance | latest | submitted | score"),
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
     # 아래 둘은 기본값을 `Query(...)`가 아니라 `None`으로 둔다. 이 함수를 파이썬에서
@@ -622,12 +630,19 @@ def list_applications(
         else "score"
     )
     sort_key = sort or default_sort
-    if sort_key == "submitted":
-        rows = sorted(rows, key=lambda e: e.app.submitted_at or datetime.max)
+    if sort_key not in SORTS:
+        raise HTTPException(400, f"알 수 없는 정렬: {sort_key}")
+    # 등록순이 모든 정렬의 바탕이다. 같은 값끼리는 먼저 접수한 건이 앞에 선다.
+    rows = sorted(rows, key=lambda e: (e.app.submitted_at or datetime.max, e.app.id or 0))
+    counts: dict[int, int] = {}
+    if sort_key == "importance":
+        # 확인 필요 항목이 많을수록 위로. 순서를 정하려면 이 쪽만이 아니라 전체 행을 세야 한다.
+        counts = _check_counts(rows)
+        rows = sorted(rows, key=lambda e: -counts[e.app.id or 0])
+    elif sort_key == "latest":
+        rows = sorted(rows, key=lambda e: (e.app.submitted_at is not None, e.app.submitted_at or datetime.min, e.app.id or 0), reverse=True)
     elif sort_key == "score":
         rows = sorted(rows, key=lambda e: e.tiebreak)
-    else:
-        raise HTTPException(400, f"알 수 없는 정렬: {sort_key}")
 
     ranks = _rank_by_region(entries)
     total = len(rows)
@@ -635,6 +650,8 @@ def list_applications(
     page_size = max(1, min(page_size, 200))
     start = (page - 1) * page_size
     window = rows[start : start + page_size]
+    if sort_key != "importance":
+        counts = _check_counts(window)
 
     # 서류 상태는 **이 페이지의 행만** 필요하다. 행마다 조회하면 한 페이지에
     # 쿼리가 행 수만큼 나간다 — `IN` 하나로 읽고 신청 건별로 나눠 준다.
@@ -663,10 +680,7 @@ def list_applications(
                 {"value": PENDING, "label": "미처리"},
                 *[{"value": a.key, "label": a.result_label} for a in role_config.actions],
             ],
-            "sorts": [
-                {"value": "score", "label": "점수순 (두배적금)"},
-                {"value": "submitted", "label": "접수순 (취업패키지)"},
-            ],
+            "sorts": [{"value": key, "label": label} for key, label in SORTS.items()],
             "applied": {
                 "program": program,
                 "status": status,
@@ -687,7 +701,8 @@ def list_applications(
         "page_size": page_size,
         "page_count": max(1, math.ceil(total / page_size)),
         "rows": [
-            _row(e, ranks.get(e.app.id or 0), docs_by_app.get(e.app.id or 0, []))
+            {**_row(e, ranks.get(e.app.id or 0), docs_by_app.get(e.app.id or 0, [])),
+             "check_count": counts.get(e.app.id or 0, 0)}
             for e in window
         ],
     }
@@ -1040,13 +1055,7 @@ def review_reasons(application_id: int, role: str = Query(ROLE_PROVINCE)) -> dic
         ).first()
     entry = Entry(app, review)
 
-    checklist = checklist_for(app)
-    labels = {r.slot_key: r.label for r in checklist}
-    order = {r.slot_key: i for i, r in enumerate(checklist)}
-    uploaded = list_documents(application_id)
-    # 체크리스트 순서대로. 체크리스트에 없는 서류(미배정 페이지)는 맨 뒤다.
-    uploaded.sort(key=lambda d: (order.get(d.slot_key, len(order)), d.id or 0))
-    filled = {d.slot_key for d in uploaded}
+    pending, missing, labels = _pending_reasons(app, list_documents(application_id))
 
     return {
         "application_id": app.id,
@@ -1063,15 +1072,40 @@ def review_reasons(application_id: int, role: str = Query(ROLE_PROVINCE)) -> dic
                 "status_label": AI_STATUS_LABELS.get(d.stage1_status or "", "미심사"),
                 "findings": _reason_findings(d),
             }
-            for d in uploaded
-            if d.stage1_status != "PASS"
+            for d in pending
         ],
-        "missing": [
-            {"slot_key": r.slot_key, "label": r.label}
-            for r in upload_slots(checklist)
-            if r.required and r.slot_key not in filled
-        ],
+        "missing": [{"slot_key": r.slot_key, "label": r.label} for r in missing],
     }
+
+
+def _pending_reasons(app: Application, uploaded: list[Document]) -> tuple[list[Document], list[Any], dict[str, str]]:
+    """확인 필요 사유의 바탕: 적합이 아닌 서류와 아직 올리지 않은 필수 서류.
+
+    목록의 중요도순(`check_count`)과 행을 펼친 사유(`review_reasons`)가 같은 함수로
+    센다 — 따로 세면 '확인 필요 3건'인데 펼치면 2개가 보이는 일이 생긴다.
+    """
+    checklist = checklist_for(app)
+    labels = {r.slot_key: r.label for r in checklist}
+    order = {r.slot_key: i for i, r in enumerate(checklist)}
+    # 체크리스트 순서대로. 체크리스트에 없는 서류(미배정 페이지)는 맨 뒤다.
+    uploaded = sorted(uploaded, key=lambda d: (order.get(d.slot_key, len(order)), d.id or 0))
+    filled = {d.slot_key for d in uploaded}
+    pending = [d for d in uploaded if d.stage1_status != "PASS"]
+    missing = [r for r in upload_slots(checklist) if r.required and r.slot_key not in filled]
+    return pending, missing, labels
+
+
+def _check_counts(entries: list[Entry]) -> dict[int, int]:
+    """신청 건별 확인 필요 항목 수. 담당자가 이미 판단한 건은 0이다."""
+    docs = list_documents_bulk([e.app.id or 0 for e in entries])
+    counts = {}
+    for e in entries:
+        if e.decision:
+            counts[e.app.id or 0] = 0
+            continue
+        pending, missing, _ = _pending_reasons(e.app, docs.get(e.app.id or 0, []))
+        counts[e.app.id or 0] = len(pending) + len(missing)
+    return counts
 
 
 # ---------------------------------------------------------------- 담당자 판단
@@ -1082,6 +1116,8 @@ class DecisionRequest(BaseModel):
     #: approve | hold | reject
     decision: str
     memo: str = ""
+    #: 반려 페이지에서 쓴 신청자 안내. 반려가 아니면 무시한다.
+    notice: str | None = Field(None, max_length=2000)
 
 
 class BulkDecisionRequest(DecisionRequest):
@@ -1089,7 +1125,7 @@ class BulkDecisionRequest(DecisionRequest):
 
 
 def _apply_decision(
-    application_id: int, role: OfficerRole, decision: str, memo: str
+    application_id: int, role: OfficerRole, decision: str, memo: str, notice: str | None = None
 ) -> dict[str, Any]:
     with get_session() as s:
         app = s.get(Application, application_id)
@@ -1105,6 +1141,8 @@ def _apply_decision(
         review.officer_role = role.key
         review.officer_decision = decision
         review.officer_memo = memo
+        # 반려가 아닌 판단으로 바뀌면 지난 반려 안내는 신청자에게 더 보이지 않아야 한다.
+        review.reject_notice = ((notice or "").strip() or None) if decision == DECISION_REJECT else None
         review.decided_at = datetime.now()
         # 보류는 아직 처리 중이다. 승인·반려만 결정 완료로 올린다.
         app.status = STATUS_REVIEWING if decision == DECISION_HOLD else STATUS_DECIDED
@@ -1120,6 +1158,7 @@ def _apply_decision(
         "label": decision_label(role.key, decision),
         "officer_role": role.key,
         "memo": memo,
+        "notice": notice if decision == DECISION_REJECT else None,
         "decided_at": decided_at.isoformat(timespec="seconds") if decided_at else None,
     }
 
@@ -1143,7 +1182,7 @@ def decide(application_id: int, body: DecisionRequest) -> dict[str, Any]:
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from None
     _check_action(role, body.decision)
-    return _apply_decision(application_id, role, body.decision, body.memo)
+    return _apply_decision(application_id, role, body.decision, body.memo, body.notice)
 
 
 def _unchecked_numbers(application_ids: list[int]) -> list[str]:

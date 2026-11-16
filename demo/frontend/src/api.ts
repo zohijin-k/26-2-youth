@@ -325,6 +325,8 @@ export interface ApplicationStatus {
     signature_kind: string | null
   }[]
   call_center: string
+  /** 반려로 최종 처리된 경우의 담당자 안내. 반려가 아니면 null. 담당자 내부 메모는 오지 않는다. */
+  rejection?: { notice: string; decided_at: string | null } | null
 }
 
 async function json<T>(path: string, init?: RequestInit): Promise<T> {
@@ -672,7 +674,8 @@ export interface OfficerRow {
    * 신청했는가"다. 점수제 사업에서는 비어 온다.
    */
   items_label?: string | null
-
+  /** 확인 필요 항목 수(적합이 아닌 서류 + 안 올린 필수 서류). 담당자가 판단한 건은 0. 중요도순의 기준이다. */
+  check_count?: number
 }
 
 /**
@@ -683,6 +686,12 @@ export interface OfficerRow {
  *   done         담당자가 판단한 건 (보류 포함)
  */
 export type OfficerQueue = 'needs_check' | 'pass' | 'done'
+
+/** 신청 목록 정렬. 중요도순은 확인 필요 항목이 많은 건부터, 등록순은 먼저 접수한 건부터다. */
+export type OfficerSort = 'importance' | 'latest' | 'submitted'
+export const OFFICER_SORTS: readonly { key: OfficerSort; label: string }[] = [
+  { key: 'importance', label: '중요도순' }, { key: 'latest', label: '최신순' }, { key: 'submitted', label: '등록순' },
+]
 
 export const OFFICER_QUEUES: readonly OfficerQueue[] = ['needs_check', 'pass', 'done']
 
@@ -695,7 +704,7 @@ export interface OfficerListQuery {
   ai_status?: string
   submitted_from?: string
   submitted_to?: string
-  sort?: string
+  sort?: OfficerSort | string
   page?: number
   page_size?: number
   queue?: OfficerQueue
@@ -900,7 +909,7 @@ const youthList = (list: OfficerList): OfficerList => ({
   filters: {
     ...list.filters,
     programs: list.filters.programs.filter((program) => program.code === YOUTH_PROGRAM),
-    sorts: [{ value: 'submitted', label: '접수순 (선착순)' }],
+    sorts: OFFICER_SORTS.map(({ key, label }) => ({ value: key, label })),
   },
   rows: list.rows.filter((row) => row.program_code === YOUTH_PROGRAM),
 })
@@ -921,7 +930,7 @@ export const fetchOfficerList = async (params: OfficerListQuery): Promise<Office
   if (params.program?.startsWith('posting_')) {
     return json<OfficerList>(`/api/officer/applications?${query({ ...params })}`)
   }
-  const scoped = { ...params, program: YOUTH_PROGRAM, sort: 'submitted' }
+  const scoped = { ...params, program: YOUTH_PROGRAM, sort: params.sort || 'submitted' }
   const mockList = async () => youthList((await loadOfficerMocks()).mockOfficerList(scoped))
   if (isOfficerMockActive()) return mockList()
   try {
@@ -962,7 +971,7 @@ export const fetchApplicationReasons = async (applicationId: number, role: strin
 
 export const postDecision = async (
   applicationId: number,
-  body: { role: string; decision: DecisionKey; memo: string },
+  body: { role: string; decision: DecisionKey; memo: string; notice?: string },
 ) => {
   const mocks = mockMode().blocked ? null : await loadOfficerMocks()
   if (mocks?.isMockId(applicationId)) {

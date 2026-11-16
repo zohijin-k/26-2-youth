@@ -56,3 +56,4 @@
 .om.om-review .om-review__blockers ul{max-height:100px;overflow-y:auto;font-size:var(--fs-15);padding-left:var(--sp-5);margin:0}
 @media(max-width:1050px){.om.om-generic-list .om-generic-list__table th,.om.om-generic-list .om-generic-list__table td{padding:var(--sp-2)}.om.om-generic-list .om-generic-list__time-col{width:22%}.om.om-review .om-review__scroll{padding:var(--sp-4)}.om.om-review .om-review__card{padding:var(--sp-3)}}
 @media(max-width:950px){.om.om-review{position:static;min-height:500px;height:75vh}.om.om-review-head{flex-wrap:wrap}.om.om-generic-list .om-generic-list__filters{grid-template-columns:repeat(2,minmax(0,1fr))}.om.om-generic-list .om-generic-list__filters>label:first-child{grid-column:1/-1}}
+.om.om-generic-list .om-generic-list__filters .sort-toggle{grid-column:1/-1;justify-self:end}

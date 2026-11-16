@@ -1,8 +1,10 @@
-import { useId, useRef, useState, type KeyboardEvent } from 'react'
+import { useCallback, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { fetchOfficerPosting, type OfficerPosting } from '../../api.ts'
 import { routeUrl } from '../../navigation-url.ts'
 import GenericApplicationList from './GenericApplicationList.tsx'
 import GenericReviewDetail from './GenericReviewDetail.tsx'
+import RejectApplication from './RejectApplication.tsx'
+import { decideGeneric, fetchGenericReview } from '../../generic-officer-api.ts'
 import OfficerConsole from './OfficerConsole.tsx'
 import ProgramPreviewEditor from './ProgramPreviewEditor.tsx'
 import { OfficerDrawer } from './OfficerModern.tsx'
@@ -16,12 +18,18 @@ export default function ProgramOfficerWorkspace({ posting, onBack }: { posting: 
   const base = `/officer/programs/${posting.id}`
   const [info, setInfo] = useState(posting)
   const [tab, setTab] = useState<Tab>(() => { const value = new URLSearchParams(window.location.search).get('tab'); return value === 'settings' || value === 'info' ? value : 'applications' })
-  const [application, setApplication] = useState<number | null>(() => { const match = /\/applications\/([1-9]\d*)\/?$/.exec(window.location.pathname); return match ? Number(match[1]) : null })
+  const [application, setApplication] = useState<number | null>(() => { const match = /\/applications\/([1-9]\d*)(?:\/reject)?\/?$/.exec(window.location.pathname); return match ? Number(match[1]) : null })
+  const [rejecting, setRejecting] = useState(() => /\/applications\/[1-9]\d*\/reject\/?$/.test(window.location.pathname))
   const id = useId()
   const tabs = useRef<Partial<Record<Tab, HTMLButtonElement | null>>>({})
   const [infoError, setInfoError] = useState('')
   const refreshInfo = () => { setInfoError(''); void fetchOfficerPosting(posting.id).then(setInfo).catch(() => setInfoError('사업 정보를 새로 불러오지 못했습니다.')) }
-  const select = (next: Tab) => { setTab(next); setApplication(null); routeUrl(base, { tab: next }); window.scrollTo({ top: 0 }); if (next === 'info') refreshInfo() }
+  const select = (next: Tab) => { setTab(next); setApplication(null); setRejecting(false); routeUrl(base, { tab: next }); window.scrollTo({ top: 0 }); if (next === 'info') refreshInfo() }
+  const review = (id: number, reject: boolean) => { setApplication(id); setRejecting(reject); routeUrl(`${base}/applications/${id}${reject ? '/reject' : ''}`, {}); window.scrollTo({ top: 0 }) }
+  const loadSummary = useCallback(() => application ? fetchGenericReview(posting.id, application) : Promise.reject(new Error('신청 건이 없습니다.')), [posting.id, application])
+  // 사업 기준 중 충족이 아닌 것도 반려 사유 후보다. 서류 사유는 반려 페이지가 따로 읽는다.
+  const criterionReasons = useCallback(() => application ? fetchGenericReview(posting.id, application).then((data) => data.criteria
+    .filter((item) => item.result !== 'PASS').map((item) => `${item.label}: ${item.basis || '공고문 기준을 충족하지 못했습니다.'}`)) : Promise.resolve([]), [posting.id, application])
   const tabKey = (event: KeyboardEvent<HTMLButtonElement>) => {
     const at = TABS.findIndex(([key]) => key === tab)
     const next = event.key === 'ArrowRight' ? (at + 1) % TABS.length : event.key === 'ArrowLeft' ? (at + TABS.length - 1) % TABS.length : event.key === 'Home' ? 0 : event.key === 'End' ? TABS.length - 1 : -1
@@ -41,12 +49,15 @@ export default function ProgramOfficerWorkspace({ posting, onBack }: { posting: 
       {tab === 'info' && <div className="om om-workspace">{infoCard}</div>}
     </div>
   </div>
-  if (application) return <GenericReviewDetail postingId={posting.id} applicationId={application} onBack={() => select('applications')} />
+  if (application && rejecting) return <RejectApplication applicationId={application} role="province" load={loadSummary} extraReasons={criterionReasons}
+    onCancel={() => review(application, false)}
+    onSubmit={async (notice, memo) => { await decideGeneric(posting.id, application, 'reject', memo, notice); select('applications') }} />
+  if (application) return <GenericReviewDetail postingId={posting.id} applicationId={application} onBack={() => select('applications')} onReject={() => review(application, true)} />
   if (tab === 'settings') return <ProgramPreviewEditor postingId={posting.id} onBack={onBack} onPostingChanged={setInfo} focusHeadingOnLoad />
   return <main className="om om-page om-workspace">
     <OfficerDrawer postingId={posting.id} current={tab} onList={onBack} onTab={select} /><header className="om-head om-head--grid"><h1>{info.title}</h1><span className="om-chip">{officerLabel(info.status)}</span>{chipTabs}</header>
     <div id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-${tab}`}>
-      {tab === 'applications' ? <GenericApplicationList postingId={posting.id} onOpen={(applicationId) => { setApplication(applicationId); routeUrl(`${base}/applications/${applicationId}`, {}); window.scrollTo({ top: 0 }) }} /> : infoCard}
+      {tab === 'applications' ? <GenericApplicationList postingId={posting.id} onOpen={(applicationId) => review(applicationId, false)} /> : infoCard}
     </div>
   </main>
 }

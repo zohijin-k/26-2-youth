@@ -1225,7 +1225,11 @@ export function mockOfficerList(query: OfficerListQuery): OfficerList {
   if (query.ai_status) rows = rows.filter((e) => e.row.ai_status === query.ai_status)
   if (query.status === PENDING) rows = rows.filter((e) => !e.row.decision)
   else if (query.status) rows = rows.filter((e) => e.row.decision === query.status)
+  // 백엔드와 같다: 등록순이 바탕이고, 중요도순은 확인 필요 항목 수, 최신순은 그 반대 순서다.
+  const sort = query.sort === 'importance' || query.sort === 'latest' ? query.sort : 'submitted'
   rows = [...rows].sort((a, b) => (a.row.submitted_at ?? '').localeCompare(b.row.submitted_at ?? ''))
+  if (sort === 'latest') rows.reverse()
+  if (sort === 'importance') rows.sort((a, b) => checkCount(b) - checkCount(a))
   const total = rows.length
   const page = Math.max(1, query.page ?? 1)
   const pageSize = Math.max(1, Math.min(query.page_size ?? 20, 200))
@@ -1236,16 +1240,20 @@ export function mockOfficerList(query: OfficerListQuery): OfficerList {
       programs: [{ code: JOB_PACKAGE, name: PROGRAM_NAMES[JOB_PACKAGE] }],
       ai_statuses: (Object.keys(AI_STATUS_LABELS) as DocStatus[]).map((value) => ({ value, label: AI_STATUS_LABELS[value] })),
       statuses: [{ value: PENDING, label: '미처리' }, ...role.actions.map((a) => ({ value: a.key, label: a.result_label }))],
-      sorts: [{ value: 'submitted', label: '접수순 (선착순)' }],
-      applied: { program: JOB_PACKAGE, status: query.status ?? null, ai_status: query.ai_status ?? null, submitted_from: query.submitted_from ?? null, submitted_to: query.submitted_to ?? null, sort: 'submitted', queue: query.queue ?? null, q: needle ? (query.q ?? '').trim() : null },
+      sorts: [{ value: 'importance', label: '중요도순' }, { value: 'latest', label: '최신순' }, { value: 'submitted', label: '등록순' }],
+      applied: { program: JOB_PACKAGE, status: query.status ?? null, ai_status: query.ai_status ?? null, submitted_from: query.submitted_from ?? null, submitted_to: query.submitted_to ?? null, sort, queue: query.queue ?? null, q: needle ? (query.q ?? '').trim() : null },
     },
     columns: FIRST_COME_COLUMNS,
     first_come: firstComeSummary(JOB_PACKAGE),
     queues,
     total, page, page_size: pageSize, page_count: Math.max(1, Math.ceil(total / pageSize)),
-    rows: rows.slice((page - 1) * pageSize, page * pageSize).map((e) => e.row),
+    rows: rows.slice((page - 1) * pageSize, page * pageSize).map((e) => ({ ...e.row, check_count: checkCount(e) })),
   }
 }
+
+/** 확인 필요 항목 수. 판단한 건은 0, 아니면 적합이 아닌 서류 수다(목업은 필수 서류를 모두 올렸다). */
+const checkCount = (entry: { row: OfficerRow; docs: { status: string }[] }) =>
+  entry.row.decision ? 0 : entry.docs.filter((d) => d.status !== 'PASS').length
 
 // ---------------------------------------------------------------- 상세
 

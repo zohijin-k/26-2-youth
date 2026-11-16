@@ -491,3 +491,100 @@ def test_reasons_read_stored_results_only(client, monkeypatch):
     assert reasons(client, application_id) == first
     assert stored() == before
     assert first["documents"][0]["findings"][0]["code"] == "FAKE_CHECK"
+
+
+# ---------------------------------------------------------------- sort and check counts
+
+
+def seed_importance():
+    """Three undecided cases with 0, 2 and 1 items to check, submitted in that order, plus one decided."""
+    calm = add_application(31, ai="PASS", day=1)
+    add_document(calm, "resident_abstract", "PASS")
+    busy = add_application(32, ai="FAIL", day=2)
+    add_document(busy, "resident_abstract", "FAIL", [{"code": "FAKE_A", "message": "FAKE 첫 사유"}])
+    add_document(busy, models.UNASSIGNED_SLOT, "NEEDS_REVIEW", [{"code": "FAKE_B", "message": "FAKE 둘째"}])
+    single = add_application(33, ai="NEEDS_REVIEW", day=3)
+    add_document(single, "resident_abstract", "NEEDS_REVIEW")
+    decided = add_application(34, ai="FAIL", decision="reject", status=models.STATUS_DECIDED, day=4)
+    add_document(decided, "resident_abstract", "FAIL")
+    return calm, busy, single, decided
+
+
+def test_importance_puts_cases_with_more_items_to_check_first(client):
+    calm, busy, single, decided = seed_importance()
+    body = listing(client, sort="importance")
+    assert ids(body) == [busy, single, calm, decided]
+    assert {row["application_id"]: row["check_count"] for row in body["rows"]} == {busy: 2, single: 1, calm: 0, decided: 0}
+    assert body["filters"]["applied"]["sort"] == "importance"
+    # Ties keep the registration order, and the order spans pages, not just one page.
+    assert ids(listing(client, sort="importance", page=1, page_size=1)) == [busy]
+    assert ids(listing(client, sort="importance", page=2, page_size=1)) == [single]
+
+
+def test_check_count_matches_the_reasons_dialog(client):
+    _, busy, single, _ = seed_importance()
+    for application_id in (busy, single):
+        body = reasons(client, application_id)
+        row = next(row for row in listing(client)["rows"] if row["application_id"] == application_id)
+        assert row["check_count"] == len(body["documents"]) + len(body["missing"])
+
+
+def test_latest_and_registration_order_and_sort_labels(client):
+    calm, busy, single, decided = seed_importance()
+    assert ids(listing(client, sort="latest")) == [decided, single, busy, calm]
+    assert ids(listing(client, sort="submitted")) == [calm, busy, single, decided]
+    # Every row carries a check count whatever the sort.
+    assert all("check_count" in row for row in listing(client, sort="latest")["rows"])
+    labels = {item["value"]: item["label"] for item in listing(client)["filters"]["sorts"]}
+    assert (labels["importance"], labels["latest"], labels["submitted"]) == ("중요도순", "최신순", "등록순")
+    assert client.get(LIST, params={"program": JOB_PACKAGE, "sort": "oldest"}).status_code == 400
+
+
+# ---------------------------------------------------------------- rejection notice
+
+
+def decide(client, application_id, **body):
+    response = client.post(f"/api/officer/applications/{application_id}/decision", json={"role": "province", **body})
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def stored_review(application_id):
+    with models.get_session() as session:
+        return session.exec(select(models.Review).where(models.Review.application_id == application_id)).one()
+
+
+def test_reject_stores_the_applicant_notice_separately_from_the_memo(client):
+    application_id = add_application(41, ai="FAIL")
+    result = decide(client, application_id, decision="reject", memo="FAKE 내부 메모",
+                    notice="  제출하신 신청이 아래 사유로 반려되었습니다.\n- FAKE 사유  ")
+    assert result["notice"] == "  제출하신 신청이 아래 사유로 반려되었습니다.\n- FAKE 사유  "
+    review = stored_review(application_id)
+    assert review.reject_notice == "제출하신 신청이 아래 사유로 반려되었습니다.\n- FAKE 사유"
+    assert review.officer_memo == "FAKE 내부 메모"
+    # Any later non-reject decision clears the notice so the applicant no longer sees it.
+    decide(client, application_id, decision="hold", memo="FAKE 재검토", notice="무시되는 안내")
+    assert stored_review(application_id).reject_notice is None
+
+
+def test_notice_length_is_bounded(client):
+    application_id = add_application(42, ai="FAIL")
+    refused = client.post(f"/api/officer/applications/{application_id}/decision",
+                          json={"role": "province", "decision": "reject", "memo": "m", "notice": "가" * 2001})
+    assert refused.status_code == 422
+
+
+def test_status_shows_the_notice_only_for_a_final_rejection_without_the_memo():
+    from demo.backend.api.review import rejection_of
+    from datetime import datetime as moment
+    app = models.Application(application_no="FAKE", program_code=JOB_PACKAGE, status=models.STATUS_DECIDED)
+    review = models.Review(application_id=1, final_status="FAIL", officer_decision="reject",
+                           officer_memo="FAKE 내부 메모", reject_notice="FAKE 안내", decided_at=moment(2026, 11, 16, 9, 0))
+    assert rejection_of(app, review) == {"notice": "FAKE 안내", "decided_at": "2026-11-16T09:00:00"}
+    assert "FAKE 내부 메모" not in str(rejection_of(app, review))
+    review.officer_decision = "approve"
+    assert rejection_of(app, review) is None
+    review.officer_decision = "reject"
+    app.status = models.STATUS_REVIEWING
+    assert rejection_of(app, review) is None
+    assert rejection_of(app, None) is None

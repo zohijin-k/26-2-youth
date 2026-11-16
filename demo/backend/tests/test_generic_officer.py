@@ -262,3 +262,18 @@ def test_original_page_route_enforces_program_application_document_and_containme
         session.add(row)
         session.commit()
     assert client.get(path + f'/documents/{upload["document_id"]}/page.png').status_code == 404
+
+
+def test_reject_page_notice_reaches_the_applicant_status_but_the_memo_does_not(client, monkeypatch):
+    posting, application, _ = submitted(client, monkeypatch)
+    path = review_path(posting, application)
+    status = client.get(f'/api/applications/{application["id"]}/status')
+    assert status.status_code == 200 and status.json()['rejection'] is None
+    result = client.post(path + '/decision', json={'decision': 'reject', 'memo': '합성 내부 메모',
+                                                   'notice': '제출하신 신청이 아래 사유로 반려되었습니다.\n- 합성 사유'})
+    assert result.status_code == 200, result.text
+    body = client.get(f'/api/applications/{application["id"]}/status').json()
+    assert body['rejection']['notice'] == '제출하신 신청이 아래 사유로 반려되었습니다.\n- 합성 사유'
+    assert body['rejection']['decided_at']
+    assert '합성 내부 메모' not in str(body)
+    assert stored_review(application['id']).officer_memo == '합성 내부 메모'

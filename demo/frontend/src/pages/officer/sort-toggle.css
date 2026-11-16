@@ -1,0 +1,10 @@
+/* 목록 오른쪽의 정렬 묶음. 고른 항목만 흰 알약으로 떠 보인다. */
+.sort-toggle{display:inline-flex;align-items:center;gap:2px;padding:3px;border:1px solid #dfe3e8;border-radius:999px;background:#f1f3f5;flex:none}
+.sort-toggle__item{height:34px;padding:0 14px;border:0;border-radius:999px;background:transparent;color:#58616a;font:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
+.sort-toggle__item:hover:not(:disabled){color:#173975}
+.sort-toggle__item[aria-pressed=true]{background:#fff;color:#173975;font-weight:700;box-shadow:0 1px 2px rgb(16 24 40 / 12%)}
+.sort-toggle__item:focus-visible{outline:2px solid #173975;outline-offset:1px}
+.sort-toggle__item:disabled{cursor:default;opacity:.6}
+.alist__bar--selecting .sort-toggle{visibility:hidden}
+.alist__checks{margin-left:8px;color:#8a5a00;font-size:13px;white-space:nowrap}
+.om-generic-list__filters .sort-toggle{margin-left:auto}

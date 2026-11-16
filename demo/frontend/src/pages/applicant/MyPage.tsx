@@ -73,6 +73,14 @@ export default function MyPage({ applicationId }: { applicationId: number }) {
         ))}
       </ol>
 
+      {/* 반려는 다른 안내보다 먼저, 담당자가 쓴 사유 그대로 보인다. */}
+      {data.rejection && (
+        <Notice tone="danger" title="신청이 반려되었습니다" className="mypage__rejection" role="status">
+          <p className="mypage__rejection-text">{data.rejection.notice || '담당자 확인 결과 반려되었습니다. 자세한 내용은 문의처로 연락해 주세요.'}</p>
+          {data.rejection.decided_at && <p className="mypage__rejection-date">처리일 {formatDateTime(data.rejection.decided_at)}</p>}
+        </Notice>
+      )}
+
       {/* 심사 안내는 접지 않고 바로 보인다. 접수 순번은 혼란을 주므로 보이지 않는다(서버 안내 문구에도 순번이 있어 쓰지 않는다). */}
       {(data.result_notice || data.first_come?.quota != null) && (
         <Notice tone="info" title="심사 안내" className="mypage__guide">
