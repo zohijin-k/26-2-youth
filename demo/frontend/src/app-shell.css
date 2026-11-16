@@ -8,8 +8,8 @@
 /* 담당자 머리글. 신청자 머리글과 같은 흰 바탕 · 로고 · 로고 색 띠를 쓴다. */
 :where(.app-shell--officer) { min-height: 100dvh; background: #fff; }
 :where(.app-shell--officer) .shell { border-bottom: 1px solid #dfe3e8; background: #fff; color: #1e2124; font-family: 'Pretendard GOV', 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif; }
-/* 맨 위 장식 띠. 로고의 남색 · 빨강 · 노랑 · 초록. 뜻을 전하는 색이 아니다. */
-:where(.app-shell--officer) .shell::before { content: ''; display: block; height: 4px; background: linear-gradient(90deg, #173975 0 59%, #b82d2b 59% 76%, #e6b943 76% 90%, #8db243 90% 100%); }
+/* 맨 위 장식 띠. 노랑 · 초록 · 파랑 · 빨강 네 칸 같은 너비. 신청자 머리글(styles/tokens.css --stripe-*)과 같은 값이다. 뜻을 전하는 색이 아니다. */
+:where(.app-shell--officer) .shell::before { content: ''; display: block; height: 4px; background: linear-gradient(90deg, #f0be30 0 25%, #90bc3b 25% 50%, #2c85c3 50% 75%, #ce2834 75% 100%); }
 :where(.app-shell--officer) .shell__inner { display: flex; align-items: center; gap: 16px; min-height: 64px; padding: 0 24px; }
 :where(.app-shell--officer) .shell__home { display: block; flex: none; padding: 4px; border: 0; border-radius: 8px; background: transparent; line-height: 0; cursor: pointer; }
 :where(.app-shell--officer) .shell__home:focus-visible { outline: 2px solid #2c5baf; outline-offset: 2px; }

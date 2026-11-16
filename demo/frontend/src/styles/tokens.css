@@ -16,6 +16,8 @@
   /* 장식 전용: 글자 · 상태 · 버튼 색으로 쓰지 않는다. */
   --brand-accent-1:#b82d2b; --brand-accent-2:#e6b943; --brand-accent-3:#8db243;
   --brand-tint-a:#f4f8ec; --brand-tint-b:#fcf6e6;       /* 접수증 머리 등 옅은 그라데이션 */
+  /* 머리글 맨 위 띠. 디자인 시안(line.png)의 노랑 · 초록 · 파랑 · 빨강, 네 칸 같은 너비. 장식 전용. */
+  --stripe-1:#f0be30; --stripe-2:#90bc3b; --stripe-3:#2c85c3; --stripe-4:#ce2834;
 
   /* neutral — 고정 */
   --gray-0:#fff; --gray-5:#f4f5f6; --gray-10:#e6e8ea; --gray-20:#cdd1d5; --gray-30:#b1b8be; --gray-40:#8a949e;

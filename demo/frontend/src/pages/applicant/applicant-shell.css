@@ -17,17 +17,17 @@
   background: var(--color-surface);
 }
 
-/* 맨 위 장식 띠. 로고의 남색 · 빨강 · 노랑 · 초록을 로고에 쓰인 비율(약 59 : 17 : 14 : 10)로 둔다. 뜻을 전하는 색이 아니다. */
+/* 맨 위 장식 띠. 노랑 · 초록 · 파랑 · 빨강 네 칸을 같은 너비로 둔다(담당자 머리글과 같다). 뜻을 전하는 색이 아니다. */
 .shell::before {
   content: '';
   display: block;
   height: 4px;
   background: linear-gradient(
     90deg,
-    var(--brand-60) 0 59%,
-    var(--brand-accent-1) 59% 76%,
-    var(--brand-accent-2) 76% 90%,
-    var(--brand-accent-3) 90% 100%
+    var(--stripe-1) 0 25%,
+    var(--stripe-2) 25% 50%,
+    var(--stripe-3) 50% 75%,
+    var(--stripe-4) 75% 100%
   );
 }
 
