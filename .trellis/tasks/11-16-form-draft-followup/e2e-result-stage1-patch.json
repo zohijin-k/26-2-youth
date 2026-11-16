@@ -1,0 +1,155 @@
+{
+  "mode": "stage1-patch",
+  "forms": [
+    {
+      "form_id": 3,
+      "auto_fields": 16,
+      "kinds": {
+        "radio": 16
+      },
+      "circle_marks": 16,
+      "all_need_review": true,
+      "confirmed": false
+    },
+    {
+      "form_id": 4,
+      "auto_fields": 8,
+      "kinds": {
+        "check": 2,
+        "date": 3,
+        "text": 2,
+        "signature": 1
+      },
+      "circle_marks": 0,
+      "all_need_review": true,
+      "confirmed": false
+    }
+  ],
+  "choice": {
+    "input_type": "radio",
+    "after_first": [
+      true,
+      false
+    ],
+    "after_switch": [
+      false,
+      true
+    ],
+    "circles_after_first": 1,
+    "circles_after_switch": 1
+  },
+  "assertions": [
+    {
+      "name": "uploaded templates drafted with every field needing review",
+      "detail": [
+        [
+          16,
+          {
+            "radio": 16
+          },
+          16
+        ],
+        [
+          8,
+          {
+            "check": 2,
+            "date": 3,
+            "text": 2,
+            "signature": 1
+          },
+          0
+        ]
+      ]
+    },
+    {
+      "name": "form 1 reviewed and confirmed",
+      "detail": 16
+    },
+    {
+      "name": "form 2 reviewed and confirmed",
+      "detail": 8
+    },
+    {
+      "name": "program published",
+      "detail": 5
+    },
+    {
+      "name": "choice row 1: pick then switch",
+      "detail": {
+        "input_type": "radio",
+        "after_first": [
+          true,
+          false
+        ],
+        "after_switch": [
+          false,
+          true
+        ],
+        "circles_after_first": 1,
+        "circles_after_switch": 1
+      }
+    },
+    {
+      "name": "applicant filled form 1",
+      "detail": {
+        "check_fields": 16,
+        "signatures": 0
+      }
+    },
+    {
+      "name": "applicant filled form 2",
+      "detail": {
+        "check_fields": 2,
+        "signatures": 1
+      }
+    },
+    {
+      "name": "applicant submitted",
+      "detail": "O"
+    },
+    {
+      "name": "submitted PDF saved for the circle check",
+      "detail": "submitted-stage1-patch.pdf"
+    }
+  ],
+  "shots": [
+    {
+      "name": "01-officer-auto-fields-form2",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-form-draft-followup/shots/stage1-patch-01-officer-auto-fields-form2.png"
+    },
+    {
+      "name": "02-officer-forms-confirmed",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-form-draft-followup/shots/stage1-patch-02-officer-forms-confirmed.png"
+    },
+    {
+      "name": "03-officer-published",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-form-draft-followup/shots/stage1-patch-03-officer-published.png"
+    },
+    {
+      "name": "04-applicant-picked-first",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-form-draft-followup/shots/stage1-patch-04-applicant-picked-first.png"
+    },
+    {
+      "name": "05-applicant-switched",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-form-draft-followup/shots/stage1-patch-05-applicant-switched.png"
+    },
+    {
+      "name": "06-applicant-form-2",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-form-draft-followup/shots/stage1-patch-06-applicant-form-2.png"
+    },
+    {
+      "name": "07-applicant-receipt",
+      "path": "/Users/zohijin/Desktop/26-2-youth/.trellis/tasks/11-16-form-draft-followup/shots/stage1-patch-07-applicant-receipt.png"
+    }
+  ],
+  "page_errors": [],
+  "request_failures": [
+    "/src/assets/fonts/PretendardGOV/PretendardGOV-Medium.subset.woff2",
+    "/api/officer/session",
+    "/api/officer/session",
+    "/api/officer/session",
+    "/api/officer/session"
+  ],
+  "stage": "07-applicant-receipt",
+  "result": "passed"
+}

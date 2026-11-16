@@ -27,10 +27,12 @@ Vocabulary is limited to general administrative words:
 |---|---|
 | Choice pairs | 예/아니오(아니요), 동의함/동의하지 않음, 있음/없음, 해당/해당 없음 |
 | Labels (rule c) | keys of `_AUTOFILL` (성명, 이름, 생년월일, 연락처, 휴대폰, 전화번호, 주소, 이메일, English equivalents) |
-| Signature marks | (서명), (인), (서명 또는 인) — spacing ignored |
+| Plain labels (rule c, no autofill) | 사업명, 은행명, 예금주, 계좌번호, 근무처, 근무처(명), 소속, 직위, 신청인, 보호자, 기간, 수령액, 회사명, 담당자 — `autofill_source` stays `None`; `_AUTOFILL` is not widened |
+| Signature marks | (서명), (인), (서명 또는 인), (서명/인) — spacing ignored; a mark attached to other text (`홍길동(서명/인)`) is not a mark |
 
 Each rule is covered by synthetic PDFs generated inside
-`demo/backend/tests/test_form_draft_inline.py` (positive and negative cases).
+`demo/backend/tests/test_form_draft_inline.py` and
+`demo/backend/tests/test_form_draft_followup.py` (positive and negative cases).
 Fixtures are used only by the measurement tool, never by rules or tests of rules.
 
 ## Rows
@@ -44,12 +46,35 @@ several blocks. Cell borders are vertical rules crossing the row band (`_edge`).
 | Rule | Trigger | Field | Confidence |
 |---|---|---|---|
 | table value cell (existing) | blank cell whose left neighbour cell has a label | cell − 2pt, kind from label | 0.72 |
-| checkbox (existing) | drawn square 5–18pt or □/☐/▢ glyph | box, row-grouped | 0.65 |
-| a. choice words | adjacent whole-word choice pair, same cell, separated only by comma/space, no printed box within 3× row height | each word's glyph box (comma excluded), one group | 0.6 |
+| checkbox (existing) | drawn square 5–18pt or □/☐/▢ glyph | box, row-grouped; a glyph at the start of a word keeps the word-start box, a glyph inside a word (`여부□`, `동의□`) is placed at its own character box (`rawdict`) | 0.65 |
+| a. choice words | adjacent whole-word choice pair, same cell, separated only by comma/space, no printed box within 3× row height | each word's glyph box (comma excluded), one group, `field_type: radio`, `type: check`, `choice_mark: "circle"` | 0.6 |
 | b. inline date | `[digits]년`, `월`, `일` consecutive on one row | blank before 년 (after a 1–3 digit century, or as wide as the month blank), between 년–월 and 월–일 when wider than the row height and not crossing a cell border; labels 연/월/일, `field_type: date` | 0.6 |
-| c. label blank | vocabulary label followed by a colon, or by an underline that starts after the label and is not a cell border | from label end to next word / signature mark / cell border / mirrored text margin | 0.55 |
+| b2. dotted date | a 2- or 4-digit token followed only by bare `.` tokens: `20 . . .` (3 blanks: 연/월/일) or `YYYY. . .` (2 blanks: 월/일); every gap wider than the row height and not crossing a cell border | same box shape as rule b, `field_type: date` | 0.6 |
+| c. label blank | vocabulary label (optionally opened by `(`, e.g. `(은행명 :`) followed by a colon, or by an underline that starts after the label and is not a cell border | from label end to next word / signature mark / cell border / mirrored text margin | 0.55 |
 | d. signature mark | mark words on a row | mark box when rule c ends at it; `label : ____ (mark)` → text blank + mark; otherwise blank (≤ 8× height) + mark as one image field | 0.55 |
 | cell hint (existing, narrowed) | cell text implies date/signature | whole cell | 0.52 |
+
+Decimals (`3.14`), single-digit numbering (`1.`), filled dates (`2026. 11. 15.`) and
+dots printed without blanks never become dotted-date fields. A plain label inside a
+list (`성명, 은행명, 계좌번호 등`), filled (`소속: 값`) or without colon/underline is not a blank.
+
+### Labels and anchors
+
+`label` drops trailing colons (`:`/`：`) and spaces (`생년월일:` → `생년월일`) and a
+leading opening bracket (`(`, `（`, `[`) whose closing bracket does not appear in the label
+(`(은행명 :` → `은행명`); paired brackets stay (`(서명)`, `(서명/인)`).
+`anchor` keeps the source text unchanged. An empty result falls back to `입력칸`.
+
+### Choice words: single choice and circle mark
+
+Rule-a fields are `field_type: radio` in one group with `choice_mark: "circle"`
+(render `type` stays `check`). Choosing one word clears the other; a required group is
+satisfied once any word in it is chosen; two chosen words in one group are rejected (422).
+The chosen word gets an oval: SVG `[data-choice-mark="circle"]` on the applicant screen
+and `draw_oval` in `forms/render.py` (no filled check). `validate_layout` keeps
+`choice_mark` only when it is `"circle"` on a check/radio field (any other value → 422),
+and the applicant layout whitelist carries it. Fields without `choice_mark` (printed □,
+job_package 서식2 `radio_text`) render exactly as before.
 
 ## False-positive guards (rule e)
 
@@ -81,8 +106,8 @@ the more confident one, preserving the original order. The per-page limit
    labelled by its left neighbour,
 3. the blank between words on the clicked row, bounded by cell borders.
 
-Officer session required (401 without), posting/form mismatch → 404, bad page
-→ 422. The label is capped at 200 characters; page text is never returned in
+Officer session required (401 without), posting/form mismatch → 404, a page
+below 0 or at/after the page count → 422. The label is capped at 200 characters; page text is never returned in
 bulk. The editor adds the field with `needs_review: true`; a null answer adds
 the default 120×20 box (`demo/frontend/src/lib/form-snap.ts`).
 
@@ -93,3 +118,11 @@ hand-authored coordinates of the public blank templates: recall (IoU ≥ 0.5,
 one-to-one), precision, false fields, oversized (> 15% of page), and
 missed/extra lists. Report numbers honestly; do not tune rules to fixture
 coordinates.
+
+`demo/fixtures/form_coords` holds the coordinates `job_package` renders with and is
+never edited for measurement. Real blanks missing there go to evaluation-only
+supplements, `demo/fixtures/form_draft_eval/<coords stem>.extra.json`
+(`status: 사람 확인 필요`, keys prefixed `supplement.`). They feed only the extra
+columns 보충 칸 / 보충 포함 일치율 / 보충 포함 정밀도 (row keys `supplement_fields`,
+`supplemented`); every original column and key is computed exactly as before.
+A supplement needs a human-checked capture before its numbers are trusted.

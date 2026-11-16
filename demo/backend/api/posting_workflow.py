@@ -68,12 +68,18 @@ def validate_layout(row: ProgramForm, raw: dict[str, Any]) -> dict[str, Any]:
         group = field.get('group') or ''
         if not isinstance(group, str) or len(group) > 80:
             raise HTTPException(422, '선택 묶음을 확인해 주세요.')
+        choice_mark = field.get('choice_mark')
+        if choice_mark not in (None, 'circle'):
+            raise HTTPException(422, '선택 표시 방식을 확인해 주세요.')
         clean[key] = {'type': 'image' if kind == 'signature' else 'check' if kind in {'check','radio'} else 'text',
             'field_type':kind, 'page':page, 'box':box, 'x':box[0]+2, 'y':box[3]-3,
             'size':size, 'label':label.strip(), 'anchor':label.strip(), 'required':bool(field.get('required', False)),
             'autofill_source':source or None, 'confidence':confidence,
             'needs_review':field.get('needs_review',True) is not False, 'group':group,
             'align':'left','font_family':'sans'}
+        if choice_mark and kind in {'check', 'radio'}:
+            # A printed choice word that is itself the option; drawn as a circle around it.
+            clean[key]['choice_mark'] = choice_mark
     return {'form_no': f'form_{row.id}', 'title': row.file_name, 'template':row.file_path,
         'fields':clean, 'page_sizes':sizes, 'public_form':None, 'internal_form':None,
         'status':'draft' if clean else 'manual_required', 'confirmed':False}

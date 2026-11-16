@@ -1,0 +1,140 @@
+{
+  "form_no": "job_interview_confirmation",
+  "purpose": "측정 전용 보충 정답. 렌더링·신청 화면에서 쓰지 않음.",
+  "status": "사람 확인 필요",
+  "source": "서식 PDF의 괘선과 인쇄 글자 위치에서 계산(build_eval_supplement.py)",
+  "fields": {
+    "supplement.company": {
+      "type": "text",
+      "page": 0,
+      "label": "회사명",
+      "box": [
+        170.1,
+        249.8,
+        536.3,
+        277.9
+      ]
+    },
+    "supplement.location": {
+      "type": "text",
+      "page": 0,
+      "label": "소재지",
+      "box": [
+        170.1,
+        281.9,
+        536.3,
+        310.1
+      ]
+    },
+    "supplement.business": {
+      "type": "text",
+      "page": 0,
+      "label": "업태/업종",
+      "box": [
+        170.1,
+        314.1,
+        536.3,
+        342.3
+      ]
+    },
+    "supplement.manager": {
+      "type": "text",
+      "page": 0,
+      "label": "담당자",
+      "box": [
+        170.1,
+        346.3,
+        323.1,
+        374.5
+      ]
+    },
+    "supplement.contact": {
+      "type": "text",
+      "page": 0,
+      "label": "연락처",
+      "box": [
+        387.4,
+        346.3,
+        536.3,
+        374.5
+      ]
+    },
+    "supplement.place": {
+      "type": "text",
+      "page": 0,
+      "label": "면접장소",
+      "box": [
+        170.1,
+        410.6,
+        536.3,
+        438.9
+      ]
+    },
+    "supplement.job": {
+      "type": "text",
+      "page": 0,
+      "label": "응시직군",
+      "box": [
+        170.1,
+        442.9,
+        536.3,
+        471.0
+      ]
+    },
+    "supplement.written.month": {
+      "type": "text",
+      "page": 0,
+      "label": "월",
+      "box": [
+        272.85,
+        558.35,
+        302.72,
+        573.34
+      ]
+    },
+    "supplement.written.day": {
+      "type": "text",
+      "page": 0,
+      "label": "일",
+      "box": [
+        317.71,
+        558.35,
+        355.13,
+        573.34
+      ]
+    },
+    "supplement.sign.company": {
+      "type": "text",
+      "page": 0,
+      "label": "회사명",
+      "box": [
+        369.55,
+        630.27,
+        528.19,
+        645.26
+      ]
+    },
+    "supplement.sign.manager": {
+      "type": "text",
+      "page": 0,
+      "label": "담당자",
+      "box": [
+        369.55,
+        660.24,
+        468.22,
+        675.23
+      ]
+    },
+    "supplement.sign.seal": {
+      "type": "image",
+      "page": 0,
+      "label": "(서명/인)",
+      "box": [
+        469.22,
+        658.74,
+        533.19,
+        676.73
+      ]
+    }
+  }
+}

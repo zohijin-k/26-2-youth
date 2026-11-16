@@ -26,14 +26,21 @@ _AUTOFILL = {
 _CHOICE_PAIRS = {frozenset(pair) for pair in (("예", "아니오"), ("예", "아니요"), ("동의함", "동의하지않음"),
                                               ("있음", "없음"), ("해당", "해당없음"))}
 _CHOICE_WORDS = {word for pair in _CHOICE_PAIRS for word in pair}
-_SIGN_MARKS = {"(서명)", "(인)", "(서명또는인)"}
-_LABEL_WORDS = set(_AUTOFILL)
+_SIGN_MARKS = {"(서명)", "(인)", "(서명또는인)", "(서명/인)"}
+#: General administrative labels that mark a blank but never feed autofill.
+_PLAIN_LABELS = {"사업명", "은행명", "예금주", "계좌번호", "근무처", "근무처명", "소속", "직위", "신청인", "보호자",
+                 "기간", "수령액", "회사명", "담당자"}
+_LABEL_WORDS = set(_AUTOFILL) | _PLAIN_LABELS
+_OPENERS = "(（["
 _BOX_CHARS = ("□", "☐", "▢")
 _SEPARATORS = ",，、/·"
 _COLONS = (":", "：")
 _PAGE_SHARE_LIMIT = .15
 _INLINE_CONFIDENCE = .6
 _LABEL_CONFIDENCE = .55
+#: Layout attribute for a choice word that is itself the option; renderers draw
+#: an oval around the chosen word instead of a check over its glyphs.
+CHOICE_MARK_CIRCLE = "circle"
 
 
 def _compact(text: str) -> str:
@@ -58,6 +65,17 @@ def _autofill(label: str) -> str | None:
     return _AUTOFILL.get(compact)
 
 
+_CLOSERS = {"(": ")", "（": "）", "[": "]"}
+
+
+def _clean_label(text: str) -> str:
+    """Drop trailing colons/spaces and leading opening brackets that never close."""
+    label = re.sub(r"[\s:：]+$", "", text.strip())
+    while label and label[0] in _CLOSERS and _CLOSERS[label[0]] not in label:
+        label = re.sub(r"[\s:：]+$", "", label[1:].lstrip())
+    return label
+
+
 def _field(box: Any, page: int, label: str, kind: str, confidence: float, **extra: Any) -> dict[str, Any]:
     rect = pymupdf.Rect(box)
     size = min(11.0, max(7.0, rect.height * .5))
@@ -71,7 +89,9 @@ def _field(box: Any, page: int, label: str, kind: str, confidence: float, **extr
         "size": size,
         "align": "left",
         "font_family": "sans",
-        "label": label.strip()[:200] or "입력칸",
+        # Trailing colons/spaces and an unpaired opening bracket are layout, not label;
+        # the anchor keeps the source text.
+        "label": _clean_label(label)[:200] or "입력칸",
         "anchor": label.strip()[:200],
         "required": False,
         "autofill_source": _autofill(label),
@@ -265,6 +285,32 @@ def _date_blanks(row: list[Any], vertical: list[tuple[float, float, float]]) -> 
     return found
 
 
+def _dotted_date_blanks(row: list[Any], vertical: list[tuple[float, float, float]]) -> list[tuple[Any, str]]:
+    """Blanks in a printed '20  .  .  .' or 'YYYY.  .  .' row: the gaps between bare dots.
+
+    Only a two- or four-digit start followed by bare '.' tokens counts, and every gap must be
+    blank, so decimals ('3.14'), numbering ('1.', '10. 항목') and filled dates stay text.
+    """
+    found: list[tuple[Any, str]] = []
+    for index, first in enumerate(row):
+        start = re.fullmatch(r"(\d{2}|\d{4})(\.?)", str(first[4]))
+        if start is None:
+            continue
+        labels = ["월", "일"] if start.group(2) else ["연", "월", "일"]
+        tokens = [first, *row[index + 1:index + 1 + len(labels)]]
+        if len(tokens) != len(labels) + 1 or any(str(word[4]) != "." for word in tokens[1:]):
+            continue
+        band = _union(tokens)
+        minimum = max(6.0, band.height)
+        gaps = [(left[2], right[0], label) for left, right, label in zip(tokens, tokens[1:], labels)]
+        edges = [_edge(vertical, begin, band, right=True) for begin, _, _ in gaps]
+        if any(end - begin < minimum or (edge is not None and edge < end - .5)
+               for (begin, end, _), edge in zip(gaps, edges)):
+            continue
+        found.extend((pymupdf.Rect(begin + 2, band.y0 - 2, end - 1, band.y1 + 2), label) for begin, end, label in gaps)
+    return found
+
+
 def _marks(row: list[Any]) -> list[tuple[int, int]]:
     found = []
     index = 0
@@ -288,7 +334,8 @@ def _label_at(row: list[Any], index: int) -> tuple[int, bool] | None:
         stop, colon = index + size, raw.endswith(_COLONS)
         if not colon and stop < len(row) and row[stop][4] in _COLONS:
             stop, colon = stop + 1, True
-        if _compact(raw).rstrip(":：") in _LABEL_WORDS:
+        # A label may open a parenthesised group: "(label : ___ , ...)".
+        if _compact(raw).rstrip(":：").lstrip(_OPENERS) in _LABEL_WORDS:
             return stop, colon
     return None
 
@@ -308,7 +355,7 @@ def _inline_fields(rows: list[list[Any]], horizontal: list[tuple[float, float, f
                    vertical: list[tuple[float, float, float]], right_margin: float, page_no: int) -> list[dict[str, Any]]:
     found: list[dict[str, Any]] = []
     for row in rows:
-        for rect, label in _date_blanks(row, vertical):
+        for rect, label in _date_blanks(row, vertical) + _dotted_date_blanks(row, vertical):
             found.append(_field(rect, page_no, label, "date", _INLINE_CONFIDENCE))
         marks = _marks(row)
         mark_starts = {start for start, _ in marks}
@@ -445,10 +492,26 @@ def _vector_fields(page: Any, page_no: int) -> list[dict[str, Any]]:
             found.append(_field(cell + (2, 2, -2, -2), page_no, text, _kind(text), .52))
 
     check_boxes = list(squares)
+    chars: list[tuple[Any, str]] | None = None
     for word in words:
-        if any(char in str(word[4]) for char in _BOX_CHARS):
-            width = min(word[3] - word[1], word[2] - word[0])
-            check_boxes.append(pymupdf.Rect(word[0], word[1], word[0] + width, word[3]))
+        text = str(word[4])
+        if not any(char in text for char in _BOX_CHARS):
+            continue
+        height = word[3] - word[1]
+        if text[0] in _BOX_CHARS:
+            check_boxes.append(pymupdf.Rect(word[0], word[1], word[0] + min(height, word[2] - word[0]), word[3]))
+            if not any(char in text[1:] for char in _BOX_CHARS):
+                continue
+        # A box glyph inside a word ("항목□") sits at its own glyph, not at the word start.
+        chars = _page_chars(page) if chars is None else chars
+        glyphs = sorted(box for box, char in chars if char in _BOX_CHARS
+                        and word[0] - .5 <= (box.x0 + box.x1) / 2 <= word[2] + .5
+                        and word[1] - .5 <= (box.y0 + box.y1) / 2 <= word[3] + .5
+                        and (text[0] not in _BOX_CHARS or box.x0 > word[0] + .5))
+        if not glyphs and text[0] not in _BOX_CHARS:
+            glyphs = [pymupdf.Rect(word[0], word[1], word[2], word[3])]
+        for glyph in glyphs:
+            check_boxes.append(pymupdf.Rect(glyph.x0, word[1], glyph.x0 + min(height, glyph.width), word[3]))
     unique_boxes: list[Any] = []
     for rect in sorted(check_boxes, key=lambda box: (box.y0, box.x0)):
         if any((rect & previous).get_area() >= .8 * min(rect.get_area(), previous.get_area()) for previous in unique_boxes):
@@ -464,7 +527,6 @@ def _vector_fields(page: Any, page_no: int) -> list[dict[str, Any]]:
                     and abs(field["box"][1] - rect.y0) <= 5), f"p{page_no}_choices_{len(found)}")
         found.append(_field(rect, page_no, label, "check", .65, group=row))
 
-    chars: list[tuple[Any, str]] | None = None
     for row in rows:
         for first, second in _choice_pairs(row, vertical):
             words_in_pair = first[1] + second[1]
@@ -475,9 +537,11 @@ def _vector_fields(page: Any, page_no: int) -> list[dict[str, Any]]:
                 continue  # A printed box next to the word is the field.
             chars = _page_chars(page) if chars is None else chars
             group = f"p{page_no}_words_{len(found)}"
+            # The printed word is the option: pick one of the pair, marked by a circle around it.
             for _, choice_words in (first, second):
                 label = " ".join(str(w[4]).strip(_SEPARATORS) for w in choice_words)
-                found.append(_field(_ink(choice_words, chars), page_no, label, "check", _INLINE_CONFIDENCE, group=group))
+                found.append(_field(_ink(choice_words, chars), page_no, label, "radio", _INLINE_CONFIDENCE,
+                                    group=group, choice_mark=CHOICE_MARK_CIRCLE))
 
     inline = [field for field in _inline_fields(rows, horizontal, vertical, right_margin, page_no)
               if not _yields_to_value_cell(field, value_cells)]

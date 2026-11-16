@@ -1,0 +1,30 @@
+{
+  "mode": "committed",
+  "pages": [
+    {
+      "page": 0,
+      "circle_marks": 0,
+      "circle_boxes": [],
+      "filled_small_marks": 8
+    },
+    {
+      "page": 1,
+      "circle_marks": 2,
+      "circle_boxes": [
+        [
+          99.0,
+          278.4,
+          110.4,
+          287.9
+        ],
+        [
+          142.6,
+          277.4,
+          153.9,
+          288.2
+        ]
+      ],
+      "filled_small_marks": 34
+    }
+  ]
+}

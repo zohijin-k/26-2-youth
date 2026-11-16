@@ -8,7 +8,8 @@
 
   * 글자 — 칸 안에 들어가도록 폭을 재서 넣는다. 넘치면 글자를 줄이지, 칸 밖으로
     나가지 않는다. 원본 선·글자를 침범하는 순간 서식이 아니라 낙서가 된다.
-  * `✓`  — 원본 체크 상자 중심에 좌표 비율을 적용해 크게 그린다.
+  * `✓`  — 원본 체크 상자 중심에 좌표 비율을 적용해 크게 그린다. 인쇄된 선택어 자체가
+    칸인 경우(``choice_mark: "circle"``)에는 고른 단어를 타원(○)으로 둘러싼다.
   * 이미지 — 서식5 서명란에 캔버스 전자서명 PNG (R9.2).
 """
 
@@ -56,6 +57,16 @@ def format_field_text(field: dict[str, Any], text: str) -> str:
         digits = "".join(char for char in text if char.isdigit())
         return digits[-2:] if len(digits) >= 2 else digits
     return text
+
+
+def circle_mark_rect(box: list[float]) -> tuple[float, float, float, float]:
+    """Oval around a chosen word: the word box padded on every side.
+
+    The applicant screen uses the same padding (``src/lib/form-choice.ts``).
+    """
+    height = float(box[3]) - float(box[1])
+    pad_x, pad_y = max(2.0, height * 0.35), max(1.5, height * 0.3)
+    return (float(box[0]) - pad_x, float(box[1]) - pad_y, float(box[2]) + pad_x, float(box[3]) + pad_y)
 
 
 def render_page_png(pdf: bytes, page_no: int, dpi: int = 200) -> bytes:
@@ -216,6 +227,12 @@ def render(coords: FormCoords, filled: FilledForm) -> bytes:
             continue
         box = spec["box"]
         if spec.get("control") == "radio_text":
+            continue
+        if spec.get("choice_mark") == "circle":
+            # A printed choice word is the option itself: circle it, keep it readable.
+            word_height = float(box[3]) - float(box[1])
+            doc[int(spec["page"])].draw_oval(fitz.Rect(*circle_mark_rect(box)), color=INK,
+                                             width=max(0.9, word_height * 0.09), overlay=True)
             continue
         height = float(box[3] - box[1])
         size = max(float(box[2] - box[0]), height) + 3.0

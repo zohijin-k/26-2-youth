@@ -222,7 +222,7 @@ def public_layout(app: Application, form_no: str) -> dict[str,Any]:
     row=form(app,form_no)
     safe={}
     for key,field in row['fields'].items():
-        safe[key]={attr:field[attr] for attr in ('type','field_type','page','box','x','y','size','align','font_family','label','required','group','autofill_source') if attr in field}
+        safe[key]={attr:field[attr] for attr in ('type','field_type','page','box','x','y','size','align','font_family','label','required','group','autofill_source','choice_mark') if attr in field}
         safe[key]['readonly']=field.get('autofill_source') in {'name','birth'}
     return {'form_no':form_no,'title':row['title'],'public_form':None,'page_sizes':row['page_sizes'],
         'fields':safe,'requirements':[],'masks':[],'auto_date':date.today().isoformat()}

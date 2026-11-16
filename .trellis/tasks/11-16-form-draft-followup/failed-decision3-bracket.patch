@@ -1,0 +1,66 @@
+--- a/demo/backend/forms/draft.py
++++ b/demo/backend/forms/draft.py
+@@ -63,6 +63,17 @@
+     # Whole-label recognition prevents an instruction mentioning a name from
+     # becoming an applicant-identity source.
+     return _AUTOFILL.get(compact)
++
++
++_CLOSERS = {"(": ")", "（": "）", "[": "]"}
++
++
++def _clean_label(text: str) -> str:
++    """Drop trailing colons/spaces and leading opening brackets that never close."""
++    label = re.sub(r"[\s:：]+$", "", text.strip())
++    while label and label[0] in _CLOSERS and _CLOSERS[label[0]] not in label:
++        label = re.sub(r"[\s:：]+$", "", label[1:].lstrip())
++    return label
+ 
+ 
+ def _field(box: Any, page: int, label: str, kind: str, confidence: float, **extra: Any) -> dict[str, Any]:
+@@ -78,8 +89,9 @@
+         "size": size,
+         "align": "left",
+         "font_family": "sans",
+-        # Trailing colons and spaces are layout, not label; the anchor keeps the source text.
+-        "label": re.sub(r"[\s:：]+$", "", label.strip())[:200] or "입력칸",
++        # Trailing colons/spaces and an unpaired opening bracket are layout, not label;
++        # the anchor keeps the source text.
++        "label": _clean_label(label)[:200] or "입력칸",
+         "anchor": label.strip()[:200],
+         "required": False,
+         "autofill_source": _autofill(label),
+--- a/demo/backend/tests/test_form_draft_decisions.py
++++ b/demo/backend/tests/test_form_draft_decisions.py
+@@ -1,5 +1,5 @@
+-"""Synthetic PDFs for the follow-up decisions: four more plain labels and the
+-"(서명/인)" signature mark.
++"""Synthetic PDFs for the follow-up decisions: four more plain labels, the
++"(서명/인)" signature mark and dropping an unpaired leading bracket from labels.
+ 
+ Every document is generated here with PyMuPDF; no fixture file is read.
+ """
+@@ -79,3 +79,23 @@
+     _text(page, 60, 100, "서명/인 란에 날인합니다")
+     _text(page, 60, 140, "홍길동(서명/인)")
+     assert _fields(document) == []
++
++
++# Unpaired leading bracket -------------------------------------------------------------
++
++def test_unpaired_leading_bracket_is_dropped_and_the_anchor_kept():
++    document, page = _page()
++    _text(page, 40, 100, "(은행명 :")
++    _text(page, 40, 160, "[소속 :")
++    fields = {field["anchor"]: field for field in _fields(document)}
++    assert {anchor: field["label"] for anchor, field in fields.items()} == {"(은행명 :": "은행명", "[소속 :": "소속"}
++
++
++def test_paired_brackets_stay_in_the_label():
++    document, page = _page()
++    _text(page, 100, 100, "확인자")
++    _text(page, 260, 100, "(서명)")
++    _text(page, 100, 200, "보호자")
++    _text(page, 260, 200, "(인)")
++    labels = sorted(field["label"] for field in _fields(document))
++    assert labels == ["(서명)", "(인)"]

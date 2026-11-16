@@ -28,6 +28,7 @@ import Icon from '../components/Icon.tsx'
 import Spinner from '../components/Spinner.tsx'
 import { friendlyError } from '../lib/error-copy.ts'
 import { splitEmphasis } from '../lib/emphasis.ts'
+import { choiceSatisfied, circleMarkBox, toggledChoices } from '../lib/form-choice.ts'
 import './pdf-forms-workspace.css'
 
 type ActiveForm = { formNo: string; mode: 'edit' | 'preview' }
@@ -241,7 +242,8 @@ export default function PdfFormsWorkspace({
   const pageWidth = Math.min(794, availablePageWidth)
   const scale = pageSize ? pageWidth / pageSize.width : 1
 
-  const genericField = (key: string) => Object.values(layouts).flatMap((layout) => Object.entries(layout.fields)).find(([id]) => id === key)?.[1]
+  const allFields = () => Object.values(layouts).flatMap((layout) => Object.entries(layout.fields))
+  const genericField = (key: string) => allFields().find(([id]) => id === key)?.[1]
   const readChoice = (key: string): boolean => {
     if (generic) return readForm(form1, key) === true
     const [group, option] = [fieldGroup(key), key.split('.').slice(-1)[0]]
@@ -297,8 +299,8 @@ export default function PdfFormsWorkspace({
   const requirementSatisfied = (key: string): boolean => {
     if (generic) {
       const field = genericField(key)
-      if (field?.field_type === 'radio' && field.group) return Object.values(layouts).some((layout) => Object.entries(layout.fields).some(([id, item]) => item.group === field.group && readForm(form1, id) === true))
-      return field?.type === 'check' ? readForm(form1, key) === true : truthy(readForm(form1, key))
+      if (field?.type === 'check') return choiceSatisfied(form1 as unknown as Record<string, unknown>, allFields(), key)
+      return truthy(readForm(form1, key))
     }
     if (key.startsWith('self_check.')) return !!answers[Number(key.split('.')[1])]
     if (key === 'consent.privacy') return !!consent.privacy
@@ -352,10 +354,7 @@ export default function PdfFormsWorkspace({
 
   const toggleChoice = (key: string, checked: boolean) => {
     if (generic) {
-      const next = { ...(form1 as unknown as Record<string, unknown>), [key]: checked }
-      const field = genericField(key)
-      if (checked && field?.field_type === 'radio' && field.group) for (const layout of Object.values(layouts)) for (const [id, item] of Object.entries(layout.fields)) if (id !== key && item.group === field.group) next[id] = false
-      onForm1(next as unknown as Form1Value)
+      onForm1(toggledChoices(form1 as unknown as Record<string, unknown>, allFields(), key, checked) as unknown as Form1Value)
       return
     }
     const group = fieldGroup(key)
@@ -517,7 +516,18 @@ export default function PdfFormsWorkspace({
             aria-label={`${label} ${field.label || '선택'}`}
             onChange={(event) => toggleChoice(key, event.currentTarget.checked)}
           />
-          {checked && <svg
+          {checked && field.choice_mark === 'circle' && (() => {
+            const [ox0, oy0, ox1, oy1] = circleMarkBox(field.box)
+            return <svg
+              className="pdf-form__circle-mark"
+              data-choice-mark="circle"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+              style={{ left: (ox0 - cx0) * scale, top: (oy0 - cy0) * scale, width: (ox1 - ox0) * scale, height: (oy1 - oy0) * scale }}
+            ><ellipse cx="50" cy="50" rx="48" ry="46" vectorEffect="non-scaling-stroke" /></svg>
+          })()}
+          {checked && field.choice_mark !== 'circle' && <svg
             className="pdf-form__check-mark"
             width={markSize}
             height={markSize}
