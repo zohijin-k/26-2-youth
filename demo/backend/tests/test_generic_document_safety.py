@@ -19,12 +19,6 @@ def photo_result():
                      image_quality=1, issue_date=TODAY, tier='synthetic', engine='synthetic')
 
 
-def fake_split(path, folder, stem):
-    target = Path(folder) / f'{stem}_p1.pdf'
-    target.write_bytes(Path(path).read_bytes())
-    return [(0, target, photo_result())]
-
-
 def upload(client, aid, source, slot='photo_1_photo'):
     response = client.post(f'/api/applications/{aid}/documents', data={'slot_key': slot},
                            files={'file': ('FAKE-same.pdf', source, 'application/pdf')})
@@ -38,12 +32,11 @@ def stored(document_id):
         return row.file_path, row.source_file_path
 
 
-def test_generic_same_name_direct_and_merged_uploads_preserve_earlier_bytes(client, monkeypatch):
+def test_generic_same_name_explicit_uploads_preserve_earlier_bytes(client, monkeypatch):
     posting = publish(client, ['photo_1_photo'])
     row, _form, layout = start(client, posting)
     fill(client, row, layout)
     monkeypatch.setattr(documents, 'read_document', lambda path, expected: photo_result())
-    monkeypatch.setattr(documents, 'split_pdf_pages', fake_split)
     first_source, second_source = pdf(), pdf(True)
     first = upload(client, row['id'], first_source)
     first_path, _ = stored(first['document_id'])
@@ -53,60 +46,39 @@ def test_generic_same_name_direct_and_merged_uploads_preserve_earlier_bytes(clie
     assert Path(first_path).name == Path(second_path).name == 'FAKE-same.pdf'
     assert (documents.STORAGE.parent / first_path).read_bytes() == first_source
     assert (documents.STORAGE.parent / second_path).read_bytes() == second_source
-    first_merge = upload(client, row['id'], first_source, 'auto')
-    first_page, first_original = stored(first_merge['unassigned'][0]['document_id'])
-    second_merge = upload(client, row['id'], second_source, 'auto')
-    second_page, second_original = stored(second_merge['unassigned'][0]['document_id'])
-    assert first_page != second_page and first_original != second_original
-    assert (documents.STORAGE.parent / first_page).read_bytes() == first_source
-    assert (documents.STORAGE.parent / first_original).read_bytes() == first_source
-    assert (documents.STORAGE.parent / second_page).read_bytes() == second_source
 
 
-def test_interrupted_generic_merge_keeps_partial_pages_for_review_and_prior_valid_rows(client, monkeypatch):
+@pytest.mark.parametrize('save_failure_at', [1, 2])
+def test_generic_auto_is_rejected_before_any_partial_save(client, monkeypatch, save_failure_at):
     posting = publish(client, ['photo_1_photo'])
     row, _form, layout = start(client, posting)
     fill(client, row, layout)
     monkeypatch.setattr(documents, 'read_document', lambda path, expected: photo_result())
-    def two_pages(path, folder, stem):
-        result = []
-        for index in range(2):
-            page = Path(folder) / f'{stem}_p{index + 1}.pdf'
-            page.write_bytes(Path(path).read_bytes())
-            result.append((index, page, photo_result()))
-        return result
-    monkeypatch.setattr(documents, 'split_pdf_pages', two_pages)
+    prior = upload(client, row['id'], pdf())
+    prior_path, _ = stored(prior['document_id'])
+    prior_bytes = (documents.STORAGE.parent / prior_path).read_bytes()
+    before_files = {str(path): path.read_bytes() for path in documents.STORAGE.rglob('*') if path.is_file()}
+    calls = 0
     original_save = documents._save_row
-    count = 0
-    def fail_second(*args, **kwargs):
-        nonlocal count
-        count += 1
-        if count == 2:
+    def fail_save(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == save_failure_at:
             raise RuntimeError('synthetic interrupted merge')
         return original_save(*args, **kwargs)
-    monkeypatch.setattr(documents, '_save_row', fail_second)
-    with pytest.raises(RuntimeError, match='synthetic interrupted merge'):
-        client.post(f'/api/applications/{row["id"]}/documents', data={'slot_key': 'auto'},
-                    files={'file': ('FAKE-interrupted.pdf', pdf(), 'application/pdf')})
+    monkeypatch.setattr(documents, '_save_row', fail_save)
+    def fail_split(*args, **kwargs):
+        raise AssertionError('rejected auto must never split')
+    monkeypatch.setattr(documents, 'split_pdf_pages', fail_split)
+    response = client.post(f'/api/applications/{row["id"]}/documents', data={'slot_key': 'auto'},
+                           files={'file': ('FAKE-interrupted.pdf', pdf(True), 'application/pdf')})
+    assert response.status_code == 400, response.text
+    assert calls == 0
     with models.get_session() as session:
-        partial = session.exec(select(models.Document).where(models.Document.application_id == row['id'])).one()
-        assert partial.stage1_status == 'NEEDS_REVIEW'
-        assert partial.source_file_path and (documents.STORAGE.parent / partial.source_file_path).is_file()
-        assert any(item['code'] == 'MERGED_PROCESSING_INTERRUPTED' for item in partial.findings_json)
-    monkeypatch.setattr(documents, '_save_row', original_save)
-    other, _form, other_layout = start(client, posting)
-    fill(client, other, other_layout)
-    prior = upload(client, other['id'], pdf())
-    prior_path, _ = stored(prior['document_id'])
-    def fail_first(*args, **kwargs):
-        raise RuntimeError('synthetic before any save')
-    monkeypatch.setattr(documents, '_save_row', fail_first)
-    with pytest.raises(RuntimeError, match='synthetic before any save'):
-        client.post(f'/api/applications/{other["id"]}/documents', data={'slot_key': 'auto'},
-                    files={'file': ('FAKE-interrupted.pdf', pdf(True), 'application/pdf')})
-    with models.get_session() as session:
-        kept = session.exec(select(models.Document).where(models.Document.application_id == other['id'])).one()
-        assert kept.file_path == prior_path and kept.stage1_status == 'PASS'
+        kept = session.exec(select(models.Document).where(models.Document.application_id == row['id'])).one()
+        assert kept.id == prior['document_id'] and kept.file_path == prior_path and kept.stage1_status == 'PASS'
+    assert (documents.STORAGE.parent / prior_path).read_bytes() == prior_bytes
+    assert {str(path): path.read_bytes() for path in documents.STORAGE.rglob('*') if path.is_file()} == before_files
 
 
 def test_generic_http_writes_serialize_per_application_after_ownership_check(monkeypatch):

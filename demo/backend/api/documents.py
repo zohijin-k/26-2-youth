@@ -301,16 +301,27 @@ def _replace_existing(application_id: int, slot_key: str) -> None:
 async def upload_document(
     application_id: int,
     file: UploadFile = File(...),
-    slot_key: str = Form(AUTO_SLOT),
+    slot_key: str = Form(""),
     declared_issue_date: str | None = Form(None),
 ) -> dict[str, Any]:
     """파일 1개를 받아 즉시 1단계 판정을 돌려준다 (R2.1).
 
-    `slot_key`를 비우거나 `auto`로 주면 병합 PDF로 보고 페이지별로 쪼개
-    슬롯에 자동 배정한다 (R3.5).
+    명시적인 업로드 슬롯이 필요하다. 검증되지 않은 병합 자동 분류는
+    정식 OCR·품질 판정을 우회하므로 파일 처리 전에 거부한다.
     """
+    if not slot_key or slot_key == AUTO_SLOT:
+        raise HTTPException(
+            400,
+            "자동 서류 분류 업로드는 현재 지원하지 않습니다. "
+            "서류 종류에 맞는 업로드 항목을 선택해 다시 제출해 주세요.",
+        )
     app = _load(application_id)
     checklist = _checklist(app)
+    req = find_slot(checklist, slot_key)
+    # bank_account is displayed as fulfilled in the checklist, but has its own
+    # validated attachment flow. No other non-upload slot is accepted.
+    if req is None or (not req.upload and slot_key != "bank_account"):
+        raise HTTPException(400, f"업로드 대상이 아닌 슬롯입니다: {slot_key}")
     if generic.is_generic(app.program_code):
         if app.status != "draft":
             raise HTTPException(409, "제출한 신청서는 수정할 수 없습니다.")
@@ -326,35 +337,8 @@ async def upload_document(
             f"pdf, jpg, png 파일만 올릴 수 있습니다. (올리신 형식: {suffix or '알 수 없음'})",
         )
 
-    target_slot = slot_key or AUTO_SLOT
-    if target_slot == AUTO_SLOT:
-        if not generic.is_generic(app.program_code):
-            return await _upload_merged(app, checklist, file)
-        previous_paths = {row.file_path for row in _list_documents(application_id)}
-        try:
-            return await _upload_merged(app, checklist, file)
-        except Exception:
-            # A partially processed source must never leave newly saved PASS
-            # pages authoritative. Earlier valid uploads remain unchanged.
-            with get_session() as session:
-                for row in session.exec(select(Document).where(Document.application_id == application_id)).all():
-                    if row.file_path in previous_paths:
-                        continue
-                    if row.stage1_status != "FAIL":
-                        row.stage1_status = "NEEDS_REVIEW"
-                    row.findings_json = [*(row.findings_json or []), {
-                        "code": "MERGED_PROCESSING_INTERRUPTED", "severity": "NEEDS_REVIEW",
-                        "message": "병합 서류 처리가 완료되지 않아 담당자가 전체 원본을 확인해야 합니다.",
-                        "how_to_fix": "원본 파일을 확인하고 다시 올려 주세요.", "link": ""}]
-                    session.add(row)
-                session.commit()
-            raise
-
-    req = find_slot(checklist, target_slot)
-    if req is not None and target_slot == "bank_account":
+    if slot_key == "bank_account":
         return await _upload_bankbook(app, file)
-    if req is None or not req.upload:
-        raise HTTPException(400, f"업로드 대상이 아닌 슬롯입니다: {target_slot}")
 
     declared = _parse_date(declared_issue_date)
     dest_dir = DOCUMENTS / app.application_no / req.slot_key
