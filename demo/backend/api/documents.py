@@ -8,6 +8,7 @@
 """
 
 import re
+import logging
 import pymupdf
 from datetime import date, datetime
 from pathlib import Path
@@ -19,7 +20,8 @@ from pydantic import BaseModel, Field
 from sqlmodel import select
 
 from ..upload_assessment import assess_nhis_identity, assess_upload
-from ..models import UNASSIGNED_SLOT, Application, Document, SubsidyItem, get_session
+from ..models import UNASSIGNED_SLOT, Application, Document, SubsidyItem, get_session, session_transaction
+from ..application_writes import guarded_write
 from .. import generic_programs as generic
 from ..ocr import read_document, split_pdf_pages
 from ..rules.identity import identity_of
@@ -47,6 +49,7 @@ from .common import (
 router = APIRouter(prefix="/api/applications", tags=["documents"])
 
 DOCUMENTS = STORAGE / "documents"
+_LOG = logging.getLogger(__name__)
 
 #: 병합 PDF 자동 분리를 요청하는 슬롯 키.
 AUTO_SLOT = "auto"
@@ -71,6 +74,13 @@ _checklist = checklist_for
 _document_dict = document_dict
 _list_documents = load_documents
 
+
+
+def _require_draft(application_id: int) -> Application:
+    current = _load(application_id)
+    if current.status != "draft":
+        raise HTTPException(409, "제출한 신청서는 수정할 수 없습니다.")
+    return current
 
 def _requirement_dict(req: DocRequirement, uploaded: list[Document]) -> dict[str, Any]:
     mine = [d for d in uploaded if d.slot_key == req.slot_key]
@@ -229,6 +239,7 @@ def _ocr_json(ocr: OcrResult) -> dict[str, Any]:
     })
 
 
+@guarded_write
 def _save_row(
     app: Application,
     req: DocRequirement | None,
@@ -258,22 +269,23 @@ def _save_row(
         source_file_path=source_file_path,
     )
     with get_session() as s:
-        if generic.is_generic(app.program_code):
-            current = s.get(Application, app.id)
-            if current is None or current.status != "draft":
-                raise HTTPException(409, "제출한 신청서는 수정할 수 없습니다.")
-            if replace_existing:
-                for previous in s.exec(select(Document).where(
-                        Document.application_id == app.id, Document.slot_key == slot_key)).all():
-                    s.delete(previous)
+        current = s.get(Application, app.id)
+        if current is None or current.status != "draft":
+            raise HTTPException(409, "제출한 신청서는 수정할 수 없습니다.")
+        if replace_existing:
+            for previous in s.exec(select(Document).where(
+                    Document.application_id == app.id, Document.slot_key == slot_key)).all():
+                s.delete(previous)
         s.add(row)
         s.commit()
         s.refresh(row)
         return row
 
 
+@guarded_write
 def _refresh_nhis_identity(application_id: int, app: Application, checklist: list[DocRequirement]) -> None:
     """건강보험 납부·자격확인서는 짝 서류가 도착할 때마다 함께 다시 대조한다."""
+    _require_draft(application_id)
     all_rows = _list_documents(application_id)
     for row, result in assess_nhis_identity(identity_of(app.identity_json), checklist, all_rows):
         with get_session() as session:
@@ -285,8 +297,10 @@ def _refresh_nhis_identity(application_id: int, app: Application, checklist: lis
                 session.commit()
 
 
+@guarded_write
 def _replace_existing(application_id: int, slot_key: str) -> None:
     """같은 슬롯에 다시 올리면 이전 것을 지운다. 재업로드가 기본 동선이다."""
+    _require_draft(application_id)
     with get_session() as s:
         for old in s.exec(
             select(Document)
@@ -298,6 +312,7 @@ def _replace_existing(application_id: int, slot_key: str) -> None:
 
 
 @router.post("/{application_id}/documents")
+@guarded_write
 async def upload_document(
     application_id: int,
     file: UploadFile = File(...),
@@ -315,7 +330,7 @@ async def upload_document(
             "자동 서류 분류 업로드는 현재 지원하지 않습니다. "
             "서류 종류에 맞는 업로드 항목을 선택해 다시 제출해 주세요.",
         )
-    app = _load(application_id)
+    app = _require_draft(application_id)
     checklist = _checklist(app)
     req = find_slot(checklist, slot_key)
     # bank_account is displayed as fulfilled in the checklist, but has its own
@@ -323,8 +338,6 @@ async def upload_document(
     if req is None or (not req.upload and slot_key != "bank_account"):
         raise HTTPException(400, f"업로드 대상이 아닌 슬롯입니다: {slot_key}")
     if generic.is_generic(app.program_code):
-        if app.status != "draft":
-            raise HTTPException(409, "제출한 신청서는 수정할 수 없습니다.")
         data = await file.read(20 * 1024 * 1024 + 1)
         if not data or len(data) > 20 * 1024 * 1024:
             raise HTTPException(400, "서류는 내용이 있는 20MB 이하 파일로 올려 주세요.")
@@ -341,62 +354,69 @@ async def upload_document(
         return await _upload_bankbook(app, file)
 
     declared = _parse_date(declared_issue_date)
-    dest_dir = DOCUMENTS / app.application_no / req.slot_key
-    if generic.is_generic(app.program_code):
-        dest_dir = dest_dir / uuid4().hex
+    dest_dir = DOCUMENTS / app.application_no / req.slot_key / uuid4().hex
     dest_dir.mkdir(parents=True, exist_ok=True)
     path = dest_dir / _safe_name(file.filename or "upload")
-    path.write_bytes(await file.read())
+    committed = False
+    try:
+        path.write_bytes(await file.read())
 
-    def receipt_amount_loader() -> int | None:
-        parts = req.slot_key.split("_")
-        try:
-            item_type, index = parts[0], int(parts[1])
-        except (IndexError, ValueError):
-            item_type, index = "", 0
-        with get_session() as session:
-            item = session.exec(select(SubsidyItem)
-                                .where(SubsidyItem.application_id == application_id)
-                                .where(SubsidyItem.item_type == item_type)
-                                .where(SubsidyItem.count_index == index)).first()
-        return item.receipt_amount if item is not None else None
+        def receipt_amount_loader() -> int | None:
+            parts = req.slot_key.split("_")
+            try:
+                item_type, index = parts[0], int(parts[1])
+            except (IndexError, ValueError):
+                item_type, index = "", 0
+            with get_session() as session:
+                item = session.exec(select(SubsidyItem)
+                                    .where(SubsidyItem.application_id == application_id)
+                                    .where(SubsidyItem.item_type == item_type)
+                                    .where(SubsidyItem.count_index == index)).first()
+            return item.receipt_amount if item is not None else None
 
-    ocr, result = assess_upload(
-        path, req,
-        identity=identity_of(app.identity_json),
-        declared=declared,
-        checklist=checklist,
-        uploaded_loader=lambda: _list_documents(application_id),
-        paper_admin_consent=bool(((app.doc_context_json or {}).get("paper_forms") or {}).get("서식5")),
-        receipt_amount_loader=receipt_amount_loader,
-        reader=read_document,
-    )
+        ocr, result = assess_upload(
+            path, req,
+            identity=identity_of(app.identity_json),
+            declared=declared,
+            checklist=checklist,
+            uploaded_loader=lambda: _list_documents(application_id),
+            paper_admin_consent=bool(((app.doc_context_json or {}).get("paper_forms") or {}).get("서식5")),
+            receipt_amount_loader=receipt_amount_loader,
+            reader=read_document,
+        )
 
-    if not generic.is_generic(app.program_code):
-        _replace_existing(application_id, req.slot_key)
-    row = _save_row(
-        app,
-        req,
-        req.slot_key,
-        path,
-        ocr,
-        declared,
-        [f.as_dict() for f in result.findings],
-        result.status,
-        replace_existing=generic.is_generic(app.program_code),
-    )
-    if req.doc_type in (DocType.NHIS_PAYMENT, DocType.NHIS_QUALIFICATION) or ocr.detected_doc_type in (
-        DocType.NHIS_PAYMENT, DocType.NHIS_QUALIFICATION,
-    ):
-        _refresh_nhis_identity(application_id, app, checklist)
-        row = next((d for d in _list_documents(application_id) if d.id == row.id), row)
-    return _document_dict(row)
+        with session_transaction():
+            row = _save_row(
+                app,
+                req,
+                req.slot_key,
+                path,
+                ocr,
+                declared,
+                [f.as_dict() for f in result.findings],
+                result.status,
+                replace_existing=True,
+            )
+            if req.doc_type in (DocType.NHIS_PAYMENT, DocType.NHIS_QUALIFICATION) or ocr.detected_doc_type in (
+                DocType.NHIS_PAYMENT, DocType.NHIS_QUALIFICATION,
+            ):
+                _refresh_nhis_identity(application_id, app, checklist)
+                row = next((d for d in _list_documents(application_id) if d.id == row.id), row)
+        committed = True
+        return _document_dict(row)
+    finally:
+        if not committed:
+            path.unlink(missing_ok=True)
+            dest_dir.rmdir()
 
 
+
+@guarded_write
 async def _upload_bankbook(app: Application, file: UploadFile) -> dict[str, Any]:
     """Bankbook copy uses the document store and inline viewer, without OCR claims."""
     from ..models import STATUS_DRAFT
 
+    app = _require_draft(app.id or 0)
     if app.status != STATUS_DRAFT:
         raise HTTPException(409, "제출한 신청서는 수정할 수 없습니다.")
     data = await file.read(20 * 1024 * 1024 + 1)
@@ -457,6 +477,7 @@ async def _upload_bankbook(app: Application, file: UploadFile) -> dict[str, Any]
         raise
 
 
+@guarded_write
 async def _upload_merged(
     app: Application, checklist: list[DocRequirement], file: UploadFile
 ) -> dict[str, Any]:
@@ -466,12 +487,11 @@ async def _upload_merged(
     올린 신청자도 그대로 받되, 페이지별 판별 결과로 슬롯을 채운다. 배정되지 않은
     페이지만 신청자에게 되묻는다.
     """
+    app = _require_draft(app.id or 0)
     if not (file.filename or "").lower().endswith(".pdf"):
         raise HTTPException(400, "여러 서류를 한 파일로 올리는 기능은 pdf만 지원합니다.")
 
-    base = DOCUMENTS / app.application_no / "_merged"
-    if generic.is_generic(app.program_code):
-        base = base / uuid4().hex
+    base = DOCUMENTS / app.application_no / "_merged" / uuid4().hex
     base.mkdir(parents=True, exist_ok=True)
     source = base / _safe_name(file.filename or "merged.pdf")
     source.write_bytes(await file.read())
@@ -545,8 +565,6 @@ async def _upload_merged(
                 severity='NEEDS_REVIEW')])
         else:
             result = check_document(req, ocr, None, "pdf", identity_of(app.identity_json))
-        if not generic.is_generic(app.program_code):
-            _replace_existing(app.id or 0, req.slot_key)
         row = _save_row(
             app,
             req,
@@ -558,7 +576,7 @@ async def _upload_merged(
             result.status,
             page_index=index,
             source_file_path=rel_source,
-            replace_existing=generic.is_generic(app.program_code),
+            replace_existing=True,
         )
         assigned.append(_document_dict(row))
 
@@ -587,35 +605,53 @@ def list_documents(application_id: int) -> list[dict[str, Any]]:
 
 
 @router.delete("/{application_id}/documents/{document_id}")
+@guarded_write
 def delete_document(application_id: int, document_id: int) -> dict[str, str]:
     """재업로드를 위한 삭제. 파일도 같이 지운다."""
-    app = _load(application_id)
-    if generic.is_generic(app.program_code) and app.status != "draft":
-        raise HTTPException(409, "제출한 신청서는 수정할 수 없습니다.")
+    app = _require_draft(application_id)
     checklist = _checklist(app)
     nhis_types = {str(DocType.NHIS_PAYMENT), str(DocType.NHIS_QUALIFICATION)}
     refresh_nhis = False
-    with get_session() as s:
-        row = s.get(Document, document_id)
-        if row is None or row.application_id != application_id:
-            raise HTTPException(404, "서류를 찾을 수 없습니다.")
-        refresh_nhis = row.doc_type in nhis_types or row.expected_doc_type in nhis_types
-        if row.slot_key == "bank_account":
-            from ..models import STATUS_DRAFT
+    staged = None
+    target = None
+    try:
+        with session_transaction(), get_session() as s:
+            _require_draft(application_id)
+            row = s.get(Document, document_id)
+            if row is None or row.application_id != application_id:
+                raise HTTPException(404, "서류를 찾을 수 없습니다.")
+            refresh_nhis = row.doc_type in nhis_types or row.expected_doc_type in nhis_types
+            if row.slot_key == "bank_account":
+                from ..models import STATUS_DRAFT
 
-            saved = s.get(Application, application_id)
-            if saved is None or saved.status != STATUS_DRAFT:
-                raise HTTPException(409, "제출한 신청서는 수정할 수 없습니다.")
-            values = dict(saved.form1_json or {})
-            values.pop("bankbookFileName", None)
-            saved.form1_json = values
-            saved.doc_context_json = {**(saved.doc_context_json or {}), "applicant_flow_version": 1}
-            saved.updated_at = datetime.now()
-            s.add(saved)
-        target = STORAGE.parent / row.file_path
-        target.unlink(missing_ok=True)
-        s.delete(row)
-        s.commit()
-    if refresh_nhis:
-        _refresh_nhis_identity(application_id, app, checklist)
+                saved = s.get(Application, application_id)
+                if saved is None or saved.status != STATUS_DRAFT:
+                    raise HTTPException(409, "제출한 신청서는 수정할 수 없습니다.")
+                values = dict(saved.form1_json or {})
+                values.pop("bankbookFileName", None)
+                saved.form1_json = values
+                saved.doc_context_json = {**(saved.doc_context_json or {}), "applicant_flow_version": 1}
+                saved.updated_at = datetime.now()
+                s.add(saved)
+            target = STORAGE.parent / row.file_path
+            s.delete(row)
+            s.commit()
+            if refresh_nhis:
+                _refresh_nhis_identity(application_id, app, checklist)
+            # Stage the removal reversibly. A failed DB commit restores its path.
+            if target.exists():
+                staged = target.with_name("." + uuid4().hex + ".pending-delete")
+                target.rename(staged)
+    except BaseException:
+        if staged is not None and staged.exists():
+            staged.rename(target)
+        raise
+    if staged is not None:
+        try:
+            staged.unlink()
+        except OSError:
+            # The committed delete remains successful; never return an error
+            # suggesting the document still exists. Operators can remove these
+            # unreferenced tombstones after checking the database.
+            _LOG.warning("Deferred cleanup of deleted applicant document")
     return {"deleted": str(document_id)}

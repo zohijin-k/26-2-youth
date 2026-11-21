@@ -23,6 +23,7 @@ from engine_v2.pipeline.privacy import mask_data
 from .forms.coords import FormCoords
 from .forms.values import FilledForm
 from .forms.render import render, render_page_png
+from .application_writes import guarded_write
 from .models import Application, ProgramApplicationSnapshot, ProgramPosting, Review, get_session
 from .rules.doc_types import DocType
 from .rules.programs import get_program as builtin_program
@@ -344,7 +345,10 @@ def run_review(app:Application) -> Review:
         review_payload_json=payload)
 
 
+@guarded_write
 def submit(app:Application) -> dict[str,Any]:
+    from .api.common import load_application
+    app=load_application(app.id or 0)
     if app.status!='draft': raise HTTPException(400,'이미 제출된 신청입니다.')
     issues=blockers(app)
     if issues: raise HTTPException(400,'아직 제출할 수 없습니다. '+ ' '.join(item['message'] for item in issues))

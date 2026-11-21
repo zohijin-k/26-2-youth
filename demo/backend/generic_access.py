@@ -12,6 +12,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from .models import Application, Document, get_session
+from .application_writes import async_application_write
 from .generic_programs import is_generic
 from .officer_auth import is_officer
 
@@ -139,7 +140,7 @@ class GenericApplicantAccess:
             await response(scope, receive, send)
             return
         if scope.get('method') in {'POST', 'PUT', 'PATCH', 'DELETE'}:
-            async with self._write_lock(application.id):
+            async with self._write_lock(application.id), async_application_write(application.id):
                 await self.app(scope, receive, send)
             return
         await self.app(scope, receive, send)
