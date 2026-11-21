@@ -21,6 +21,8 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from sqlmodel import select
+
+from ..application_writes import guarded_write
 from engine_v2.pipeline.privacy import mask_data
 
 from ..engine_adapter import (
@@ -778,6 +780,7 @@ def _link_overlapping_households(app: Application, current_review: Review) -> No
 
 
 @router.post("/{application_id}/submit")
+@guarded_write
 def submit(application_id: int) -> dict[str, Any]:
     """최종 제출 → 전체 파이프라인 + 채점 → `review` 저장.
 
