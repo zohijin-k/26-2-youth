@@ -1,3 +1,4 @@
+import { confirmOfficerLeave } from './review-navigation.ts'
 /**
  * 담당자 화면 틀: 왼쪽 사이드바 + 본문.
  *
@@ -204,6 +205,7 @@ export default function OfficerShell({ headerHost, onList, onNew, onProgram, chi
         <div className="osb__foot">
           {locked && <p className="osb__lock" role="status">저장하지 않은 수정이 있어 이동할 수 없습니다.</p>}
           <button type="button" className="osb__logout" onClick={() => {
+            if (!confirmOfficerLeave()) return
             void fetch('/api/officer/logout', { method: 'POST', credentials: 'same-origin' }).then((response) => {
               if (response.ok) window.location.assign('/officer/login')
             })

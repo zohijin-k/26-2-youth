@@ -88,7 +88,7 @@ export default function GenericApplicationList({ postingId, onOpen = () => undef
     if (blocked || !selected.length || !list?.role.can_bulk || !bulkActionsFor(shownQueue, list.role.actions).some((action) => action.key === decision)) return
     if (decision !== 'approve' && !memo.trim()) { setError('일괄 보류·반려 사유를 입력해 주세요.'); return }
     setBusy(true); setError(''); setNotice('')
-    try { const result = await postBulkDecision({ role: query.role, decision, memo: memo.trim(), application_ids: selected }); setSelected([]); setMemo(''); setNotice(`${result.processed}건을 처리했습니다.`); await reload() }
+    try { const result = await postBulkDecision({ role: query.role, decision, memo: memo.trim(), application_ids: selected, expected_revisions: Object.fromEntries(list.rows.filter((row) => selected.includes(row.application_id)).map((row) => [row.application_id, row.revision])) }); setSelected([]); setMemo(''); setNotice(`${result.processed}건을 처리했습니다.`); await reload() }
     catch (problem: unknown) { setError(problem instanceof Error ? problem.message : '처리하지 못했습니다.') }
     finally { setBusy(false) }
   }

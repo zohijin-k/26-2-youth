@@ -9,7 +9,7 @@
  * 화면 어디에도 파일을 내려받는 버튼이 없다 (R4.1).
  */
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 
 import {
   fetchReviewDetail,
@@ -25,6 +25,8 @@ import { Skeleton, SkeletonBlock, SkeletonLine } from '../../components/Skeleton
 import useDelayedFlag from '../../hooks/useDelayedFlag.ts'
 import DocumentViewer from './DocumentViewer.tsx'
 import { dotClass } from './format.ts'
+import { useReviewDraft } from './useReviewDraft.ts'
+import ReviewSaveStatus from './ReviewSaveStatus.tsx'
 import { reviewSaveError } from './review-save.ts'
 
 interface Props {
@@ -98,7 +100,7 @@ function pickInitialDoc(
 
 export default function ReviewDetail(props: Props) {
   // A draft and every pending response belong to exactly one application and role.
-  return <ReviewDetailContent key={`${props.applicationId}:${props.role}:${props.initialSlotKey ?? ''}`} {...props} />
+  return <ReviewDetailContent key={`${props.applicationId}:${props.role}`} {...props} />
 }
 
 function ReviewDetailContent({
@@ -109,43 +111,26 @@ function ReviewDetailContent({
   onReject,
   initialSlotKey,
 }: Props) {
-  const [detail, setDetail] = useState<ReviewDetailData | null>(null)
-  const [error, setError] = useState('')
+  const draft = useReviewDraft({
+    load: () => fetchReviewDetail(applicationId, role),
+    write: (decision, memo, expectedRevision) => postDecision(applicationId, { role, decision: decision as DecisionKey, memo, expected_revision: expectedRevision }),
+    errorText: reviewSaveError, onSaved: onDecided,
+  })
+  const { data: detail, memo, busy: saving, loadError: error, editor } = draft
   const [activeDocId, setActiveDocId] = useState<number | null>(null)
   /** 작성 서식 탭이 켜져 있으면 서식 번호. 업로드 서류 탭을 누르면 꺼진다. */
   const [activeForm, setActiveForm] = useState<string | null>(null)
   const [focus, setFocus] = useState<Focus | null>(null)
-  const [memo, setMemo] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState('')
-  const [saveNotice, setSaveNotice] = useState('')
-  const pendingSave = useRef(false)
-  const memoRevision = useRef(0)
-  const mounted = useRef(false)
   const showSkeleton = useDelayedFlag(!detail && !error)
-
-  useEffect(() => {
-    mounted.current = true
-    let active = true
-    fetchReviewDetail(applicationId, role)
-      .then((d) => {
-        if (!active) return
-        setDetail(d)
-        setMemo(d.decision.memo ?? '')
-        setActiveDocId(pickInitialDoc(d, initialSlotKey))
-      })
-      .catch(() => { if (active) setError('신청 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.') })
-    return () => { active = false; mounted.current = false }
-  }, [applicationId, role, initialSlotKey])
 
   const activeDoc: OfficerDocument | null = useMemo(() => {
     if (!detail) return null
     return (
-      detail.documents.find((d) => d.document_id === activeDocId) ?? detail.documents[0] ?? null
+      detail.documents.find((d) => d.document_id === (activeDocId ?? pickInitialDoc(detail, initialSlotKey))) ?? null
     )
-  }, [detail, activeDocId])
+  }, [detail, activeDocId, initialSlotKey])
 
-  if (error) return <div><button type="button" className="review__back" onClick={onBack}>← 접수 목록</button><p className="officer__error" role="alert">{error}</p></div>
+  if (error) return <div><button type="button" className="review__back" onClick={onBack}>← 접수 목록</button><p className="officer__error" role="alert">{error} <button type="button" className="btn" onClick={() => void editor.check()}>다시 시도</button></p></div>
   if (!detail) return showSkeleton ? (
     <Skeleton className="review__skeleton">
       <div className="review__head review__skeleton-header">
@@ -171,34 +156,6 @@ function ReviewDetailContent({
     setFocus({ documentId: doc.document_id, bbox, label: field })
   }
 
-  const decide = async (decision: DecisionKey) => {
-    if (pendingSave.current) return
-    pendingSave.current = true
-    setSaving(true)
-    setSaveError('')
-    setSaveNotice('')
-    const submittedMemo = memo
-    const submittedRevision = memoRevision.current
-    try {
-      const saved = await postDecision(applicationId, { role, decision, memo: submittedMemo })
-      if (!mounted.current) return
-      // Use the acknowledged decision, not a second GET that can fail or overwrite newer typing.
-      setDetail((current) => current ? {
-        ...current,
-        decision: { ...current.decision, decision: saved.decision as DecisionKey,
-          label: saved.label, decided_at: saved.decided_at, memo: submittedMemo, officer_role: role },
-      } : current)
-      setSaveNotice(memoRevision.current === submittedRevision
-        ? '처리 결과와 메모를 저장했습니다.'
-        : '요청한 처리 결과와 메모를 저장했습니다. 이후 입력한 메모는 아직 저장하지 않았습니다.')
-      onDecided()
-    } catch (error: unknown) {
-      if (mounted.current) setSaveError(reviewSaveError(error))
-    } finally {
-      pendingSave.current = false
-      if (mounted.current) setSaving(false)
-    }
-  }
 
   const highlight =
     !viewingForm && focus && focus.documentId === activeDoc?.document_id ? focus.bbox : null
@@ -490,11 +447,9 @@ function ReviewDetailContent({
               rows={3}
               placeholder="담당자 메모 (판단 근거·확인 사항)"
               aria-label="담당자 메모"
-              onChange={(e) => { memoRevision.current += 1; setMemo(e.target.value); setSaveNotice('') }}
-              aria-describedby={saveError ? 'review-save-error' : undefined}
+              onChange={(e) => editor.edit(e.target.value)}
             />
-            {saveError && <p id="review-save-error" className="officer__error" role="alert">{saveError}</p>}
-            {saveNotice && <p role="status">{saveNotice}</p>}
+            <ReviewSaveStatus editor={editor} state={draft} />
             {saving && <p role="status">처리 결과와 메모를 저장하고 있습니다.</p>}
             <div className="actions" aria-busy={saving}>
               {detail.role.actions.map((a) => (
@@ -502,8 +457,8 @@ function ReviewDetailContent({
                   key={a.key}
                   type="button"
                   className={`btn btn--${a.tone}`}
-                  disabled={saving}
-                  onClick={() => (a.key === 'reject' ? onReject() : void decide(a.key))}
+                  disabled={saving || draft.needsCheck}
+                  onClick={() => (a.key === 'reject' ? onReject() : void editor.save(a.key))}
                 >
                   {a.label}
                 </button>

@@ -1,3 +1,4 @@
+import { requireReviewRevision, requireReviewRevisions } from './lib/review-revision.ts'
 /** 백엔드 호출. vite dev 서버가 /api 를 :8000 으로 프록시한다. */
 
 import { FORM_FIELD_KEYS } from './forms/form-field-bindings.ts'
@@ -334,7 +335,7 @@ async function json<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { 'Content-Type': 'application/json', ...init?.headers },
   })
   officerSessionResponse(path, res)
-  if (!res.ok) throw new HttpError(res.status, `${init?.method ?? 'GET'} ${path} 실패 (${res.status})`)
+  if (!res.ok) throw await HttpError.fromResponse(res, `${init?.method ?? 'GET'} ${path} 실패 (${res.status})`)
   return res.json() as Promise<T>
 }
 
@@ -653,6 +654,7 @@ export interface OfficerRole {
 }
 
 export interface OfficerRow {
+  revision?: number | null
   application_id: number
   application_no: string
   name: string
@@ -827,6 +829,7 @@ export interface FormExport {
 }
 
 export interface ReviewDetailData {
+  revision: number | null
   application_id: number
   application_no: string
   criteria_version?: number | null
@@ -961,7 +964,7 @@ export const fetchReviewDetail = async (applicationId: number, role: string): Pr
   const mocks = mockMode().blocked ? null : await loadOfficerMocks()
   const detail = mocks?.isMockId(applicationId)
     ? mocks.mockReviewDetail(applicationId, role)
-    : await json<ReviewDetailData>(`/api/officer/applications/${applicationId}?${query({ role })}`)
+    : await json<ReviewDetailData>(`/api/officer/applications/${applicationId}?${query({ role })}`, { signal: AbortSignal.timeout(15000), cache: 'no-store' })
   if (detail.program_code !== YOUTH_PROGRAM) {
     throw new Error('이 화면에서는 청년 취업지원패키지 신청만 확인할 수 있습니다.')
   }
@@ -978,7 +981,7 @@ export const fetchApplicationReasons = async (applicationId: number, role: strin
 
 export const postDecision = async (
   applicationId: number,
-  body: { role: string; decision: DecisionKey; memo: string; notice?: string },
+  body: { role: string; decision: DecisionKey; memo: string; notice?: string; expected_revision: number },
 ) => {
   const mocks = mockMode().blocked ? null : await loadOfficerMocks()
   if (mocks?.isMockId(applicationId)) {
@@ -986,6 +989,7 @@ export const postDecision = async (
     const detail = mocks.mockReviewDetail(applicationId, body.role)
     return { decision: body.decision, label: detail.decision.label, decided_at: detail.decision.decided_at }
   }
+  requireReviewRevision(body.expected_revision)
   return json<{ decision: string; label: string; decided_at: string | null }>(
     `/api/officer/applications/${applicationId}/decision`,
     { method: 'POST', body: JSON.stringify(body), signal: AbortSignal.timeout(15000) },
@@ -997,6 +1001,7 @@ export const postBulkDecision = async (body: {
   decision: DecisionKey
   memo: string
   application_ids: number[]
+  expected_revisions: Record<number, number | null | undefined>
 }) => {
   const mocks = mockMode().blocked ? null : await loadOfficerMocks()
   if (mocks && body.application_ids.every(mocks.isMockId)) {
@@ -1004,6 +1009,7 @@ export const postBulkDecision = async (body: {
     if (refusal) throw new Error(refusal)
     return { processed: mocks.mockDecide(body.application_ids, body.role, body.decision, body.memo) }
   }
+  requireReviewRevisions(body.application_ids, body.expected_revisions)
   return json<{ processed: number }>('/api/officer/applications/decisions', {
     method: 'POST', body: JSON.stringify(body),
   })

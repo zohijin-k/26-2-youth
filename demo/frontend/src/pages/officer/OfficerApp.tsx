@@ -1,3 +1,4 @@
+import { confirmOfficerLeave } from './review-navigation.ts'
 /**
  * 담당자 화면의 입구. 주소 하나에 화면 하나만 올린다.
  *
@@ -64,6 +65,7 @@ function OfficerScreens({ headerHost }: { headerHost: HTMLElement | null }) {
   }, [route])
 
   const go = useCallback((next: Route, path: string, replace = false) => {
+    if (!confirmOfficerLeave()) return
     routeUrl(path, {}, replace)
     setRoute(next)
     window.scrollTo({ top: 0 })
@@ -79,6 +81,7 @@ function OfficerScreens({ headerHost }: { headerHost: HTMLElement | null }) {
   ), [go])
   /** 사이드바에서 사업의 탭으로 간다. 같은 사업이어도 작업 공간을 새로 올려 주소의 탭을 다시 읽게 한다. */
   const openProgramTab = useCallback((posting: OfficerPosting, tab: OfficerTab = 'applications') => {
+    if (!confirmOfficerLeave()) return
     const path = `/officer/programs/${posting.id}`
     routeUrl(path, tab === 'applications' ? {} : { tab })
     setRoute({ screen: 'workspace', target: posting.id, posting, nonce: Date.now() })

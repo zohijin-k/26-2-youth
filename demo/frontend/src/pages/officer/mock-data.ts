@@ -1495,7 +1495,7 @@ export function mockReviewDetail(applicationId: number, roleKey: string): Review
   const abstract = entry.docs.find((d) => d.slotKey === 'resident_abstract')
   const stale = entry.docs.filter((d) => d.findings.some((f) => f.code === 'ISSUED_BEFORE_CUTOFF'))
   return {
-    application_id: applicationId, application_no: entry.row.application_no,
+    revision: entry.row.revision ?? 1, application_id: applicationId, application_no: entry.row.application_no,
     name: entry.row.name, program_code: JOB_PACKAGE, program_name: PROGRAM_NAMES[JOB_PACKAGE],
     region: entry.row.region, town: entry.row.town, status: entry.row.status, submitted_at: entry.row.submitted_at,
     ai: {
@@ -1572,6 +1572,7 @@ export function mockDecide(
   for (const id of applicationIds) {
     const entry = byId.get(id)
     if (!entry) continue
+    entry.row.revision = (entry.row.revision ?? 1) + 1
     entry.row.decision = decision
     entry.row.officer_role = roleKey
     entry.row.decision_label = decisionLabel(roleKey, decision)

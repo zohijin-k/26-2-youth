@@ -1,3 +1,4 @@
+import { confirmOfficerLeave } from './review-navigation.ts'
 import { useCallback, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { fetchOfficerPosting, type OfficerPosting } from '../../api.ts'
 import { routeUrl } from '../../navigation-url.ts'
@@ -24,8 +25,8 @@ export default function ProgramOfficerWorkspace({ posting, onBack }: { posting: 
   const tabs = useRef<Partial<Record<Tab, HTMLButtonElement | null>>>({})
   const [infoError, setInfoError] = useState('')
   const refreshInfo = () => { setInfoError(''); void fetchOfficerPosting(posting.id).then(setInfo).catch(() => setInfoError('사업 정보를 새로 불러오지 못했습니다.')) }
-  const select = (next: Tab) => { setTab(next); setApplication(null); setRejecting(false); routeUrl(base, { tab: next }); window.scrollTo({ top: 0 }); if (next === 'info') refreshInfo() }
-  const review = (id: number, reject: boolean) => { setApplication(id); setRejecting(reject); routeUrl(`${base}/applications/${id}${reject ? '/reject' : ''}`, {}); window.scrollTo({ top: 0 }) }
+  const select = (next: Tab, verified = false) => { if (!verified && !confirmOfficerLeave()) return; setTab(next); setApplication(null); setRejecting(false); routeUrl(base, { tab: next }); window.scrollTo({ top: 0 }); if (next === 'info') refreshInfo() }
+  const review = (id: number, reject: boolean) => { if (!confirmOfficerLeave()) return; setApplication(id); setRejecting(reject); routeUrl(`${base}/applications/${id}${reject ? '/reject' : ''}`, {}); window.scrollTo({ top: 0 }) }
   const loadSummary = useCallback(() => application ? fetchGenericReview(posting.id, application) : Promise.reject(new Error('신청 건이 없습니다.')), [posting.id, application])
   // 사업 기준 중 충족이 아닌 것도 반려 사유 후보다. 서류 사유는 반려 페이지가 따로 읽는다.
   const criterionReasons = useCallback(() => application ? fetchGenericReview(posting.id, application).then((data) => data.criteria
@@ -49,9 +50,11 @@ export default function ProgramOfficerWorkspace({ posting, onBack }: { posting: 
       {tab === 'info' && <div className="om om-workspace">{infoCard}</div>}
     </div>
   </div>
-  if (application && rejecting) return <RejectApplication applicationId={application} role="province" load={loadSummary} extraReasons={criterionReasons}
+  if (application && rejecting) return <RejectApplication key={`${posting.id}:${application}`} applicationId={application} role="province" load={loadSummary} extraReasons={criterionReasons}
     onCancel={() => review(application, false)}
-    onSubmit={async (notice, memo) => { await decideGeneric(posting.id, application, 'reject', memo, notice); select('applications') }} />
+    verify={loadSummary}
+    onSubmit={async (notice, memo, expectedRevision) => { await decideGeneric(posting.id, application, 'reject', memo, expectedRevision, notice) }}
+    onSaved={() => select('applications', true)} />
   if (application) return <GenericReviewDetail postingId={posting.id} applicationId={application} onBack={() => select('applications')} onReject={() => review(application, true)} />
   if (tab === 'settings') return <ProgramPreviewEditor postingId={posting.id} onBack={onBack} onPostingChanged={setInfo} focusHeadingOnLoad />
   return <main className="om om-page om-workspace">

@@ -1,33 +1,28 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { DecisionKey } from '../../api.ts'
-import { fetchGenericReview, saveGenericChecks, decideGeneric, type GenericReviewData } from '../../generic-officer-api.ts'
+import { fetchGenericReview, saveGenericChecks, decideGeneric } from '../../generic-officer-api.ts'
 import DocumentViewer from './DocumentViewer.tsx'
 import { OfficerDrawer } from './OfficerModern.tsx'
 import { officerDestination, officerLabel } from './officer-modern-model.ts'
+import { useReviewDraft } from './useReviewDraft.ts'
+import { reviewSaveError } from './review-save.ts'
+import ReviewSaveStatus from './ReviewSaveStatus.tsx'
 import './generic-review.css'
 import './program-modern-workspace.css'
 
-export default function GenericReviewDetail({ postingId, applicationId, onBack, onReject }: { postingId: number; applicationId: number; onBack: () => void; onReject: () => void }) {
-  const [data, setData] = useState<GenericReviewData | null>(null)
+type Props = { postingId: number; applicationId: number; onBack: () => void; onReject: () => void }
+export default function GenericReviewDetail(props: Props) {
+  return <GenericReviewContent key={`${props.postingId}:${props.applicationId}`} {...props} />
+}
+function GenericReviewContent({ postingId, applicationId, onBack, onReject }: Props) {
+  const draft = useReviewDraft({
+    load: () => fetchGenericReview(postingId, applicationId),
+    write: (decision, memo, expectedRevision) => decideGeneric(postingId, applicationId, decision as DecisionKey, memo, expectedRevision),
+    errorText: reviewSaveError,
+  })
+  const { data, memo, busy, loadError: error, editor } = draft
   const [active, setActive] = useState<number | null>(null)
-  const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [memo, setMemo] = useState('')
-  const [attempt, setAttempt] = useState(0)
-  useEffect(() => {
-    let current = true
-    fetchGenericReview(postingId, applicationId).then((next) => { if (current) { setData(next); setMemo(next.decision.memo || ''); setError('') } })
-      .catch((problem: unknown) => { if (current) setError(problem instanceof Error ? problem.message : '심사 정보를 불러오지 못했습니다.') })
-    return () => { current = false }
-  }, [postingId, applicationId, attempt])
-  const run = async (work: () => Promise<GenericReviewData>) => {
-    if (busy) return
-    setBusy(true); setError('')
-    try { setData(await work()) }
-    catch (problem: unknown) { setError(problem instanceof Error ? problem.message : '처리하지 못했습니다.') }
-    finally { setBusy(false) }
-  }
-  const document = data?.documents.find((item) => item.document_id === active) || data?.documents[0]
+  const document = active === null ? data?.documents[0] : data?.documents.find((item) => item.document_id === active)
   const viewerDocument = document?.page_image_url
     ? { ...document, file_url: document.page_image_url, file_format: 'png' }
     : document
@@ -37,14 +32,14 @@ export default function GenericReviewDetail({ postingId, applicationId, onBack, 
     const checks = { document_ids: data.checks.current ? data.checks.document_ids : [],
       checklist_ids: data.checks.current ? data.checks.checklist_ids : [], fingerprint: data.checks.fingerprint,
       [kind]: checked ? [...new Set([...prior, id])] : prior.filter((key) => key !== id) }
-    void run(() => saveGenericChecks(postingId, applicationId, checks))
+    void editor.run(() => saveGenericChecks(postingId, applicationId, checks))
   }
   const decide = (decision: DecisionKey) => {
     if (!data || busy || data.status === 'decided' || (decision === 'approve' ? !data.can_approve : !memo.trim())) return
-    void run(() => decideGeneric(postingId, applicationId, decision, memo))
+    void editor.save(decision)
   }
   return <main className="generic-review">
-    {error && <div className="om"><p className="om-notice" role="alert">{error} <button type="button" className="om-text" onClick={() => setAttempt((value) => value + 1)}>다시 시도</button></p></div>}
+    {error && <div className="om"><p className="om-notice" role="alert">{error} <button type="button" className="om-text" onClick={() => void editor.check()}>다시 조회</button></p></div>}
     {!data ? !error && <div className="om"><p role="status">심사 정보를 불러오는 중입니다.</p></div> : <>
       <header className="om om-review-head"><OfficerDrawer postingId={postingId} current="applications" disabled={busy} onTab={(tab) => { if (tab === 'applications') onBack(); else window.location.assign(officerDestination(`/officer/programs/${postingId}`, tab)) }} /><div><p>{data.program_name}</p><h1>{data.name} · {data.application_no}</h1></div><span className="om-chip">{data.decision.decision ? officerLabel(data.decision.decision) : '검토 중'}</span></header>
       <div className="generic-review__columns"><section className="generic-review__original" aria-label="제출 원본">
@@ -59,7 +54,7 @@ export default function GenericReviewDetail({ postingId, applicationId, onBack, 
               <div className="om-review__card-head"><strong>{item.label}</strong><span className={`om-chip${item.status === 'PASS' ? ' om-chip--success' : item.status === 'FAIL' ? ' om-chip--danger' : ' om-chip--warning'}`}>{officerLabel(item.status)}</span></div>
               <p className="om-review__reason" title={reason}>{reason}</p>
               {(item.ocr_engine || item.findings.length > 0 || item.ocr_fallback_reason) && <details><summary>자세히</summary><div className="om-review__details">{item.findings.map((finding, index) => <p key={index}>{finding.message}</p>)}{item.ocr_engine && <p>판독 방식: {officerLabel(item.ocr_engine, '기타 판독 방식')}</p>}{item.ocr_fallback_reason && <p>{/[가-힣]/.test(item.ocr_fallback_reason) ? item.ocr_fallback_reason : '보조 판독 경로를 사용했습니다.'}</p>}</div></details>}
-              <label className="om-review__check"><input type="checkbox" disabled={busy || data.status === 'decided'} checked={data.checks.current && data.checks.document_ids.includes(id)} onChange={(event) => toggle('document_ids', id, event.target.checked)} />{item.label} 원본 확인함</label>
+              <label className="om-review__check"><input type="checkbox" disabled={busy || draft.needsCheck || data.status === 'decided'} checked={data.checks.current && data.checks.document_ids.includes(id)} onChange={(event) => toggle('document_ids', id, event.target.checked)} />{item.label} 원본 확인함</label>
             </section>
           })}
           <h2>이 사업의 기준</h2>{data.criteria.map((criterion) => {
@@ -68,13 +63,13 @@ export default function GenericReviewDetail({ postingId, applicationId, onBack, 
               <div className="om-review__card-head"><strong>{criterion.label}</strong><span className={`om-chip${criterion.result === 'PASS' ? ' om-chip--success' : criterion.result === 'FAIL' ? ' om-chip--danger' : ' om-chip--warning'}`}>{officerLabel(criterion.result)}</span></div>
               <p className="om-review__reason" title={reason}>{reason}</p>
               <details><summary>자세히</summary><div className="om-review__details"><p>판정 방식: {criterion.type === 'checklist' ? '담당자 확인' : '자동 판정'}</p>{criterion.basis && <p>{criterion.basis}</p>}{criterion.quote && <blockquote>{criterion.quote}</blockquote>}{!!criterion.source_document_ids.length && <div className="om-chips" aria-label="근거 서류">{criterion.source_document_ids.map((id) => <button type="button" className="om-chip" key={id} onClick={() => setActive(id)}>{data.documents.find((item) => item.document_id === id)?.label || '근거 서류'}</button>)}</div>}</div></details>
-              {criterion.requires_check && <label className="om-review__check"><input type="checkbox" disabled={busy || data.status === 'decided'} checked={data.checks.current && data.checks.checklist_ids.includes(criterion.id)} onChange={(event) => toggle('checklist_ids', criterion.id, event.target.checked)} />{criterion.label} 확인함</label>}
+              {criterion.requires_check && <label className="om-review__check"><input type="checkbox" disabled={busy || draft.needsCheck || data.status === 'decided'} checked={data.checks.current && data.checks.checklist_ids.includes(criterion.id)} onChange={(event) => toggle('checklist_ids', criterion.id, event.target.checked)} />{criterion.label} 확인함</label>}
             </section>
           })}
         </div>
-        <div className="om-review__process"><label htmlFor="generic-review-memo">처리 사유 <span className="om-subtle">(보류 시 필수 · 반려는 다음 화면에서 씁니다)</span></label><textarea id="generic-review-memo" maxLength={2000} value={memo} disabled={busy || data.status === 'decided'} onChange={(event) => setMemo(event.target.value)} />
+        <div className="om-review__process"><label htmlFor="generic-review-memo">처리 사유 <span className="om-subtle">(보류 시 필수 · 반려는 다음 화면에서 씁니다)</span></label><textarea id="generic-review-memo" maxLength={2000} value={memo} disabled={busy || draft.needsCheck || data.status === 'decided'} onChange={(event) => editor.edit(event.target.value)} />
           {!!data.approval_blockers.length && <details className="om-review__blockers"><summary>선정 전 남은 확인 {data.approval_blockers.length}개</summary><ul>{data.approval_blockers.map((item) => <li key={item}>{item}</li>)}</ul></details>}
-          <div className="generic-review__actions"><button type="button" className="btn btn--primary" disabled={busy || !data.can_approve || data.status === 'decided'} onClick={() => decide('approve')}>최종 선정</button><button type="button" className="btn" disabled={busy || !memo.trim() || data.status === 'decided'} onClick={() => decide('hold')}>보류</button><button type="button" className="btn" disabled={busy || data.status === 'decided'} onClick={onReject}>반려</button></div>
+          <ReviewSaveStatus editor={editor} state={draft} /><div className="generic-review__actions"><button type="button" className="btn btn--primary" disabled={busy || draft.needsCheck || !data.can_approve || data.status === 'decided'} onClick={() => decide('approve')}>최종 선정</button><button type="button" className="btn" disabled={busy || draft.needsCheck || !memo.trim() || data.status === 'decided'} onClick={() => decide('hold')}>보류</button><button type="button" className="btn" disabled={busy || draft.needsCheck || data.status === 'decided'} onClick={onReject}>반려</button></div>
         </div>
       </aside></div>
     </>}

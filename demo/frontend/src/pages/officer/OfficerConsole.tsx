@@ -1,3 +1,4 @@
+import { confirmOfficerLeave } from './review-navigation.ts'
 /**
  * 담당자 콘솔 — 접수 목록 ↔ 건별 분할 심사 (P4).
  *
@@ -180,6 +181,7 @@ export default function OfficerConsole({ basePath }: { basePath: string }) {
 
   /** 역할을 바꾸면 관할 선택은 백엔드가 다시 정해준다 — 여기서는 비워 보낸다. */
   const switchRole = (role: string) => {
+    if (!confirmOfficerLeave()) return
     setOpen(null)
     setShowCriteria(false)
     setQuery({ ...DEFAULT_QUERY, role })
@@ -197,6 +199,7 @@ export default function OfficerConsole({ basePath }: { basePath: string }) {
       decision,
       memo: `${list.role.name} 일괄 처리`,
       application_ids: selected,
+      expected_revisions: Object.fromEntries(list.rows.filter((row) => selected.includes(row.application_id)).map((row) => [row.application_id, row.revision])),
     })
       .then(({ processed }) => {
         setSelected([])
@@ -243,7 +246,7 @@ export default function OfficerConsole({ basePath }: { basePath: string }) {
             <strong>{activeRole.stage}</strong> · 보이는 범위: {activeRole.scope}
           </p>
         )}
-        {query.role === 'province' && <button type="button" className="officer__criteria-tab" onClick={() => setShowCriteria((v) => !v)}>
+        {query.role === 'province' && <button type="button" className="officer__criteria-tab" onClick={() => { if (confirmOfficerLeave()) setShowCriteria((v) => !v) }}>
           {showCriteria ? '접수 목록' : '심사 기준'}
         </button>}
         {activeRole && (
@@ -265,12 +268,15 @@ export default function OfficerConsole({ basePath }: { basePath: string }) {
           applicationId={open.id}
           role={query.role}
           load={loadSummary}
-          onCancel={() => setOpen({ id: open.id, slot: open.slot })}
-          onSubmit={async (notice, memo) => {
-            await postDecision(open.id, { role: query.role, decision: 'reject', memo, notice })
+          onCancel={() => { if (confirmOfficerLeave()) setOpen({ id: open.id, slot: open.slot }) }}
+          onSubmit={async (notice, memo, expectedRevision) => {
+            await postDecision(open.id, { role: query.role, decision: 'reject', memo, notice, expected_revision: expectedRevision })
+          }}
+          verify={loadSummary}
+          onSaved={() => {
             setOpen(null)
             setNotice('반려했습니다. 처리 완료 구분에서 확인할 수 있습니다.')
-            await reload()
+            void reload()
           }}
         />
       ) : open !== null ? (
@@ -281,8 +287,8 @@ export default function OfficerConsole({ basePath }: { basePath: string }) {
           applicationId={open.id}
           role={query.role}
           initialSlotKey={open.slot}
-          onBack={() => setOpen(null)}
-          onReject={() => setOpen({ id: open.id, slot: open.slot, reject: true })}
+          onBack={() => { if (confirmOfficerLeave()) setOpen(null) }}
+          onReject={() => { if (confirmOfficerLeave()) setOpen({ id: open.id, slot: open.slot, reject: true }) }}
           onDecided={reload}
         />
       ) : list ? (

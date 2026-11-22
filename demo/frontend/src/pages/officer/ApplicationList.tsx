@@ -136,6 +136,12 @@ export default function ApplicationList({
     if (next !== appliedSearch) change({ q: next || undefined, page: 1 })
   }
 
+  // Commit a pending debounced filter before the list unmounts for a review.
+  const openApplication = (id: number, slotKey?: string) => {
+    submitSearch(text)
+    onOpen(id, slotKey)
+  }
+
   const typeSearch = (value: string) => {
     setText(value)
     window.clearTimeout(searchTimer.current)
@@ -342,7 +348,7 @@ export default function ApplicationList({
         aria-labelledby={`${uid}-tab-${tab}`}
         onKeyDown={onTableKey}
       >
-        {shownTabOf(list) === 'rejected' ? <RejectionTable rows={list.rows} tableClassName="alist__table" onOpen={(id) => onOpen(id)} /> : <table className="alist__table">
+        {shownTabOf(list) === 'rejected' ? <RejectionTable rows={list.rows} tableClassName="alist__table" onOpen={(id) => openApplication(id)} /> : <table className="alist__table">
           <colgroup>
             {/* 일괄 처리가 없는 역할도 열을 비워 둔다. 역할을 바꿔도 열 위치가 그대로다. */}
             <col className="alist__col-check" />
@@ -386,7 +392,7 @@ export default function ApplicationList({
               ].filter(Boolean).join(' ')
               return (
                 <Fragment key={id}>
-                  <tr className={rowClass} onClick={() => generic ? toggleReasons(id) : onOpen(id)}>
+                  <tr className={rowClass} onClick={() => generic ? toggleReasons(id) : openApplication(id)}>
                     {canBulk ? (
                       <td className="alist__check" onClick={(event) => event.stopPropagation()}>
                         <label>
@@ -406,7 +412,7 @@ export default function ApplicationList({
                         aria-label={`${row.application_no} ${row.name} ${generic ? '사유 보기' : '심사 화면 열기'}`}
                         onClick={(event) => {
                           event.stopPropagation()
-                          if (generic) toggleReasons(id); else onOpen(id)
+                          if (generic) toggleReasons(id); else openApplication(id)
                         }}
                       >
                         {row.application_no}
@@ -440,7 +446,7 @@ export default function ApplicationList({
                           row={row}
                           state={state}
                           onRetry={() => loadReasons(id)}
-                          onOpen={onOpen}
+                          onOpen={openApplication}
                           generic={generic}
                         />
                       </td>
