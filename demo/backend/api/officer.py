@@ -18,7 +18,7 @@ SQL ORDER BY로 표현하기 어려운 복합 키인데다, 데모 규모에서�
 import math
 
 from datetime import date, datetime
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -1143,7 +1143,7 @@ class DecisionRequest(BaseModel):
 
 class BulkDecisionRequest(DecisionRequest):
     application_ids: list[int]
-    expected_revisions: dict[int, StrictInt] = Field(default_factory=dict)
+    expected_revisions: dict[int, Annotated[StrictInt, Field(ge=1, le=MAX_EXPECTED_REVISION)]] = Field(default_factory=dict)
 
 
 @transactional_write
