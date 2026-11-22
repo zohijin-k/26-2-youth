@@ -181,8 +181,6 @@ export interface UploadedDocument {
   status: DocStatus | null
   findings: Finding[]
   extracted: Record<string, string>
-  ocr_confidence: number | null
-  elapsed_ms: number | null
   page_index: number | null
   uploaded_at: string
 }
