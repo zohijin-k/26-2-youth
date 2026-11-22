@@ -209,7 +209,7 @@ export default function DocumentViewer({ doc, highlight, highlightLabel }: Props
         <button type="button" onClick={() => { setError(''); setLoaded(null); setAttempt(a => a + 1) }}>다시 시도</button>
       </div>}
 
-      <div className="viewer__stage">
+      <div className="viewer__stage" tabIndex={0} role="region" aria-label="원본 문서 보기">
         <div className="viewer__paper">
           {isPdf ? (
             <canvas ref={canvasRef} className="viewer__canvas" aria-label={`${pageNo}쪽 원본`} />

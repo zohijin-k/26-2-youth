@@ -9,7 +9,7 @@
 .dslot { min-width: 0; scroll-margin-top: var(--sp-6); padding: var(--sp-6); border: 1px solid var(--color-border); border-radius: var(--radius-12); background: var(--color-surface); }
 /* 확인 완료 서류는 카드 전체를 초록으로 두르고 상태 표시를 키운다. */
 .dslot--pass { border-color: var(--success-50); background: var(--success-5); box-shadow: inset 4px 0 0 var(--success-50); }
-.dslot--pass .dslot__head-meta .badge--success { padding: 6px 14px; border-color: var(--success-50); background: var(--success-50); color: #fff; font-size: var(--fs-17); font-weight: var(--fw-bold); }
+.dslot--pass .dslot__head-meta .badge--success { padding: 6px 14px; border-color: var(--success-60); background: var(--success-60); color: #fff; font-size: var(--fs-17); font-weight: var(--fw-bold); }
 .dslot--pass .dslot__action { border-top-color: var(--success-10); }
 .dslot__head { display: flex; align-items: start; justify-content: space-between; gap: var(--sp-4); }
 .dslot__title, .dslot__head-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }

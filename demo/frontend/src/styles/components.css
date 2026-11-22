@@ -24,8 +24,8 @@
   min-height: var(--control-md);
   margin: 0;
   padding: 0 var(--sp-5);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-8);
+  border: 1px solid var(--ui-color-border-strong);
+  border-radius: var(--ui-radius-6);
   background: var(--color-surface);
   color: var(--color-text);
   font-family: inherit;
@@ -44,6 +44,7 @@
 
 /* 주 버튼: 한 화면에 한 종류. */
 .btn--primary {
+  font-weight: var(--ui-font-weight-bold);
   border-color: var(--color-primary);
   background: var(--color-primary);
   color: var(--color-text-on-primary);
@@ -191,7 +192,7 @@
   margin: 0;
   padding: 0 var(--sp-4);
   border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-8);
+  border-radius: var(--ui-radius-6);
   background-color: var(--color-surface);
   color: var(--color-text);
   font-family: inherit;
@@ -299,7 +300,7 @@ textarea.input {
   gap: var(--sp-3);
   padding: var(--sp-4);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-8);
+  border-radius: var(--ui-radius-8);
   background: var(--color-surface-subtle);
   color: var(--color-text);
 }
@@ -378,7 +379,7 @@ textarea.input {
   min-width: 0;
   padding: var(--sp-6);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-12);
+  border-radius: var(--ui-radius-8);
   background: var(--color-surface);
 }
 
@@ -386,7 +387,7 @@ textarea.input {
 .card__panel {
   min-width: 0;
   padding: var(--sp-4);
-  border-radius: var(--radius-8);
+  border-radius: var(--ui-radius-8);
   background: var(--gray-5);
 }
 
@@ -525,7 +526,7 @@ textarea.input {
   flex-direction: column;
   width: 100%;
   max-height: calc(100dvh - var(--sp-8));
-  border-radius: var(--radius-12);
+  border-radius: var(--ui-radius-12);
   background: var(--color-surface);
   box-shadow: var(--shadow-3);
   color: var(--color-text);
@@ -559,7 +560,7 @@ textarea.input {
   margin: 0 calc(var(--sp-2) * -1) 0 0;
   padding: 0;
   border: 0;
-  border-radius: var(--radius-8);
+  border-radius: var(--ui-radius-6);
   background: transparent;
   color: var(--color-text-subtle);
   cursor: pointer;
@@ -687,7 +688,7 @@ textarea.input {
   padding: var(--sp-4);
   border: 1px solid var(--brand-10);
   border-left: 4px solid var(--color-primary);
-  border-radius: var(--radius-8);
+  border-radius: var(--ui-radius-6);
   background: var(--color-surface-brand);
   color: var(--color-text);
 }
@@ -698,7 +699,7 @@ textarea.input {
 .caution {
   padding: var(--sp-3) var(--sp-4);
   border: 1px solid var(--warning-10);
-  border-radius: var(--radius-8);
+  border-radius: var(--ui-radius-6);
   background: var(--warning-5);
 }
 
@@ -716,7 +717,7 @@ textarea.input {
 /* 카드 한 장을 통째로 접을 때: 요약 줄이 카드 제목처럼 보이고 폭 전체를 누를 수 있다. */
 .more--card {
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-12);
+  border-radius: var(--ui-radius-8);
   background: var(--color-surface);
 }
 
