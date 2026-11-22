@@ -11,10 +11,11 @@
  * 같이 돌린다 — 원본을 돌려놓고 근거를 클릭해도 자리가 맞아야 한다.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as pdfjs from 'pdfjs-dist'
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
+import { pdfjsOptions } from '../../lib/pdfjs-options.ts'
 import type { BBox, OfficerDocument } from '../../api.ts'
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
@@ -68,7 +69,8 @@ function place(
 export default function DocumentViewer({ doc, highlight, highlightLabel }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const markRef = useRef<HTMLDivElement>(null)
-  const pdfRef = useRef<pdfjs.PDFDocumentProxy | null>(null)
+  const [loaded, setLoaded] = useState<{ url: string; pdf: pdfjs.PDFDocumentProxy } | null>(null)
+  const [attempt, setAttempt] = useState(0)
 
   const [pageCount, setPageCount] = useState(1)
   // 원본이 아직 안 열렸을 때 클릭한 근거가 몇 쪽인지 잃지 않도록 **자르지 않은**
@@ -82,6 +84,7 @@ export default function DocumentViewer({ doc, highlight, highlightLabel }: Props
   const scale = ZOOM_STEPS[zoomIndex]
   const isPdf = doc.file_format === 'pdf'
   const pageNo = Math.min(desiredPage, pageCount)
+  const pdf = isPdf && loaded?.url === doc.file_url ? loaded.pdf : null
 
   // 서류 탭이 바뀌면 배율·회전은 유지하고 페이지만 1쪽으로 되돌린다. 심사표 근거를
   // 클릭해 넘어온 경우엔 그 근거가 있는 쪽을 연다 (R4.3).
@@ -104,14 +107,11 @@ export default function DocumentViewer({ doc, highlight, highlightLabel }: Props
   useEffect(() => {
     if (!isPdf) return
     let cancelled = false
-    const task = pdfjs.getDocument({ url: doc.file_url })
+    const task = pdfjs.getDocument({ url: doc.file_url, ...pdfjsOptions() })
     task.promise
       .then((pdf) => {
-        if (cancelled) {
-          void pdf.destroy()
-          return
-        }
-        pdfRef.current = pdf
+        if (cancelled) return
+        setLoaded({ url: doc.file_url, pdf })
         setPageCount(pdf.numPages)
       })
       .catch((e: unknown) => {
@@ -120,29 +120,29 @@ export default function DocumentViewer({ doc, highlight, highlightLabel }: Props
     return () => {
       cancelled = true
       void task.destroy()
-      pdfRef.current = null
     }
-  }, [doc.file_url, isPdf])
+  }, [doc.file_url, isPdf, attempt])
 
-  // --- 페이지 렌더
-  const render = useCallback(async () => {
-    const pdf = pdfRef.current
+  // Cancel the old render before reusing the canvas for a page, zoom or document.
+  useEffect(() => {
     const canvas = canvasRef.current
     if (!pdf || !canvas) return
-    const page = await pdf.getPage(Math.min(pageNo, pdf.numPages))
-    const base = page.getViewport({ scale: 1, rotation: 0 })
-    setPageSize({ width: base.width, height: base.height })
-    const viewport = page.getViewport({ scale, rotation })
-    canvas.width = Math.floor(viewport.width)
-    canvas.height = Math.floor(viewport.height)
-    await page.render({ canvas, viewport }).promise
-  }, [pageNo, scale, rotation])
-
-  useEffect(() => {
-    void render().catch((e: unknown) =>
-      setError(e instanceof Error ? e.message : String(e)),
-    )
-  }, [render, pageCount])
+    let cancelled = false
+    let task: pdfjs.RenderTask | null = null
+    void pdf.getPage(Math.min(pageNo, pdf.numPages)).then(page => {
+      if (cancelled) return
+      const base = page.getViewport({ scale: 1, rotation: 0 })
+      setPageSize({ width: base.width, height: base.height })
+      const viewport = page.getViewport({ scale, rotation })
+      canvas.width = Math.floor(viewport.width)
+      canvas.height = Math.floor(viewport.height)
+      task = page.render({ canvas, viewport })
+      return task.promise
+    }).catch((e: unknown) => {
+      if (!cancelled) setError(e instanceof Error ? e.message : String(e))
+    })
+    return () => { cancelled = true; task?.cancel() }
+  }, [pdf, pageNo, scale, rotation])
 
   // --- 하이라이트: 위 렌더 중 조정이 쪽을 옮겨두면 여기서 그 자리로 스크롤한다 (R4.3)
   useEffect(() => {
@@ -161,12 +161,13 @@ export default function DocumentViewer({ doc, highlight, highlightLabel }: Props
         <span className="viewer__name">{doc.file_name}</span>
         {isPdf && pageCount > 1 && (
           <span className="viewer__pages">
-            <button type="button" onClick={() => setDesiredPage(Math.max(1, pageNo - 1))}>
+            <button type="button" aria-label="이전 쪽" onClick={() => setDesiredPage(Math.max(1, pageNo - 1))}>
               ‹
             </button>
             {pageNo} / {pageCount}
             <button
               type="button"
+              aria-label="다음 쪽"
               onClick={() => setDesiredPage(Math.min(pageCount, pageNo + 1))}
             >
               ›
@@ -202,12 +203,16 @@ export default function DocumentViewer({ doc, highlight, highlightLabel }: Props
         </span>
       </div>
 
-      {error && <p className="viewer__error">원본을 열지 못했습니다: {error}</p>}
+      {isPdf && !pdf && !error && <p role="status">원본을 불러오고 있습니다.</p>}
+      {error && <div className="viewer__error" role="alert">
+        <p>원본을 열지 못했습니다. 접근 권한과 파일을 확인해 주세요.</p>
+        <button type="button" onClick={() => { setError(''); setLoaded(null); setAttempt(a => a + 1) }}>다시 시도</button>
+      </div>}
 
       <div className="viewer__stage">
         <div className="viewer__paper">
           {isPdf ? (
-            <canvas ref={canvasRef} className="viewer__canvas" />
+            <canvas ref={canvasRef} className="viewer__canvas" aria-label={`${pageNo}쪽 원본`} />
           ) : (
             <ImagePage doc={doc} scale={scale} rotation={rotation} onSize={setPageSize} />
           )}
