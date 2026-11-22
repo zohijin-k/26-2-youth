@@ -336,6 +336,7 @@ export default function ApplicationList({
 
       <div
         className="alist__panel"
+        tabIndex={0}
         role="tabpanel"
         id={`${uid}-panel`}
         aria-labelledby={`${uid}-tab-${tab}`}

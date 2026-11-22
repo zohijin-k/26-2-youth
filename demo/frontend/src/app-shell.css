@@ -7,17 +7,17 @@
 /* ------------------------------------------------------------------ 담당자 */
 /* 담당자 머리글. 신청자 머리글과 같은 흰 바탕 · 로고 · 로고 색 띠를 쓴다. */
 :where(.app-shell--officer) { min-height: 100dvh; background: #fff; }
-:where(.app-shell--officer) .shell { border-bottom: 1px solid #dfe3e8; background: #fff; color: #1e2124; font-family: 'Pretendard GOV', 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif; }
+:where(.app-shell--officer) .shell { border-bottom: 1px solid var(--ui-color-border); background: #fff; color: var(--ui-color-text); font-family: 'Pretendard GOV', 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif; }
 /* 맨 위 장식 띠. 노랑 · 초록 · 파랑 · 빨강 네 칸 같은 너비. 신청자 머리글(styles/tokens.css --stripe-*)과 같은 값이다. 뜻을 전하는 색이 아니다. */
 :where(.app-shell--officer) .shell::before { content: ''; display: block; height: 4px; background: linear-gradient(90deg, #f0be30 0 25%, #90bc3b 25% 50%, #2c85c3 50% 75%, #ce2834 75% 100%); }
 :where(.app-shell--officer) .shell__inner { display: flex; align-items: center; gap: 16px; min-height: 64px; padding: 0 24px; }
 :where(.app-shell--officer) .shell__home { display: block; flex: none; padding: 4px; border: 0; border-radius: 8px; background: transparent; line-height: 0; cursor: pointer; }
-:where(.app-shell--officer) .shell__home:focus-visible { outline: 2px solid #2c5baf; outline-offset: 2px; }
+:where(.app-shell--officer) .shell__home:focus-visible { outline: var(--ui-focus-width) solid var(--ui-color-focus); outline-offset: 2px; }
 :where(.app-shell--officer) .shell__logo { display: block; width: auto; height: 40px; }
-:where(.app-shell--officer) .shell__role { padding-left: 16px; border-left: 1px solid #dfe3e8; color: #33363d; font-size: 15px; font-weight: 700; line-height: 24px; white-space: nowrap; }
+:where(.app-shell--officer) .shell__role { padding-left: 16px; border-left: 1px solid var(--ui-color-border); color: #33363d; font-size: 15px; font-weight: 700; line-height: 24px; white-space: nowrap; }
 :where(.app-shell--officer) .shell__tools { display: flex; align-items: center; justify-content: flex-end; min-width: 0; margin-left: auto; }
 :where(.app-shell--officer) .shell__tools:empty { display: none; }
-:where(.app-shell--officer) .shell__tools .officer-session-bar { max-width: none; margin: 0; padding: 0; color: #58616a; font-size: 14px; }
+:where(.app-shell--officer) .shell__tools .officer-session-bar { max-width: none; margin: 0; padding: 0; color: var(--ui-color-text-muted); font-size: 14px; }
 @media (max-width: 850px) { :where(.app-shell--officer) .shell__inner { padding: 0 16px; } :where(.app-shell--officer) .shell__logo { height: 34px; } }
 
 /* 넓은 화면: 바깥은 옅은 회색, 화면 전체를 가운데 박스 하나로 묶는다. */

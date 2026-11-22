@@ -4,9 +4,9 @@
  * 아래의 기존 목록·심사 화면(OfficerConsole)은 이 파일 안에서만 겉모양을 다듬는다.
  * officer.css · application-list.css 는 고치지 않는다 — 여기 규칙이 더 구체적이라 덮어쓴다.
  */
-.program-officer-workspace { box-sizing: border-box; max-width: 1440px; margin: 0 auto; padding: 24px 24px 48px; color: #1e2124; }
+.program-officer-workspace { box-sizing: border-box; max-width: 1440px; margin: 0 auto; padding: 24px 24px 48px; color: var(--ui-color-text); }
 .program-officer-workspace .om.om-workspace { max-width: none; }
-.program-officer-workspace .program-officer-workspace__top .om-head { margin-bottom: 0; padding-bottom: 20px; border-bottom: 1px solid #e6e8ea; }
+.program-officer-workspace .program-officer-workspace__top .om-head { margin-bottom: 0; padding-bottom: 20px; border-bottom: 1px solid var(--ui-color-divider); }
 .program-officer-workspace .om-workspace__info { margin-top: 24px; max-width: 880px; }
 .program-officer-workspace .om-workspace__info dd { white-space: pre-line; }
 
@@ -23,16 +23,16 @@
 .program-officer-workspace .officer__mock code { border-radius: 4px; }
 
 /* 역할 전환: 알약형 묶음 */
-.program-officer-workspace .officer__roles { gap: 4px; padding: 4px; border: 1px solid #dfe3e8; border-radius: 999px; background: #f4f5f6; }
+.program-officer-workspace .officer__roles { gap: 4px; padding: 4px; border: 1px solid var(--ui-color-border); border-radius: 999px; background: var(--ui-color-head); }
 .program-officer-workspace .officer__role { min-height: 36px; padding: 2px 18px 0; border: 0; border-radius: 999px; background: transparent; color: #464c53; font-size: 15px; font-weight: 500; }
-.program-officer-workspace .officer__role:hover { background: #fff; color: #173975; }
+.program-officer-workspace .officer__role:hover { background: #fff; color: var(--ui-color-primary); }
 .program-officer-workspace .officer__role--on,
-.program-officer-workspace .officer__role--on:hover { background: #173975; color: #fff; font-weight: 700; box-shadow: 0 1px 2px rgb(0 0 0 / 12%); }
-.program-officer-workspace .officer__role:focus-visible { outline: 2px solid #2c5baf; outline-offset: 2px; }
-.program-officer-workspace .officer__scope { margin: 0; color: #58616a; font-size: 14px; }
-.program-officer-workspace .officer__scope strong { color: #1e2124; }
-.program-officer-workspace .officer__criteria-tab { min-height: 36px; margin: 0 0 0 auto; padding: 0 16px; border: 1px solid #cdd1d5; border-radius: 999px; background: #fff; color: #173975; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
-.program-officer-workspace .officer__criteria-tab:hover { border-color: #173975; background: #f2f5fa; }
+.program-officer-workspace .officer__role--on:hover { background: var(--ui-color-primary); color: #fff; font-weight: 700; box-shadow: 0 1px 2px rgb(0 0 0 / 12%); }
+.program-officer-workspace .officer__role:focus-visible { outline: 2px solid var(--ui-color-focus); outline-offset: 2px; }
+.program-officer-workspace .officer__scope { margin: 0; color: var(--ui-color-text-muted); font-size: 14px; }
+.program-officer-workspace .officer__scope strong { color: var(--ui-color-text); }
+.program-officer-workspace .officer__criteria-tab { min-height: 36px; margin: 0 0 0 auto; padding: 0 16px; border: 1px solid var(--ui-color-input-border); border-radius: 999px; background: #fff; color: var(--ui-color-primary); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.program-officer-workspace .officer__criteria-tab:hover { border-color: var(--ui-color-primary); background: var(--ui-color-primary-tint); }
 .program-officer-workspace .officer__notes { flex-basis: 100%; margin: 0; padding: 0; list-style: none; color: #6d7882; font-size: 14px; }
 /* 역할마다 안내 줄 수가 달라 표가 위아래로 움직였다. 한 줄로 이어 쓰고 높이를 고정한다. */
 .program-officer-workspace .officer__notes { display: flex; gap: 0; height: 22px; overflow: hidden; white-space: nowrap; }
@@ -40,41 +40,121 @@
 .program-officer-workspace .officer__notes li + li::before { content: '·'; margin: 0 8px; }
 .program-officer-workspace .officer__head { min-height: 0; }
 .program-officer-workspace .officer__error { border-radius: 8px; }
-.program-officer-workspace .officer > .panel { overflow: hidden; border-color: #dfe3e8; border-radius: 12px; }
-.program-officer-workspace .officer > .panel .panel__title { padding: 12px 16px; background: #f4f5f6; border-color: #dfe3e8; font-size: 15px; }
+.program-officer-workspace .officer > .panel { overflow: hidden; border-color: var(--ui-color-border); border-radius: 12px; }
+.program-officer-workspace .officer > .panel .panel__title { padding: 12px 16px; background: var(--ui-color-head); border-color: var(--ui-color-border); font-size: 15px; }
 .program-officer-workspace .officer > .panel .panel__body { padding: 16px; font-size: 15px; }
 
 /* 신청 목록: 폭을 머리와 맞추고 표를 둥근 카드로 */
 .program-officer-workspace .alist { max-width: none; }
-.program-officer-workspace .alist__head { box-sizing: border-box; height: 56px; border-bottom-color: #e6e8ea; }
+.program-officer-workspace .alist__head { box-sizing: border-box; height: 56px; border-bottom-color: var(--ui-color-divider); }
 /* 시군·읍면동 선택칸이 있든 없든 탭 줄 높이가 같다. */
 .program-officer-workspace .alist__scope { align-self: center; padding-bottom: 0; }
-.program-officer-workspace .alist__tab { border-top: 3px solid transparent; color: #58616a; } /* 아래 3px 선과 짝을 맞춰 글자를 가운데에 둔다 */
-.program-officer-workspace .alist__tab--on { color: #173975; border-bottom-color: #173975; }
+.program-officer-workspace .alist__tab { border-top: 3px solid transparent; color: var(--ui-color-text-muted); } /* 아래 3px 선과 짝을 맞춰 글자를 가운데에 둔다 */
+.program-officer-workspace .alist__tab--on { color: var(--ui-color-primary); border-bottom-color: var(--ui-color-primary); }
 .program-officer-workspace .alist__count { border-radius: 999px; }
 .program-officer-workspace .alist__bar { height: 64px; }
 .program-officer-workspace .alist__search,
 .program-officer-workspace .alist__period input,
-.program-officer-workspace .alist__scope select { height: 40px; border-color: #cdd1d5; border-radius: 8px; font-size: 14px; }
+.program-officer-workspace .alist__scope select { height: var(--ui-control-height); border-color: var(--ui-color-input-border); border-radius: var(--ui-radius-6); font-size: var(--ui-fs-15); }
 .program-officer-workspace .alist__search { width: 300px; padding: 0 12px; }
 .program-officer-workspace .alist__period { color: #464c53; font-size: 14px; }
 .program-officer-workspace .alist__period input { padding: 0 10px; }
-.program-officer-workspace .alist__table { border: 0; border-collapse: separate; border-spacing: 0; outline: 1px solid #dfe3e8; outline-offset: -1px; border-radius: 12px; overflow: hidden; font-size: 14.5px; }
+.program-officer-workspace .alist__table { border: 0; border-collapse: separate; border-spacing: 0; outline: 1px solid var(--ui-color-border); outline-offset: -1px; border-radius: 12px; overflow: hidden; font-size: var(--ui-fs-15); }
 .program-officer-workspace .alist__col-no { width: 24%; }
 .program-officer-workspace .alist__col-time { width: 22%; }
 .program-officer-workspace .alist__col-status { width: 16%; }
-.program-officer-workspace .alist__table th { height: 44px; background: #f4f5f6; border-bottom-color: #dfe3e8; color: #464c53; font-size: 14px; }
-.program-officer-workspace .alist__table thead td { height: 44px; background: #f4f5f6; border-bottom-color: #dfe3e8; }
-.program-officer-workspace .alist__table td { height: 52px; border-bottom-color: #eef0f2; }
+.program-officer-workspace .alist__table th { height: 44px; background: var(--ui-color-head); border-bottom-color: var(--ui-color-border); color: #464c53; font-size: 14px; }
+.program-officer-workspace .alist__table thead td { height: 44px; background: var(--ui-color-head); border-bottom-color: var(--ui-color-border); }
+.program-officer-workspace .alist__table td { height: 52px; border-bottom-color: var(--ui-color-divider); }
 .program-officer-workspace .alist__table tr:last-child td { border-bottom: 0; }
 .program-officer-workspace .alist__row:hover td { background: #f7f9fc; }
 .program-officer-workspace .alist__chip { padding: 1.5px 10px 0; border-radius: 999px; line-height: 20.5px; }
 .program-officer-workspace .alist__toggle { height: 32px; padding: 0 12px; border-radius: 999px; font-size: 13.5px; }
 .program-officer-workspace .alist__selection { border-radius: 8px; }
 .program-officer-workspace .pager { justify-content: center; gap: 6px; margin-top: 20px; }
-.program-officer-workspace .pager button { min-width: 36px; height: 36px; padding: 0 10px; border-color: #dfe3e8; border-radius: 8px; color: #464c53; }
-.program-officer-workspace .pager button:hover { border-color: #173975; color: #173975; }
+.program-officer-workspace .pager button { min-width: 36px; height: 36px; padding: 0 10px; border-color: var(--ui-color-border); border-radius: 8px; color: #464c53; }
+.program-officer-workspace .pager button:hover { border-color: var(--ui-color-primary); color: var(--ui-color-primary); }
 .program-officer-workspace .pager .pager__on,
-.program-officer-workspace .pager .pager__on:hover { border-color: #173975; background: #173975; color: #fff; }
+.program-officer-workspace .pager .pager__on:hover { border-color: var(--ui-color-primary); background: var(--ui-color-primary); color: #fff; }
 
 @media (max-width: 850px) { .program-officer-workspace { padding: 16px 16px 40px; } }
+
+/* 6B job review chrome: roles retain split layout and document rendering. */
+.program-officer-workspace .review__right {
+  color: var(--ui-color-text);
+  font-family: var(--ui-font-family);
+  font-size: var(--ui-fs-15);
+  line-height: var(--ui-line-height-body);
+}
+.program-officer-workspace .review__right .panel {
+  border: 1px solid var(--ui-color-border);
+  border-radius: var(--ui-radius-8);
+  background: var(--ui-color-surface);
+}
+.program-officer-workspace .memo {
+  font: inherit;
+  color: var(--ui-color-text);
+  border: 1px solid var(--ui-color-input-border);
+  border-radius: var(--ui-radius-6);
+  padding: var(--ui-space-3);
+}
+.program-officer-workspace :is(.review__tab, .actions button, .review__back) {
+  min-height: var(--ui-control-height);
+  padding: var(--ui-space-2) var(--ui-space-4);
+  border: 1px solid var(--ui-color-border-strong);
+  border-radius: var(--ui-radius-6);
+  background: var(--ui-color-surface);
+  color: var(--ui-color-text);
+  font: inherit;
+}
+.program-officer-workspace .review__tab--on {
+  border-color: var(--ui-color-primary);
+  background: var(--ui-color-primary-tint);
+  color: var(--ui-color-primary);
+}
+.program-officer-workspace :is(.review__right, .review__tabs, .officer__head, .alist) :is(button, a, input, textarea, select):focus-visible {
+  outline: var(--ui-focus-width) solid var(--ui-color-focus);
+  outline-offset: var(--ui-focus-offset);
+}
+
+/* Keep wide table data inside the list on narrow screens, with wrapping filters. */
+@media (max-width: 1024px) {
+  .program-officer-workspace .alist__head,
+  .program-officer-workspace .alist__bar,
+  .program-officer-workspace .alist__filters {
+    height: auto;
+    min-height: var(--ui-control-height);
+    flex-wrap: wrap;
+  }
+  .program-officer-workspace .alist__bar { padding: var(--ui-space-3) 0; }
+  .program-officer-workspace .alist__filters { min-width: 0; width: 100%; gap: var(--ui-space-3); }
+  .program-officer-workspace .alist__search { width: 100%; max-width: 100%; }
+  .program-officer-workspace .alist__period { flex-wrap: wrap; min-width: 0; }
+  .program-officer-workspace .alist__period input { min-width: 0; max-width: 100%; }
+  .program-officer-workspace .alist__tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  .program-officer-workspace .alist__tab { justify-content: center; padding: 0 var(--ui-space-2); white-space: nowrap; }
+  .program-officer-workspace .alist__scope { flex-wrap: wrap; padding: var(--ui-space-2) 0; }
+  .program-officer-workspace .alist__panel { position: relative; max-width: 100%; overflow-x: auto; }
+  .program-officer-workspace .alist__table { position: relative; min-width: 640px; }
+}
+
+/* Desktop keeps 55:45. Narrow review makes both original and findings reachable. */
+.program-officer-workspace .review__split { grid-template-columns: minmax(0, 55fr) minmax(0, 45fr); }
+.program-officer-workspace :is(.review__left, .review__right) { min-width: 0; }
+.program-officer-workspace .review__head { flex-wrap: wrap; overflow-wrap: anywhere; }
+.program-officer-workspace .viewer__bar { flex-wrap: wrap; }
+.program-officer-workspace .viewer__name { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 1100px) {
+  .program-officer-workspace .review__split { grid-template-columns: minmax(0, 1fr); }
+  .program-officer-workspace .review__left { position: static; }
+  .program-officer-workspace .review__right { max-height: none; overflow: visible; }
+  .program-officer-workspace .review__tabs { min-width: 0; }
+  .program-officer-workspace .review__tab { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+  .program-officer-workspace .review__head > * { min-width: 0; }
+  .program-officer-workspace .review__when { flex-basis: 100%; }
+  .program-officer-workspace .viewer__stage { max-width: 100%; }
+}
+
+.program-officer-workspace .actions .btn--primary { background: var(--ui-color-primary); border-color: var(--ui-color-primary); color: var(--ui-color-on-primary); font-weight: var(--ui-font-weight-bold); }
+.program-officer-workspace .actions .btn--danger { border-color: var(--ui-color-danger-text); color: var(--ui-color-danger-text); }
+.program-officer-workspace :is(.viewer__stage, .alist__panel):focus-visible { outline: var(--ui-focus-width) solid var(--ui-color-focus); outline-offset: var(--ui-focus-offset); }
