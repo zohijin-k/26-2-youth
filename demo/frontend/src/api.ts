@@ -3,6 +3,7 @@
 import { FORM_FIELD_KEYS } from './forms/form-field-bindings.ts'
 import { youthOfficerRole } from './officer-scope.ts'
 import { YOUTH_PROGRAM } from './program-scope.ts'
+import { HttpError } from './lib/http-error.ts'
 import { officerSessionResponse } from './officer-session.ts'
 
 type OfficerMocks = typeof import('./pages/officer/mock-data.ts')
@@ -333,7 +334,7 @@ async function json<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { 'Content-Type': 'application/json', ...init?.headers },
   })
   officerSessionResponse(path, res)
-  if (!res.ok) throw new Error(`${init?.method ?? 'GET'} ${path} 실패 (${res.status})`)
+  if (!res.ok) throw new HttpError(res.status, `${init?.method ?? 'GET'} ${path} 실패 (${res.status})`)
   return res.json() as Promise<T>
 }
 
@@ -985,7 +986,7 @@ export const postDecision = async (
   }
   return json<{ decision: string; label: string; decided_at: string | null }>(
     `/api/officer/applications/${applicationId}/decision`,
-    { method: 'POST', body: JSON.stringify(body) },
+    { method: 'POST', body: JSON.stringify(body), signal: AbortSignal.timeout(15000) },
   )
 }
 
