@@ -105,7 +105,7 @@ def test_published_program_end_to_end_uses_snapshot_and_officer_pass_queue(clien
     assert all('confidence' not in field and 'anchor' not in field for field in layout['fields'].values())
     fill(client,row,layout)
     monkeypatch.setattr(documents,'read_document',lambda path,expected:OcrResult(detected_doc_type=DocType.ID_PHOTO_COPY,
-        confidence=.99,image_quality=1,issue_date=TODAY,tier='synthetic',engine='synthetic'))
+        confidence=.99,image_quality=1,issue_date=TODAY, fields={'발급일': TODAY.isoformat()},tier='synthetic',engine='synthetic'))
     upload=client.post(f'/api/applications/{row["id"]}/documents',data={'slot_key':'photo_1_photo'},
         files={'file':('renamed.pdf',pdf(),'application/pdf')})
     assert upload.status_code==200,upload.text
@@ -183,7 +183,7 @@ def test_confirmed_document_fail_remains_submission_blocker(client,monkeypatch):
     posting=publish(client,['photo_1_photo'])
     row,listing,layout=start(client,posting);fill(client,row,layout)
     monkeypatch.setattr(documents,'read_document',lambda path,expected:OcrResult(detected_doc_type=DocType.RESIDENT_CERTIFICATE,
-        confidence=.99,image_quality=1,issue_date=TODAY,tier='synthetic'))
+        confidence=.99,image_quality=1,issue_date=TODAY, fields={'발급일': TODAY.isoformat()},tier='synthetic'))
     upload=client.post(f'/api/applications/{row["id"]}/documents',data={'slot_key':'photo_1_photo'},files={'file':('photo.pdf',pdf(),'application/pdf')})
     assert upload.json()['status']=='FAIL',upload.json()
     assert not client.get(f'/api/applications/{row["id"]}/final-check').json()['can_submit']

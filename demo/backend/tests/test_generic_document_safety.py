@@ -16,7 +16,7 @@ from demo.backend.tests.test_generic_programs import client, fill, pdf, publish,
 
 def photo_result():
     return OcrResult(detected_doc_type=DocType.ID_PHOTO_COPY, confidence=.99,
-                     image_quality=1, issue_date=TODAY, tier='synthetic', engine='synthetic')
+                     image_quality=1, issue_date=TODAY, fields={'발급일': TODAY.isoformat()}, tier='synthetic', engine='synthetic')
 
 
 def upload(client, aid, source, slot='photo_1_photo'):
