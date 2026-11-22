@@ -16,6 +16,7 @@ SQL ORDER BY로 표현하기 어려운 복합 키인데다, 데모 규모에서�
 """
 
 import math
+
 from datetime import date, datetime
 from typing import Any
 
@@ -24,6 +25,7 @@ from pydantic import BaseModel, Field
 from sqlmodel import select
 from engine_v2.pipeline.privacy import mask_data
 
+from ..models import transactional_write
 from .. import generic_programs as generic
 from ..generic_review import validate_decision, validate_bulk_decisions
 from ..models import (
@@ -1137,6 +1139,7 @@ class BulkDecisionRequest(DecisionRequest):
     application_ids: list[int]
 
 
+@transactional_write
 def _apply_decision(
     application_id: int, role: OfficerRole, decision: str, memo: str, notice: str | None = None
 ) -> dict[str, Any]:
@@ -1218,6 +1221,7 @@ def _unchecked_numbers(application_ids: list[int]) -> list[str]:
 
 
 @router.post("/applications/decisions")
+@transactional_write
 def decide_bulk(body: BulkDecisionRequest) -> dict[str, Any]:
     """목록에서 체크한 건을 한 번에 처리.
 

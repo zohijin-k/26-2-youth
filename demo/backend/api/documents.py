@@ -19,6 +19,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 from sqlmodel import select
 
+from ..models import transactional_write, async_session_transaction, stage_file_deletion
 from ..upload_assessment import assess_nhis_identity, assess_upload
 from ..models import UNASSIGNED_SLOT, Application, Document, SubsidyItem, get_session, session_transaction
 from ..application_writes import guarded_write
@@ -161,6 +162,7 @@ def required_documents(application_id: int) -> dict[str, Any]:
 
 
 @router.put("/{application_id}/doc-context")
+@transactional_write
 def set_doc_context(application_id: int, body: DocContextRequest) -> dict[str, Any]:
     """근로유형 등을 저장하고, 바뀐 체크리스트를 바로 돌려준다."""
     candidate = _load(application_id)
@@ -240,6 +242,7 @@ def _ocr_json(ocr: OcrResult) -> dict[str, Any]:
 
 
 @guarded_write
+@transactional_write
 def _save_row(
     app: Application,
     req: DocRequirement | None,
@@ -283,6 +286,7 @@ def _save_row(
 
 
 @guarded_write
+@transactional_write
 def _refresh_nhis_identity(application_id: int, app: Application, checklist: list[DocRequirement]) -> None:
     """건강보험 납부·자격확인서는 짝 서류가 도착할 때마다 함께 다시 대조한다."""
     _require_draft(application_id)
@@ -298,6 +302,7 @@ def _refresh_nhis_identity(application_id: int, app: Application, checklist: lis
 
 
 @guarded_write
+@transactional_write
 def _replace_existing(application_id: int, slot_key: str) -> None:
     """같은 슬롯에 다시 올리면 이전 것을 지운다. 재업로드가 기본 동선이다."""
     _require_draft(application_id)
@@ -374,6 +379,11 @@ async def upload_document(
                                     .where(SubsidyItem.count_index == index)).first()
             return item.receipt_amount if item is not None else None
 
+        prepared_inputs = app.model_dump()
+        with get_session() as session:
+            prepared_items = [item.model_dump() for item in session.exec(
+                select(SubsidyItem).where(SubsidyItem.application_id == application_id)
+                .order_by(SubsidyItem.id)).all()]
         ocr, result = assess_upload(
             path, req,
             identity=identity_of(app.identity_json),
@@ -385,7 +395,15 @@ async def upload_document(
             reader=read_document,
         )
 
-        with session_transaction():
+        async with async_session_transaction():
+            current = _require_draft(application_id)
+            with get_session() as session:
+                current_items = [item.model_dump() for item in session.exec(
+                    select(SubsidyItem).where(SubsidyItem.application_id == application_id)
+                    .order_by(SubsidyItem.id)).all()]
+            if current.model_dump() != prepared_inputs or current_items != prepared_items:
+                raise HTTPException(409, "신청 내용이 바뀌었습니다. 서류를 다시 업로드해 주세요.")
+            app = current
             row = _save_row(
                 app,
                 req,
@@ -445,32 +463,34 @@ async def _upload_bankbook(app: Application, file: UploadFile) -> dict[str, Any]
     path.write_bytes(data)
     committed = False
     try:
-        with get_session() as session:
-            saved = session.get(Application, app.id)
-            if saved is None:
-                raise HTTPException(404, "신청 건을 찾을 수 없습니다.")
-            if saved.status != STATUS_DRAFT:
-                raise HTTPException(409, "제출한 신청서는 수정할 수 없습니다.")
-            for previous in session.exec(select(Document).where(
-                    Document.application_id == app.id, Document.slot_key == "bank_account")).all():
-                session.delete(previous)
-            row = Document(application_id=app.id or 0, slot_key="bank_account", doc_type="통장사본",
-                           file_path=str(path.relative_to(STORAGE.parent)), file_format=suffix,
-                           stage1_status="NEEDS_REVIEW", ocr_json={}, findings_json=[{
-                               "code": "ACCOUNT_COPY_REVIEW", "severity": "NEEDS_REVIEW",
-                               "message": "예금주와 계좌번호는 담당자가 통장 사본 원본으로 확인합니다.",
-                               "how_to_fix": "예금주와 계좌번호가 보이는 본인 명의 통장 사본을 첨부해 주세요.",
-                               "link": ""}])
-            saved.form1_json = {**(saved.form1_json or {}), "bankbookFileName": path.name}
-            saved.doc_context_json = {**(saved.doc_context_json or {}), "applicant_flow_version": 1}
-            saved.updated_at = datetime.now()
-            session.add(saved)
-            session.add(row)
-            session.commit()
-            committed = True
-            session.refresh(row)
-            return _document_dict(row)
-    except Exception:
+        async with async_session_transaction():
+            with get_session() as session:
+                saved = session.get(Application, app.id)
+                if saved is None:
+                    raise HTTPException(404, "신청 건을 찾을 수 없습니다.")
+                if saved.status != STATUS_DRAFT:
+                    raise HTTPException(409, "제출한 신청서는 수정할 수 없습니다.")
+                for previous in session.exec(select(Document).where(
+                        Document.application_id == app.id, Document.slot_key == "bank_account")).all():
+                    session.delete(previous)
+                row = Document(application_id=app.id or 0, slot_key="bank_account", doc_type="통장사본",
+                               file_path=str(path.relative_to(STORAGE.parent)), file_format=suffix,
+                               stage1_status="NEEDS_REVIEW", ocr_json={}, findings_json=[{
+                                   "code": "ACCOUNT_COPY_REVIEW", "severity": "NEEDS_REVIEW",
+                                   "message": "예금주와 계좌번호는 담당자가 통장 사본 원본으로 확인합니다.",
+                                   "how_to_fix": "예금주와 계좌번호가 보이는 본인 명의 통장 사본을 첨부해 주세요.",
+                                   "link": ""}])
+                saved.form1_json = {**(saved.form1_json or {}), "bankbookFileName": path.name}
+                saved.doc_context_json = {**(saved.doc_context_json or {}), "applicant_flow_version": 1}
+                saved.updated_at = datetime.now()
+                session.add(saved)
+                session.add(row)
+                session.commit()
+                session.refresh(row)
+                response = _document_dict(row)
+        committed = True
+        return response
+    except BaseException:
         if not committed:
             path.unlink(missing_ok=True)
             dest_dir.rmdir()
@@ -616,7 +636,8 @@ def delete_document(application_id: int, document_id: int) -> dict[str, str]:
     target = None
     try:
         with session_transaction(), get_session() as s:
-            _require_draft(application_id)
+            app = _require_draft(application_id)
+            checklist = _checklist(app)
             row = s.get(Document, document_id)
             if row is None or row.application_id != application_id:
                 raise HTTPException(404, "서류를 찾을 수 없습니다.")
@@ -641,7 +662,7 @@ def delete_document(application_id: int, document_id: int) -> dict[str, str]:
             # Stage the removal reversibly. A failed DB commit restores its path.
             if target.exists():
                 staged = target.with_name("." + uuid4().hex + ".pending-delete")
-                target.rename(staged)
+                stage_file_deletion(target, staged)
     except BaseException:
         if staged is not None and staged.exists():
             staged.rename(target)

@@ -1,6 +1,7 @@
 """Per-program generic review detail and evidence-confirmation API."""
 from __future__ import annotations
 
+
 from datetime import datetime
 from typing import Any
 
@@ -11,6 +12,7 @@ from sqlmodel import select
 import pymupdf
 from engine_v2.pipeline.privacy import mask_data
 
+from ..models import transactional_write
 from .. import generic_programs as generic
 from ..generic_review import GenericReviewChecks, approval_blockers, checks_for, criteria_for, evidence
 from ..models import Application, Document, ProgramPosting, Review, get_session
@@ -144,6 +146,7 @@ class ChecksRequest(BaseModel):
 
 
 @router.put('/{posting_id}/applications/{application_id}/checks')
+@transactional_write
 def confirm_checks(posting_id: int, application_id: int, body: ChecksRequest) -> dict[str, Any]:
     app, review, _ = _load(posting_id, application_id)
     if app.status == 'decided':
@@ -164,6 +167,7 @@ def confirm_checks(posting_id: int, application_id: int, body: ChecksRequest) ->
 
 
 @router.post('/{posting_id}/applications/{application_id}/decision')
+@transactional_write
 def decide(posting_id: int, application_id: int, body: officer.DecisionRequest) -> dict[str, Any]:
     _load(posting_id, application_id)
     role = _role(body.role)
