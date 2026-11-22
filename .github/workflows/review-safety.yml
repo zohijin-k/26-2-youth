@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [event, phase6d-cas]
+        target: [event, contract-candidate, candidate-main]
         layer: [backend, frontend]
     env:
       JBAI_ALLOW_REAL_DOCS: 'false'
@@ -32,15 +32,28 @@ jobs:
       - name: Checkout CI harness
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
           path: harness
           persist-credentials: false
       - name: Checkout exact subject
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: ${{ matrix.target == 'phase6d-cas' && '5fce0e79441fc137e9ca087a8992fd74d38766db' || (github.event.pull_request.head.sha || github.sha) }}
+          ref: ${{ matrix.target == 'contract-candidate' && '278c44e9c873099a50686547611578f8865254fa' || (matrix.target == 'candidate-main' && 'main' || github.sha) }}
+          fetch-depth: 0
           path: subject
           persist-credentials: false
+      - name: Resolve exact source and latest-main integration
+        working-directory: subject
+        env:
+          CI_LANE: ${{ matrix.target }}
+          CI_EVENT: ${{ github.event_name }}
+          CI_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+          CI_EVENT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          CI_EVENT_BASE: ${{ github.event.pull_request.base.sha || '' }}
+          CI_EVENT_MERGE: ${{ github.sha }}
+          CAS_CANDIDATE_SHA: 278c44e9c873099a50686547611578f8865254fa
+          CAS_ORIGINAL_SHA: 5fce0e79441fc137e9ca087a8992fd74d38766db
+        run: python3 ../harness/.github/ci/source.py
       - name: Record actual source and scan tracked files
         run: |
           git -C subject rev-parse HEAD
@@ -61,7 +74,7 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}/harness/.github/ci/safety:${{ github.workspace }}/subject
           CI_SYNTHETIC_ROOT: ${{ runner.temp }}/review-synthetic
-          REQUIRE_CAS: ${{ matrix.target == 'phase6d-cas' }}
+          REQUIRE_CAS: ${{ matrix.target != 'event' }}
         run: python ../harness/.github/ci/backend.py
       - name: Set up Node
         if: matrix.layer == 'frontend'
