@@ -1,4 +1,6 @@
 """Synthetic-only acceptance for the officer list queues, search and the reasons endpoint."""
+
+from demo.backend.tests.review_revision_support import decision_precondition
 from datetime import datetime
 
 import pytest
@@ -256,11 +258,11 @@ def test_a_decision_moves_the_case_to_done_in_both_places(client):
     made = seed_queues()
     assert listing(client)["queues"] == {"needs_check": 3, "pass": 2, "done": 3}
     decided = client.post(f"/api/officer/applications/{made['fail']}/decision",
-                          json={"role": "province", "decision": "hold", "memo": "FAKE 보류"})
+                          json=decision_precondition(f"/api/officer/applications/{made['fail']}/decision", {"role": "province", "decision": "hold", "memo": "FAKE 보류"}))
     assert decided.status_code == 200, decided.text
     bulk = client.post("/api/officer/applications/decisions",
-                       json={"role": "province", "decision": "approve", "memo": "FAKE 일괄",
-                             "application_ids": [made["pass_a"], made["pass_b"]]})
+                       json=decision_precondition("/api/officer/applications/decisions", {"role": "province", "decision": "approve", "memo": "FAKE 일괄",
+                             "application_ids": [made["pass_a"], made["pass_b"]]}))
     assert bulk.status_code == 200 and bulk.json()["processed"] == 2
     after = listing(client, queue="done")
     assert after["queues"] == {"needs_check": 2, "pass": 0, "done": 6}
@@ -276,8 +278,8 @@ def test_a_decision_moves_the_case_to_done_in_both_places(client):
 
 def bulk_decide(client, decision, application_ids, role="province"):
     return client.post("/api/officer/applications/decisions",
-                       json={"role": role, "decision": decision, "memo": "FAKE 일괄",
-                             "application_ids": application_ids})
+                       json=decision_precondition("/api/officer/applications/decisions", {"role": role, "decision": decision, "memo": "FAKE 일괄",
+                             "application_ids": application_ids}))
 
 
 @pytest.mark.parametrize("case", ["needs_review", "fail", "unreviewed"])
@@ -323,7 +325,7 @@ def test_bulk_approve_is_still_allowed_for_pass_and_decided_cases(client):
 def test_single_approve_from_the_review_screen_is_not_affected(client):
     made = seed_queues()
     response = client.post(f"/api/officer/applications/{made['needs_review']}/decision",
-                           json={"role": "province", "decision": "approve", "memo": "FAKE 건별"})
+                           json=decision_precondition(f"/api/officer/applications/{made['needs_review']}/decision", {"role": "province", "decision": "approve", "memo": "FAKE 건별"}))
     assert response.status_code == 200, response.text
     assert made["needs_review"] in ids(listing(client, queue="done"))
 
@@ -544,7 +546,7 @@ def test_latest_and_registration_order_and_sort_labels(client):
 
 
 def decide(client, application_id, **body):
-    response = client.post(f"/api/officer/applications/{application_id}/decision", json={"role": "province", **body})
+    response = client.post(f"/api/officer/applications/{application_id}/decision", json=decision_precondition(f"/api/officer/applications/{application_id}/decision", {"role": "province", **body}))
     assert response.status_code == 200, response.text
     return response.json()
 
@@ -570,7 +572,7 @@ def test_reject_stores_the_applicant_notice_separately_from_the_memo(client):
 def test_notice_length_is_bounded(client):
     application_id = add_application(42, ai="FAIL")
     refused = client.post(f"/api/officer/applications/{application_id}/decision",
-                          json={"role": "province", "decision": "reject", "memo": "m", "notice": "가" * 2001})
+                          json=decision_precondition(f"/api/officer/applications/{application_id}/decision", {"role": "province", "decision": "reject", "memo": "m", "notice": "가" * 2001}))
     assert refused.status_code == 422
 
 

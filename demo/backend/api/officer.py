@@ -26,6 +26,8 @@ from sqlmodel import select
 from engine_v2.pipeline.privacy import mask_data
 
 from ..models import transactional_write
+from ..review_revision import update_review, require_revision, MAX_EXPECTED_REVISION
+from pydantic import StrictInt
 from .. import generic_programs as generic
 from ..generic_review import validate_decision, validate_bulk_decisions
 from ..models import (
@@ -514,6 +516,7 @@ def _row(
             entry.review.officer_role if entry.review else None, entry.decision
         ),
         "officer_role": entry.review.officer_role if entry.review else None,
+        "revision": entry.review.revision if entry.review else None,
         #: 담당자가 판단한 시각. 반려 목록의 처리일이다.
         "decided_at": (
             entry.review.decided_at.isoformat(timespec="seconds")
@@ -1007,6 +1010,7 @@ def review_detail(application_id: int, role: str = Query(ROLE_PROVINCE)) -> dict
         "forms": form_links(application_id),
         "eligibility": _eligibility(entry, items),
         "exclusions": _exclusions(entry),
+        "revision": review.revision if review else None,
         "decision": {
             "decision": entry.decision,
             "label": decision_label(review.officer_role if review else None, entry.decision),
@@ -1127,6 +1131,8 @@ def _check_counts(entries: list[Entry]) -> dict[int, int]:
 
 
 class DecisionRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+    expected_revision: StrictInt | None = Field(default=None, ge=1, le=MAX_EXPECTED_REVISION)
     role: str = ROLE_PROVINCE
     #: approve | hold | reject
     decision: str
@@ -1137,11 +1143,12 @@ class DecisionRequest(BaseModel):
 
 class BulkDecisionRequest(DecisionRequest):
     application_ids: list[int]
+    expected_revisions: dict[int, StrictInt] = Field(default_factory=dict)
 
 
 @transactional_write
 def _apply_decision(
-    application_id: int, role: OfficerRole, decision: str, memo: str, notice: str | None = None
+    application_id: int, role: OfficerRole, decision: str, memo: str, notice: str | None = None, expected_revision: int | None = None
 ) -> dict[str, Any]:
     with get_session() as s:
         app = s.get(Application, application_id)
@@ -1154,22 +1161,20 @@ def _apply_decision(
         if review is None:
             raise HTTPException(400, "심사 결과가 없어 판단을 기록할 수 없습니다.")
 
-        review.officer_role = role.key
-        review.officer_decision = decision
-        review.officer_memo = memo
-        # 반려가 아닌 판단으로 바뀌면 지난 반려 안내는 신청자에게 더 보이지 않아야 한다.
-        review.reject_notice = ((notice or "").strip() or None) if decision == DECISION_REJECT else None
-        review.decided_at = datetime.now()
+        decided_at = datetime.now()
+        values = dict(officer_role=role.key, officer_decision=decision,
+                      officer_memo=memo, decided_at=decided_at)
+        values["reject_notice"] = ((notice or "").strip() or None) if decision == DECISION_REJECT else None
+        revision = update_review(s, application_id, expected_revision, **values)
         # 보류는 아직 처리 중이다. 승인·반려만 결정 완료로 올린다.
         app.status = STATUS_REVIEWING if decision == DECISION_HOLD else STATUS_DECIDED
         app.updated_at = datetime.now()
-        s.add(review)
         s.add(app)
         s.commit()
-        decided_at = review.decided_at
 
     return {
         "application_id": application_id,
+        "revision": revision,
         "decision": decision,
         "label": decision_label(role.key, decision),
         "officer_role": role.key,
@@ -1198,7 +1203,7 @@ def decide(application_id: int, body: DecisionRequest) -> dict[str, Any]:
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from None
     _check_action(role, body.decision)
-    return _apply_decision(application_id, role, body.decision, body.memo, body.notice)
+    return _apply_decision(application_id, role, body.decision, body.memo, body.notice, body.expected_revision)
 
 
 def _unchecked_numbers(application_ids: list[int]) -> list[str]:
@@ -1252,8 +1257,13 @@ def decide_bulk(body: BulkDecisionRequest) -> dict[str, Any]:
                 f"확인 필요 건은 일괄로 {label}할 수 없습니다. 심사 화면에서 서류를 확인한 뒤 "
                 f"건별로 처리해 주세요: {', '.join(unchecked)}",
             )
+    # No duplicate ID can increment twice; every selected row needs its own token.
+    if len(set(body.application_ids)) != len(body.application_ids):
+        raise HTTPException(400, "중복 신청 건은 일괄 처리할 수 없습니다.")
+    if set(body.expected_revisions) != set(body.application_ids):
+        require_revision(None)
     results = [
-        _apply_decision(app_id, role, body.decision, body.memo)
+        _apply_decision(app_id, role, body.decision, body.memo, expected_revision=body.expected_revisions[app_id])
         for app_id in body.application_ids
     ]
     return {"processed": len(results), "results": results}
