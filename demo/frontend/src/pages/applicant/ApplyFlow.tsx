@@ -22,6 +22,9 @@ import {
   type SubmitResult,
   type SubsidyState,
 } from '../../api.ts'
+import SaveStatus from '../../components/SaveStatus.tsx'
+import useSaveBeforeLeave from '../../hooks/useSaveBeforeLeave.ts'
+import { mutationError } from '../../lib/applicant-mutation.ts'
 import DocumentUpload from './DocumentUpload.tsx'
 import FinalCheck from './FinalCheck.tsx'
 import MissingItems from './MissingItems.tsx'
@@ -121,6 +124,7 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
   /** 지원 항목이 바뀌면 업로드 화면의 체크리스트를 다시 읽게 하는 키. */
   const [checklistKey, setChecklistKey] = useState(0)
   const [selectedSubsidyTypes, setSelectedSubsidyTypes] = useState(0)
+  const [workspaceBusy, setWorkspaceBusy] = useState(false)
   const [formContinuing, setFormContinuing] = useState(false)
   const [formError, setFormError] = useState('')
   const [selectionAttempted, setSelectionAttempted] = useState(false)
@@ -147,6 +151,9 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
   const uploadState = `${uploadProgress.completed}/${uploadProgress.total}`
   const finalGate = finalGateResult?.upload === uploadState ? finalGateResult.blockers : null
   const saveQueue = useRef<Promise<void>>(Promise.resolve())
+  const flushPending = useRef<Promise<void> | null>(null)
+  const [flushing, setFlushing] = useState(false)
+  const navigation = useSaveBeforeLeave(!submitted && (stage === 'forms' || saveState === 'failed' || consentDirty), () => flushForms(), uploadPending || formContinuing || workspaceBusy)
 
   useEffect(() => {
     let active = true
@@ -242,7 +249,7 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
     return saveQueue.current
   }
 
-  const flushForms = async () => {
+  const persistForms = async () => {
     if (appId === null) return
     setSaveState('saving')
     try {
@@ -266,11 +273,22 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
     }
   }
 
+  function flushForms(): Promise<void> {
+    if (flushPending.current) return flushPending.current
+    setFlushing(true)
+    const operation = persistForms().catch((problem: unknown) => {
+      setFormError(mutationError(problem, '서식을 저장하지 못했습니다. 입력을 확인한 뒤 다시 저장해 주세요.')); throw problem
+    }).finally(() => { flushPending.current = null; setFlushing(false) })
+    flushPending.current = operation
+    return operation
+  }
+
   const continueFromForms = async () => {
-    if (appId === null || program === null) return
+    if (appId === null || program === null || formContinuing) return
     setFormContinuing(true)
     setFormError('')
     try {
+      await flushForms()
       const payload = Object.fromEntries(Object.entries(answers).filter(([, v]) => v)) as Record<string, string>
       const result = await postSelfCheck(appId, payload)
       setCheckResult(result)
@@ -318,8 +336,7 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
   const jumpTo = (next: Stage) => {
     if (next === stage) return
     if (next === 'identity' && identity !== null) return
-    setStage(next)
-    window.scrollTo({ top: 0 })
+    navigation.leave(() => { setStage(next); window.scrollTo({ top: 0 }) })
   }
 
   if (restoring) return <div className="page" role="status"><Spinner /> 신청 화면을 불러오는 중입니다.</div>
@@ -335,11 +352,11 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
     : viewedStage === 'forms' || viewedStage === 'subsidy' ? 1
       : viewedStage === 'upload' ? 2 : 3
 
-  const openMyPage = () => {
+  const openMyPage = () => navigation.leave(() => {
     if (stage !== 'mypage') setStageBeforeMypage(stage)
     setStage('mypage')
     window.scrollTo({ top: 0 })
-  }
+  })
 
   /** 단계 표시 아래 "N단계 · 상태 · 진행 수"의 상태와 진행 수. */
   // 미리 보기 중이면 "어디까지 마쳤는지"는 누르기 전 단계를 기준으로 한다. 아직 안 한 단계를 완료로 보이지 않게 한다.
@@ -363,9 +380,7 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
 
   const stepperNavigate = (index: number) => {
     if (!stepReachable(index)) return
-    if (index === 3) setPeekFrom(stage)
-    setStage(index === 1 ? 'forms' : index === 2 ? 'upload' : 'final')
-    window.scrollTo({ top: 0 })
+    navigation.leave(() => { if (index === 3) setPeekFrom(stage); setStage(index === 1 ? 'forms' : index === 2 ? 'upload' : 'final'); window.scrollTo({ top: 0 }) })
   }
 
   /** 신청서 저장. 본인인증을 마쳤으면 성명·생년월일은 인증 값으로 고정된다. */
@@ -377,6 +392,7 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
 
   return (
     <div className={`flow flow--active${stage === 'upload' ? ' flow--fluid' : ''}`}>
+      {stage !== 'forms' && navigation.error && <Notice tone="danger" role="alert">{navigation.error}</Notice>}
       {headerHost && appId !== null && createPortal(
         <div className="shell__application-controls">
           <span className="shell__application-number">신청번호 <strong>{appNo || '발급 중…'}</strong></span>
@@ -458,14 +474,15 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
           onForm1={onForm1}
           onAnswers={(next) => { setAnswers(next); setCheckResult(null); save({ self_check: next }) }}
           onConsent={(next) => { setConsent(next); setConsentDirty(true) }}
+          onBusyChange={setWorkspaceBusy}
           onFlush={flushForms}
           onChangedSubsidy={(state) => { setSelectedSubsidyTypes(state.selections.length); setChecklistKey((key) => key + 1) }}
           onContinue={() => void continueFromForms()}
-          continuing={formContinuing}
-          error={formError}
+          continuing={formContinuing || flushing || navigation.pending}
+          error={navigation.error || formError}
           readOnly={!!submitted}
           onProgress={reportFormProgress}
-          saveStatus={saveState === 'saving' ? <><Spinner /> 저장 중…</> : saveState === 'failed' ? <><Icon name="alertCircle" /> 저장하지 못했습니다. 내용을 확인하고 다시 저장해 주세요.</> : consentDirty ? '동의 내용을 저장하려면 서식에서 저장하고 닫기를 눌러 주세요.' : saveState === 'saved' ? <><Icon name="checkCircle" /> 저장했습니다</> : undefined}
+          saveStatus={<SaveStatus phase={flushing || navigation.pending ? 'saving' : saveState} dirty={consentDirty} />}
         />
       )}
 
@@ -533,6 +550,7 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
       {stage === 'final' && appId !== null && (
         <>
           <FinalCheck
+            onPendingChange={setUploadPending}
             applicationId={appId}
             onSubmitted={(result) => {
               setSubmitted(result)

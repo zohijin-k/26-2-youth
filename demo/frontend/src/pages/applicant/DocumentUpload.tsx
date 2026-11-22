@@ -36,10 +36,11 @@ import ProgressBar from '../../components/ProgressBar.tsx'
 import Spinner from '../../components/Spinner.tsx'
 import useBeforeUnload from '../../hooks/useBeforeUnload.ts'
 import { friendlyError } from '../../lib/error-copy.ts'
-import { formatBytes, formatDuration, formatDate } from '../../lib/format.ts'
+import { formatBytes, formatDate } from '../../lib/format.ts'
 import { precheckFile, type PdfProbe } from '../../lib/file-precheck.ts'
 import { estimateSeconds, rememberObservation, slowThresholdSec, type Observation } from '../../lib/upload-estimate.ts'
 import { queueReducer, nextRunnable, slotItem, isActive, transferPercentage, type QueueItem } from './upload-queue.ts'
+import { mutationError, slotChange } from '../../lib/applicant-mutation.ts'
 import './document-upload.css'
 
 const probePdf: PdfProbe = async (file) => {
@@ -72,12 +73,12 @@ function PendingFile({file, url, job, onCancel, onRetry}: { file: File; url: str
     </div>
     <p>{job?.status !== 'failed' && job?.status !== 'queued' && <Spinner />} {label}</p>
     {job?.status === 'sending' && <><ProgressBar indeterminate={percentage === null} value={job.sent} max={job.total} label="파일 전송" />{percentage !== null && <p>{percentage}% 전송</p>}</>}
-    {reading && <><ProgressBar indeterminate label="서류 자동 확인" /><p>{elapsed}초 경과 · {job.estimateSec === null ? '이번 접속의 측정값이 없어 예상 시간을 표시하지 않습니다.' : `예상 ${formatDuration(job.estimateSec)}`}</p></>}
+    {reading && <><ProgressBar indeterminate label="서류 자동 확인" /><p>{elapsed}초 경과 · 분석이 끝나면 결과를 표시합니다.</p></>}
     {slow && <Notice tone="warning">평소보다 오래 걸리고 있습니다. 창을 닫지 말고 기다려 주세요.</Notice>}
-    {job?.error && <Notice tone="danger">{job.error}</Notice>}
+    {job?.error && <Notice tone="danger">{job.error}<p>이 화면을 떠나면 파일을 다시 선택해야 합니다. 서버의 서류 상태를 먼저 확인해 주세요.</p></Notice>}
     {job?.hint && <p>{job.hint}</p>}
     {onCancel && <button type="button" className="btn btn--small" onClick={onCancel}>대기 취소하기</button>}
-    {onRetry && <button type="button" className="btn btn--small" onClick={onRetry}>같은 파일로 다시 시도하기</button>}
+    {onRetry && <button type="button" className="btn btn--small" onClick={onRetry}>서버 상태 확인 후 재시도</button>}
   </div>
 }
 
@@ -429,6 +430,12 @@ export default function DocumentUpload({applicationId, onProgress, onPendingChan
   const [problems, setProblems] = useState<Record<string, string>>({})
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState(false)
+  const [reconciling, setReconciling] = useState(false)
+  const [retryConfirm, setRetryConfirm] = useState<QueueItem | null>(null)
+  const [recoveryNotice, setRecoveryNotice] = useState('')
+  const recoveryLock = useRef(false)
+  const attempts = useRef(new Map<string, number | null>())
+  const dirty = useRef(false)
   const [removeTarget, setRemoveTarget] = useState<UploadedDocument | null>(null)
   const [preparingCount, setPreparingCount] = useState(0)
   const [attempt, setAttempt] = useState(0)
@@ -438,8 +445,8 @@ export default function DocumentUpload({applicationId, onProgress, onPendingChan
   const request = useRef<AbortController | null>(null)
   const epoch = useRef(0)
   const urls = useRef(new Set<string>())
-  const active = isActive(queue) || preparingCount > 0 || deleting
-  useBeforeUnload(active)
+  const active = isActive(queue) || preparingCount > 0 || deleting || reconciling
+  useBeforeUnload(active || queue.some((item) => item.status === 'failed'))
   useEffect(() => { onPendingChange(active); return () => onPendingChange(false) }, [active, onPendingChange])
   useEffect(() => {
     epoch.current += 1
@@ -461,10 +468,12 @@ export default function DocumentUpload({applicationId, onProgress, onPendingChan
 
   useEffect(() => {
     const item = nextRunnable(queue)
-    if (!item || request.current) return
+    if (!item || request.current || recoveryLock.current) return
     const controller = new AbortController()
     request.current = controller
     const generation = epoch.current
+    revision.current += 1; dirty.current = true
+    attempts.current.set(item.id, checklist?.items.find((row) => row.slot_key === item.slotKey)?.documents[0]?.document_id ?? null)
     let sentAt: number | null = null
     dispatch({ type: 'start', id: item.id, now: Date.now() })
     uploadDocument(applicationId, item.slotKey, item.file, item.declared, {
@@ -483,15 +492,41 @@ export default function DocumentUpload({applicationId, onProgress, onPendingChan
       request.current = null
       dispatch({ type: 'succeed', id: item.id })
       URL.revokeObjectURL(item.previewUrl); urls.current.delete(item.previewUrl)
-      void refresh().catch(() => setError('서류는 올렸지만 최신 목록을 불러오지 못했습니다. 목록을 다시 확인해 주세요.'))
+
     }).catch((error: unknown) => {
       if (epoch.current !== generation) return
       request.current = null
-      dispatch({ type: 'fail', id: item.id, now: Date.now(), error: friendlyError(error, '파일을 올리지 못했습니다. 같은 파일로 다시 시도해 주세요.') })
+      dispatch({ type: 'fail', id: item.id, now: Date.now(), error: mutationError(error, '응답을 확인하지 못했습니다. 서버 상태를 먼저 확인해 주세요.') })
     })
-  }, [queue, applicationId, refresh])
+  }, [queue, applicationId, refresh, checklist?.items])
+
+  useEffect(() => {
+    if (active || request.current || !dirty.current) return
+    dirty.current = false
+    void refresh().catch(() => setError('최신 서류 목록을 확인하지 못했습니다. 목록을 다시 확인해 주세요.'))
+  }, [active, refresh])
+
+  const reconcileUpload = async (job: QueueItem) => {
+    if (recoveryLock.current || request.current || isActive(queue) || deleting || preparingCount > 0) return
+    recoveryLock.current = true; setReconciling(true); setRecoveryNotice('서버의 현재 서류 상태를 확인하고 있습니다.')
+    const generation = epoch.current; revision.current += 1
+    try {
+      const next = await fetchChecklist(applicationId)
+      if (generation !== epoch.current) return
+      setChecklist(next)
+      const row = next.items.find((item) => item.slot_key === job.slotKey)
+      if (!row || slotChange(attempts.current.get(job.id) ?? null, row.documents) === 'changed') {
+        dispatch({ type: 'clearSlot', slotKey: job.slotKey }); attempts.current.delete(job.id)
+        URL.revokeObjectURL(job.previewUrl); urls.current.delete(job.previewUrl)
+        setRecoveryNotice('서버의 서류 상태가 변경되었습니다. 원본과 결과를 확인해 주세요. 파일은 다시 전송하지 않았습니다.')
+      } else { setRecoveryNotice('서버 목록을 확인했습니다. 재전송 전에 안내를 확인해 주세요.'); setRetryConfirm(job) }
+    } catch (problem: unknown) { if (generation === epoch.current) setRecoveryNotice(mutationError(problem, '서버 상태를 확인하지 못했습니다. 재전송하지 않았습니다. 잠시 후 다시 확인해 주세요.')) }
+    finally { recoveryLock.current = false; if (generation === epoch.current) setReconciling(false) }
+  }
 
   const upload = async (item: DocRequirementRow, file: File) => {
+    const failed = slotItem(queue, item.slot_key)
+    if (failed?.status === 'failed') { void reconcileUpload(failed); return }
     const generation = epoch.current
     setPreparingCount((count) => count + 1)
     setProblems((current) => ({ ...current, [item.slot_key]: '' }))
@@ -555,7 +590,7 @@ export default function DocumentUpload({applicationId, onProgress, onPendingChan
             job={slotItem(queue, item.slot_key)}
             problem={problems[item.slot_key]}
             onCancel={() => { const job = slotItem(queue, item.slot_key); if (job?.status === 'queued') { dispatch({type: 'cancel', id: job.id}); URL.revokeObjectURL(job.previewUrl); urls.current.delete(job.previewUrl) } }}
-            onSameFile={() => { const job = slotItem(queue, item.slot_key); if (job) dispatch({ type: 'retry', id: job.id, now: Date.now() }) }}
+            onSameFile={() => { const job = slotItem(queue, item.slot_key); if (job) void reconcileUpload(job) }}
             declared={declared[item.slot_key] ?? EMPTY_YMD}
             onDeclaredChange={(value) => setDeclared((current) => ({ ...current, [item.slot_key]: value }))}
             onPick={(file) => upload(item, file)}
@@ -598,6 +633,12 @@ export default function DocumentUpload({applicationId, onProgress, onPendingChan
         </section>
       )}
 
+      {recoveryNotice && <Notice tone="info" role="status">{recoveryNotice}</Notice>}
+      {retryConfirm && <ConfirmDialog title="서버 상태를 확인했습니다. 다시 전송하시겠습니까?" description="이전 요청의 응답은 확인되지 않았습니다. 다시 전송하면 기존 서류가 교체될 수 있습니다. 서버의 원본을 먼저 확인해 주세요." confirmLabel="같은 파일 다시 전송" onCancel={() => setRetryConfirm(null)} onConfirm={() => { const job = retryConfirm; setRetryConfirm(null); dispatch({ type: 'retry', id: job.id, now: Date.now() }) }}><button type="button" className="btn" onClick={() => {
+        const job = retryConfirm; setRetryConfirm(null); dispatch({ type: 'clearSlot', slotKey: job.slotKey })
+        URL.revokeObjectURL(job.previewUrl); urls.current.delete(job.previewUrl)
+        setRecoveryNotice('다른 파일을 선택해 주세요. 서버에 저장된 원본은 먼저 확인해 주세요.')
+      }}>다른 파일 선택</button></ConfirmDialog>}
       {error && <Notice tone="danger" role="alert">{error}<button type="button" className="btn btn--small" onClick={() => void refresh().then(() => setError('')).catch(() => setError('목록을 불러오지 못했습니다. 다시 시도해 주세요.'))}>목록 다시 확인하기</button></Notice>}
       {removeTarget && <ConfirmDialog title="이 서류를 삭제하시겠습니까?" description="삭제한 서류는 다시 올려야 합니다." confirmLabel="서류 삭제하기" tone="danger" onCancel={() => setRemoveTarget(null)} onConfirm={() => void remove()}><p>{removeTarget.file_name}</p></ConfirmDialog>}
     </div>

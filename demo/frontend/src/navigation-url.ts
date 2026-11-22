@@ -33,9 +33,16 @@ function targetUrl(path: string, params: Record<string, string | null>): URL {
 
 export function routeUrl(path: string, params: Record<string, string | null> = {}, replace = false): void {
   const url = targetUrl(path, params)
-  if (url.href === window.location.href) return
+  if (url.href === window.location.href) {
+    if (window.history.state?.applicantIndex === undefined) window.history.replaceState({ ...window.history.state, applicantIndex: 0 }, '', window.location.href)
+    window.dispatchEvent?.(new Event('applicant:route'))
+    return
+  }
+  const index = Number(window.history.state?.applicantIndex ?? 0)
+  if (window.history.state?.applicantIndex === undefined) window.history.replaceState({ ...window.history.state, applicantIndex: index }, '', window.location.href)
   const method = replace ? 'replaceState' : 'pushState'
-  window.history[method](null, '', `${url.pathname}${url.search}${url.hash}`)
+  window.history[method]({ ...window.history.state, applicantIndex: replace ? index : index + 1 }, '', `${url.pathname}${url.search}${url.hash}`)
+  window.dispatchEvent?.(new Event('applicant:route'))
 }
 
 /** `routeUrl(path)`가 쓸 주소. 링크의 href에 넣어 새 탭으로 열어도 같은 화면이 나오게 한다. */
