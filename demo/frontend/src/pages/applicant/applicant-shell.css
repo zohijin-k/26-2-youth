@@ -222,3 +222,10 @@
   .skip-link,
   .shell__tools { display: none; }
 }
+
+/* Keep the focused bypass link clear of the home target. */
+.app-shell--applicant > .skip-link:focus {
+  position: static;
+  align-self: flex-start;
+  margin: var(--sp-2);
+}
