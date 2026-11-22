@@ -17,6 +17,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlmodel import select
 
+from ..models import transactional_write, preserve_file_on_rollback
 from ..models import STATUS_DRAFT, Application, Consent, Document, get_session
 from .. import generic_programs as generic
 from ..applicant_privacy import mask_form_values
@@ -212,6 +213,7 @@ def applicant_view(app: Application) -> dict[str, Any]:
 
 
 @router.post("")
+@transactional_write
 def create(body: CreateRequest, response: Response, request: Request) -> dict[str, Any]:
     if body.applicant_flow_version not in (0, 1):
         raise HTTPException(422, "신청 화면 버전을 확인해 주세요.")
@@ -265,6 +267,7 @@ def read(application_id: int) -> dict[str, Any]:
 
 
 @router.patch("/{application_id}")
+@transactional_write
 def patch(application_id: int, body: PatchRequest) -> dict[str, Any]:
     """단계별 부분 저장. 서류 발급하러 이탈했다 돌아올 수 있어야 한다."""
     with get_session() as s:
@@ -324,6 +327,7 @@ def patch(application_id: int, body: PatchRequest) -> dict[str, Any]:
 
 
 @router.post("/{application_id}/identity")
+@transactional_write
 def verify_identity(application_id: int, body: IdentityRequest) -> dict[str, Any]:
     """본인인증 (데모).
 
@@ -358,6 +362,7 @@ def verify_identity(application_id: int, body: IdentityRequest) -> dict[str, Any
 
         SIGNATURES.mkdir(parents=True, exist_ok=True)
         target = SIGNATURES / f"{app.application_no}_identity_pledge.{ext}"
+        preserve_file_on_rollback(target)
         target.write_bytes(signature)
 
         app.identity_json = {
@@ -394,6 +399,7 @@ def identity_pledge(application_id: int, extension: str) -> FileResponse:
 
 
 @router.post("/{application_id}/self-check")
+@transactional_write
 def self_check(application_id: int, body: SelfCheckRequest) -> dict[str, Any]:
     """자가진단 채점. 부적격이면 사유와 대안을 함께 돌려준다.
 
@@ -421,6 +427,7 @@ def self_check(application_id: int, body: SelfCheckRequest) -> dict[str, Any]:
 
 
 @router.post("/{application_id}/consents")
+@transactional_write
 def save_consents(application_id: int, body: ConsentRequest, request: Request) -> dict[str, Any]:
     """동의 기록.
 
@@ -450,6 +457,7 @@ def save_consents(application_id: int, body: ConsentRequest, request: Request) -
             if item.signature_data_url and "," in item.signature_data_url:
                 raw = base64.b64decode(item.signature_data_url.split(",", 1)[1])
                 target = SIGNATURES / f"{app.application_no}_{consent_type}.png"
+                preserve_file_on_rollback(target)
                 target.write_bytes(raw)
                 signature_path = str(target.relative_to(STORAGE.parent))
 

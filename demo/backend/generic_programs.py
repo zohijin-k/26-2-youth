@@ -5,6 +5,7 @@ programs reuse document checks and PDF rendering, with no invented eligibility.
 """
 from __future__ import annotations
 
+
 import base64
 from copy import deepcopy
 from dataclasses import asdict, replace
@@ -20,6 +21,7 @@ import pymupdf
 from sqlmodel import select
 
 from engine_v2.pipeline.privacy import mask_data
+from .models import transactional_write
 from .forms.coords import FormCoords
 from .forms.values import FilledForm
 from .forms.render import render, render_page_png
@@ -346,6 +348,7 @@ def run_review(app:Application) -> Review:
 
 
 @guarded_write
+@transactional_write
 def submit(app:Application) -> dict[str,Any]:
     from .api.common import load_application
     app=load_application(app.id or 0)

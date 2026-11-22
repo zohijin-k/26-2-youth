@@ -138,16 +138,16 @@ def test_draft_same_name_replacement_preserves_previous_bytes_and_delete(client)
 
 
 def test_failed_new_upload_rolls_back_replacement_and_removes_staged_file(client,monkeypatch):
-    from contextlib import contextmanager
+    from contextlib import asynccontextmanager
     aid,did,original=seed(client,status='draft')
     before=snapshot()
-    real=documents.session_transaction
-    @contextmanager
-    def fail_commit():
-        with real():
+    real=documents.async_session_transaction
+    @asynccontextmanager
+    async def fail_commit():
+        async with real():
             yield
             raise RuntimeError('synthetic transaction failure')
-    monkeypatch.setattr(documents,'session_transaction',fail_commit)
+    monkeypatch.setattr(documents,'async_session_transaction',fail_commit)
     with pytest.raises(RuntimeError,match='synthetic transaction failure'):
         client.post(f'/api/applications/{aid}/documents',data={'slot_key':'resident_abstract'},
                     files={'file':(original.name,pdf(True),'application/pdf')})
