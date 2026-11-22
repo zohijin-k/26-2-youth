@@ -31,6 +31,7 @@ from engine.stage1_document_check import (  # noqa: E402
 )
 from engine_v2.extractors.nhis_payment import has_failed_payment_validation  # noqa: E402
 
+from .rules.document_dates import document_date, requires_date  # noqa: E402
 from .rules.doc_types import CONFUSION_GROUPS, DocType  # noqa: E402
 from .rules.programs import DOUBLE_SAVINGS, JOB_PACKAGE, PROGRAMS, ProgramConfig  # noqa: E402
 
@@ -201,17 +202,29 @@ def to_engine_applicant(
     )
 
 
-def to_engine_documents(rows: list[dict[str, Any]]) -> list:
+def to_engine_documents(rows: list[dict[str, Any]], requirements=None) -> list:
     """업로드 서류 목록 → 엔진 `Document` 목록.
 
     `doc_type`에는 **판독된** 종류를 넣는다. 그래야 엔진 1단계가 "요구 서류가 없고
     혼동군의 다른 서류가 올라왔다"를 보고 WRONG_DOCUMENT_TYPE을 잡는다. 판독이
     안 된 파일(암호 등)은 요구 서류 자리에 그대로 두어 UNREADABLE_FILE이 뜨게 한다.
     """
+    # Match the frozen slot requirement, not the first document of this type.
+    by_slot = {req.slot_key: req for req in requirements} if requirements is not None else {}
     documents = []
     for row in rows:
         doc_type = row.get("doc_type") or row.get("expected_doc_type") or ""
         confidence = float(row.get("confidence") or 0.0)
+        req = by_slot.get(row.get("slot_key"))
+        # A generated electronic consent is dated by its authenticated consent event,
+        # not a printed issue label. Uploaded paper consent still uses observed fields.
+        electronic_consent = req is not None and not req.upload and req.slot_key == "admin_info_consent"
+        issue_date = (document_date(row.get("fields") or {}, req.date_basis)
+                      if req is not None and not electronic_consent else row.get("issue_date"))
+        if (req is not None and requires_date(req, row.get("declared_issue_date")) and issue_date is None
+                and row.get("ocr_tier") != "fixture"):
+            # Missing evidence must not turn a legacy stored PASS into a new PASS.
+            confidence = min(confidence, 0.4)
         payment_failed = (doc_type == str(DocType.NHIS_PAYMENT) and
                           has_failed_payment_validation(row.get("fields") or {}))
         if payment_failed or (row.get("status") == "NEEDS_REVIEW" and confidence >= engine_config.OCR_CONFIDENCE_THRESHOLD):
@@ -223,7 +236,8 @@ def to_engine_documents(rows: list[dict[str, Any]]) -> list:
                 ocr_confidence=confidence,
                 image_quality_score=float(row.get("image_quality") or 0.0),
                 has_signature=row.get("has_signature"),
-                issue_date=row.get("issue_date"),
+                issue_date=issue_date,
+                slot_key=row.get("slot_key"),
                 declared_issue_date=row.get("declared_issue_date"),
                 extracted_fields=dict(row.get("fields") or {}),
                 is_encrypted_or_corrupted=bool(row.get("is_encrypted")),
@@ -238,7 +252,8 @@ def run_pipeline(applicant, documents, requirements=None):
         doc_type=str(req.doc_type), required=req.required,
         requires_signature=req.requires_signature, min_issue_date=req.min_issue_date,
         max_issue_date=req.max_issue_date, check_declared_date=req.check_declared_date,
-    ) for req in requirements] if requirements is not None else None)
+        slot_key=req.slot_key if any(doc.slot_key for doc in documents) else None,
+    ) for req in requirements if req.upload or req.slot_key == "admin_info_consent"] if requirements is not None else None)
     return _run_pipeline(applicant, documents, specs)
 
 

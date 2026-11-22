@@ -14,7 +14,7 @@ def test_owner_cannot_remove_or_replace_submitted_passing_evidence(client, monke
     fill(client, row, layout)
     monkeypatch.setattr(documents, 'read_document', lambda path, expected: OcrResult(
         detected_doc_type=DocType.ID_PHOTO_COPY, confidence=.99, image_quality=1,
-        issue_date=TODAY, tier='synthetic', engine='synthetic'))
+        issue_date=TODAY, fields={'발급일': TODAY.isoformat()}, tier='synthetic', engine='synthetic'))
     base = f'/api/applications/{row["id"]}'
     source = pdf()
     response = client.post(base + '/documents', data={'slot_key': 'photo_1_photo'},

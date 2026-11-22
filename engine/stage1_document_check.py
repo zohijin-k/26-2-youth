@@ -41,14 +41,17 @@ def check_single_document(doc: Document, spec) -> list[Finding]:
                                  render(ReasonCode.MISSING_SIGNATURE, doc_type=spec.doc_type),
                                  doc_type=spec.doc_type))
 
-    if spec.min_issue_date is not None and doc.issue_date is not None:
+    # Upload already treats uncertain date bounds as review. Retain that meaning at submission.
+    if (spec.min_issue_date is not None and doc.issue_date is not None
+            and doc.ocr_confidence >= config.OCR_CONFIDENCE_THRESHOLD):
         if doc.issue_date < spec.min_issue_date:
             findings.append(Finding(
                 ReasonCode.DOCUMENT_ISSUED_TOO_EARLY,
                 render(ReasonCode.DOCUMENT_ISSUED_TOO_EARLY, doc_type=spec.doc_type,
                        issue_date=doc.issue_date.isoformat(), cutoff=spec.min_issue_date.isoformat()),
                 doc_type=spec.doc_type))
-    if spec.max_issue_date is not None and doc.issue_date is not None:
+    if (spec.max_issue_date is not None and doc.issue_date is not None
+            and doc.ocr_confidence >= config.OCR_CONFIDENCE_THRESHOLD):
         if doc.issue_date > spec.max_issue_date:
             findings.append(Finding(
                 ReasonCode.DOCUMENT_ISSUED_AFTER_APPLICATION,
@@ -81,13 +84,18 @@ def check_single_document(doc: Document, spec) -> list[Finding]:
 def run_stage1(applicant: Applicant, documents: list[Document], required_documents=None) -> StageResult:
     specs = required_documents if required_documents is not None else config.REQUIRED_DOCUMENTS.get(applicant.program, [])
     submitted_by_type = {d.doc_type: d for d in documents}
+    submitted_by_slot = {d.slot_key: d for d in documents if d.slot_key}
 
     findings: list[Finding] = []
     hard_fail = False       # 확정 부적합 (서류 누락, 오분류 등)
     needs_review = False    # 애매함 (OCR 신뢰도 낮음)
 
     for spec in specs:
-        doc = submitted_by_type.get(spec.doc_type)
+        candidates = ({d.doc_type: d for d in documents if d.slot_key == spec.slot_key}
+                      if spec.slot_key else submitted_by_type)
+        doc = submitted_by_slot.get(spec.slot_key) if spec.slot_key else candidates.get(spec.doc_type)
+        if doc is not None and doc.doc_type != spec.doc_type:
+            doc = None
 
         if doc is None:
             # 정확히 일치하는 서류가 없을 때, 혼동군 내 다른 서류가 잘못 올라왔는지 확인
@@ -95,7 +103,7 @@ def run_stage1(applicant: Applicant, documents: list[Document], required_documen
             wrong_doc = None
             if confusion_group:
                 for other_type in confusion_group - {spec.doc_type}:
-                    if other_type in submitted_by_type:
+                    if other_type in candidates:
                         wrong_doc = other_type
                         break
             if wrong_doc:
