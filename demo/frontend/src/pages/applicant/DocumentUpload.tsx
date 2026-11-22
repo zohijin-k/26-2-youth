@@ -82,9 +82,6 @@ function PendingFile({file, url, job, onCancel, onRetry}: { file: File; url: str
 }
 
 
-/** 판독 계층·신뢰도·소요시간은 신청자에게 의미가 없다. 시연에서 보여줄 때만 `?debug=1`. */
-const SHOW_TECH = new URLSearchParams(window.location.search).has('debug')
-
 /**
  * 판정 도장. 서류 접수 때 찍는 도장처럼 결과를 한 번에 보여준다.
  * 슬롯 머리 오른쪽에 하나만 둔다 — 상태를 여러 곳에서 반복하지 않는다.
@@ -169,11 +166,7 @@ function DocumentResult({
           {status !== 'PASS' && doc.detected_doc_type && (
             <span className="dresult__detected">읽은 서류 종류: {doc.detected_doc_type}</span>
           )}
-          {SHOW_TECH && (
-            <span className="dresult__meta">
-              신뢰도 {doc.ocr_confidence?.toFixed(2) ?? '-'} / {doc.elapsed_ms ?? 0}ms
-            </span>
-          )}
+
         </div>
         <div className="dresult__actions">
           <button type="button" className="btn btn--small" onClick={() => setViewing(true)}>
