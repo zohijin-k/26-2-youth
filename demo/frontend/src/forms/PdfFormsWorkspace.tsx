@@ -44,6 +44,7 @@ interface Props {
   onForm1: (value: Form1Value) => void
   onAnswers: (value: SelfCheckAnswers) => void
   onConsent: (value: ConsentValue) => void
+  onBusyChange?: (busy: boolean) => void
   onFlush: () => Promise<void>
   onChangedSubsidy?: (state: SubsidyState) => void
   onContinue: () => void
@@ -142,7 +143,7 @@ function DownloadIcon() {
 export default function PdfFormsWorkspace({
   applicationId, identity, form1, answers, consent, generic = false,
   checkResult, onForm1, onAnswers, onConsent,
-  onFlush, onChangedSubsidy, onContinue, continuing, error, readOnly = false, onProgress, saveStatus,
+  onBusyChange, onFlush, onChangedSubsidy, onContinue, continuing, error, readOnly = false, onProgress, saveStatus,
 }: Props) {
   const [formNos, setFormNos] = useState<string[]>([])
   const [layouts, setLayouts] = useState<Record<string, FormLayout>>({})
@@ -152,6 +153,7 @@ export default function PdfFormsWorkspace({
   const [localError, setLocalError] = useState('')
   const [saving, setSaving] = useState(false)
   const [accountBusy, setAccountBusy] = useState(false)
+  useEffect(() => { onBusyChange?.(saving || accountBusy); return () => onBusyChange?.(false) }, [saving, accountBusy, onBusyChange])
   const [resetTarget, setResetTarget] = useState<string | null>(null)
   const [attempted, setAttempted] = useState(false)
   const [signatureTarget, setSignatureTarget] = useState<string | null>(null)
@@ -452,7 +454,8 @@ export default function PdfFormsWorkspace({
     if (readOnly || pendingOperation.current !== null || continuing || accountBusy) return
     setAttempted(true)
     if (!allReady) {
-      setLocalError('필수 칸과 자가진단 문항을 모두 작성해 주세요.')
+      setLocalError('')
+      window.requestAnimationFrame(() => document.getElementById('workspace-errors')?.focus())
       return
     }
     onContinue()
@@ -490,7 +493,7 @@ export default function PdfFormsWorkspace({
         return (
           <Fragment key={key}>
             <label data-field-ref={fieldRef} className={`pdf-form__radio-text pdf-form__radio-text--${field.font_family || 'sans'}`} style={radioStyle}>
-              <input id={publicId} type="radio" name={radioName} checked={checked} disabled={readOnly} aria-label={`${label} ${field.label || '선택'}`} onChange={() => toggleChoice(key, true)} />
+              <input id={publicId} type="radio" name={radioName} checked={checked} disabled={readOnly} aria-invalid={attempted && isMissing || undefined} aria-describedby={attempted && isMissing ? 'pdf-field-guidance' : undefined} aria-label={`${label} ${field.label || '선택'}`} onChange={() => toggleChoice(key, true)} />
               <svg className={`pdf-form__radio-box ${checked ? 'is-checked' : ''}`} aria-hidden="true" style={{ width: Number(field.size || 9) * scale * 0.78, height: Number(field.size || 9) * scale * 0.78 }} viewBox="0 0 20 20"><rect x="1.5" y="1.5" width="17" height="17" /><path d="M4.5 10.5 8.2 14 15.5 6" /></svg>
               <span>{field.label || (isYes ? '예' : '아니오')}</span>
             </label>
@@ -512,6 +515,8 @@ export default function PdfFormsWorkspace({
             type={generic && field.field_type === 'radio' ? 'radio' : 'checkbox'}
             name={generic && field.field_type === 'radio' ? field.group : undefined}
             checked={checked}
+            aria-invalid={attempted && isMissing || undefined}
+            aria-describedby={attempted && isMissing ? 'pdf-field-guidance' : undefined}
             disabled={readOnly}
             aria-label={`${label} ${field.label || '선택'}`}
             onChange={(event) => toggleChoice(key, event.currentTarget.checked)}
@@ -594,7 +599,8 @@ export default function PdfFormsWorkspace({
         className={`pdf-form__text pdf-form__text--${field.font_family || 'sans'} ${isMissing && required ? 'is-missing' : ''}`}
         style={{ ...boxStyle, fontSize: fitFont, textAlign: field.align || 'left' }}
         aria-label={label}
-        aria-invalid={invalidEmail || undefined}
+        aria-invalid={invalidEmail || (attempted && isMissing) || undefined}
+        aria-describedby={invalidEmail || (attempted && isMissing) ? 'pdf-field-guidance' : undefined}
         value={applyFieldFormat(dateValue, field.format)}
         readOnly={readOnly || locked || !roundEnabled || !photoEnabled || suitFieldsLinked || key.startsWith('written') || key.includes('.year') || key.includes('.month') || key.includes('.day') || key.startsWith('job.application')}
         inputMode={key === 'ecContact' ? 'numeric' : undefined}
@@ -641,6 +647,7 @@ export default function PdfFormsWorkspace({
 
   const viewerContent = active && currentLayout ? (
     <fieldset className={`pdf-form__contents${attempted ? ' is-attempted' : ''}`} disabled={saving || continuing}>
+      <p id="pdf-field-guidance" className="sr-only">필수 입력 칸을 작성하고 형식 오류를 확인해 주세요.</p>
       <div className="pdf-form__toolbar">
         <button type="button" className="btn" aria-label="이전 쪽" disabled={page <= 0} onClick={() => setPage((p) => Math.max(0, p - 1))}><Icon name="chevronLeft" /></button>
         <span>{page + 1} / {currentLayout.page_sizes.length}쪽</span>
@@ -699,7 +706,7 @@ export default function PdfFormsWorkspace({
       <header className="pdf-forms__intro">
         <div>
           <h2>신청 서식 작성</h2>
-          <p className="pdf-forms__save" role="status" aria-live="polite">{saveStatus ?? '작성 내용은 자동으로 저장됩니다.'}</p>
+          <p className="pdf-forms__save">{saveStatus ?? '작성 내용은 자동으로 저장됩니다.'}</p>
         </div>
         <ApplicantFormsBulkMenu applicationId={applicationId} refreshKey={thumbnailVersion} />
       </header>
@@ -760,9 +767,9 @@ export default function PdfFormsWorkspace({
       {checkResult && !checkResult.eligible && checkResult.failed_item && (
         <p className="pdf-forms__error" role="alert">{checkResult.failed_item}번 문항: {checkResult.reason}</p>
       )}
-      {(localError || error) && <p className="pdf-forms__error" role="alert">{localError || error}</p>}
-      {attempted && !allReady && <Notice tone="warning" role="alert" title="남은 항목을 작성해 주세요.">
-        <ul>{formNos.filter((formNo) => missing(formNo).length > 0).map((formNo) => <li key={formNo}><button type="button" className="btn btn--quiet btn--small" onClick={() => { setPage(0); setActive({ formNo, mode: 'edit' }) }}>{formLabel(formNo)} · 남은 {missing(formNo).length}개 작성하기</button></li>)}</ul>
+      {!active && (localError || error) && <p className="pdf-forms__error" role="alert">{localError || error}</p>}
+      {attempted && !allReady && <Notice id="workspace-errors" tabIndex={-1} tone="warning" title="남은 항목을 작성해 주세요.">
+        <ul>{formNos.filter((formNo) => missing(formNo).length > 0).map((formNo) => <li key={formNo}><button type="button" className="btn btn--quiet btn--small" onClick={() => void runSavedAction(() => { setPage(0); setActive({ formNo, mode: 'edit' }); window.requestAnimationFrame(() => scrollRef.current?.querySelector<HTMLElement>('[aria-invalid=true]')?.focus()) })}>{formLabel(formNo)} · 남은 {missing(formNo).length}개 작성하기</button></li>)}</ul>
         {!generic && (!form1.accountHolder || !form1.bankbookFileName) && <a href="#workspace-account">예금주와 통장 사본 첨부하기</a>}
         {selfCheckItems.some((item) => !answers[item.no]) && <a href="#workspace-selfcheck">지원 자격 확인 문항 작성하기</a>}
       </Notice>}
@@ -775,18 +782,22 @@ export default function PdfFormsWorkspace({
       {active && currentLayout && (
         <Modal
           title={`${formLabel(active.formNo)} ${active.mode === 'preview' ? '미리보기' : '작성'}`}
-          onClose={() => { if (signatureTarget) setSignatureTarget(null); else void saveAndClose() }}
+          onClose={() => { if (saving || continuing) return; if (signatureTarget) setSignatureTarget(null); else void saveAndClose() }}
           variant="viewer"
           footer={active.mode === 'edit' && !readOnly ? (
             <>
               <span className="pdf-form__remaining">{missing(active.formNo).length === 0 ? '작성 완료' : `남은 항목 ${missing(active.formNo).length}개`}</span>
-              <button type="button" className="btn" onClick={() => void startPreview(active.formNo)}>미리보기</button>
-              <button type="button" className="btn" onClick={() => void saveAndClose()}>저장하고 닫기</button>
+              <button type="button" className="btn" disabled={saving || continuing} onClick={() => void startPreview(active.formNo)}>미리보기</button>
+              <button type="button" className="btn" disabled={saving || continuing} onClick={() => void saveAndClose()}>저장하고 닫기</button>
             </>
           ) : active.mode === 'preview' && !readOnly ? (
             <button type="button" className="btn btn--primary" onClick={() => setActive({ ...active, mode: 'edit' })}>수정</button>
           ) : null}
         >
+          {!signatureTarget && <div className="pdf-forms__feedback">
+            {saveStatus}
+            {(localError || error) && <Notice tone="danger" role="alert">{localError || error}</Notice>}
+          </div>}
           {viewerContent}
         </Modal>
       )}

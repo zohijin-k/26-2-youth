@@ -343,8 +343,8 @@ async function form<T>(path: string, body: FormData): Promise<T> {
   const res = await fetch(path, { method: 'POST', body })
   officerSessionResponse(path, res)
   if (!res.ok) {
-    const detail = (await res.json().catch(() => null)) as { detail?: string } | null
-    throw new Error(detail?.detail ?? `업로드 실패 (${res.status})`)
+    const data = await res.json().catch(() => null)
+    throw new HttpError(res.status, typeof data?.detail === 'string' ? data.detail : `업로드 실패 (${res.status})`)
   }
   return res.json() as Promise<T>
 }
@@ -522,13 +522,15 @@ export function uploadDocument(
     const abort = () => request.abort()
     const clean = () => progress.signal.removeEventListener('abort', abort)
     request.open('POST', path)
+    request.timeout = 120000
+    request.ontimeout = () => { clean(); reject(new DOMException('Response timeout', 'TimeoutError')) }
     request.responseType = 'json'
     request.upload.onprogress = (event) => { if (event.lengthComputable) progress.onProgress(event.loaded, event.total) }
     request.upload.onload = progress.onSent
     request.onload = () => {
       clean()
-      if (request.status >= 200 && request.status < 300) resolve(request.response as UploadedDocument)
-      else reject(new Error(typeof request.response?.detail === 'string' ? request.response.detail : `업로드 실패 (${request.status})`))
+      if (request.status >= 200 && request.status < 300 && request.response?.document_id) resolve(request.response as UploadedDocument)
+      else reject(new HttpError(request.status, typeof request.response?.detail === 'string' ? request.response.detail : `업로드 실패 (${request.status})`))
     }
     request.onerror = () => { clean(); reject(new TypeError('Network request failed')) }
     request.onabort = () => { clean(); reject(new DOMException('Request aborted', 'AbortError')) }
@@ -566,10 +568,10 @@ export const fetchFinalCheck = (id: number) =>
   json<FinalCheck>(`/api/applications/${id}/final-check`)
 
 export const submitApplication = (id: number) =>
-  json<SubmitResult>(`/api/applications/${id}/submit`, { method: 'POST' })
+  json<SubmitResult>(`/api/applications/${id}/submit`, { method: 'POST', signal: AbortSignal.timeout(15000) })
 
 export const fetchStatus = (id: number) =>
-  json<ApplicationStatus>(`/api/applications/${id}/status`)
+  json<ApplicationStatus>(`/api/applications/${id}/status`, { signal: AbortSignal.timeout(15000) })
 
 /* ================================================================== 담당자 API (officer tip) */
 

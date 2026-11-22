@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 
 import {
   fetchFinalCheck,
-  submitApplication,
   type FinalCheck as FinalCheckData,
   type SubmitResult,
 } from '../../api.ts'
@@ -17,6 +16,7 @@ import Notice from '../../components/Notice.tsx'
 import Spinner from '../../components/Spinner.tsx'
 import useBeforeUnload from '../../hooks/useBeforeUnload.ts'
 import { friendlyError } from '../../lib/error-copy.ts'
+import useApplicantSubmission from '../../hooks/useApplicantSubmission.ts'
 import './final-check.css'
 
 export default function FinalCheck({
@@ -24,15 +24,19 @@ export default function FinalCheck({
   onSubmitted,
   onBack,
   onGoto,
+  onPendingChange,
 }: {
   applicationId: number
+  onPendingChange?: (pending: boolean) => void
   onSubmitted: (result: SubmitResult) => void
   onBack: () => void
   /** 남은 항목을 고치러 해당 단계로 간다 */
   onGoto: (stage: ApplicantStage) => void
 }) {
   const [data, setData] = useState<FinalCheckData | null>(null)
-  const [busy, setBusy] = useState(false)
+  const submission = useApplicantSubmission(applicationId, onSubmitted)
+  const busy = submission.busy
+  useEffect(() => { onPendingChange?.(busy); return () => onPendingChange?.(false) }, [busy, onPendingChange])
   const [confirming, setConfirming] = useState(false)
   const [attempted, setAttempted] = useState(false)
   const [reload, setReload] = useState(0)
@@ -47,17 +51,9 @@ export default function FinalCheck({
   }, [applicationId, reload])
 
   const submit = async () => {
-    setConfirming(false)
-    setBusy(true)
-    setError('')
-    try {
-      onSubmitted(await submitApplication(applicationId))
-    } catch (e: unknown) {
-      setError(friendlyError(e, '신청 내용을 확인하지 못했습니다. 다시 시도해 주세요.'))
-      fetchFinalCheck(applicationId).then(setData).catch(() => undefined)
-    } finally {
-      setBusy(false)
-    }
+    setConfirming(false); setError('')
+    await submission.submit()
+    fetchFinalCheck(applicationId).then(setData).catch(() => undefined)
   }
 
   if (error && !data) return <Notice tone="danger" role="alert">{error}<button type="button" className="btn" onClick={() => { setError(''); setReload((value) => value + 1) }}>다시 시도하기</button></Notice>
@@ -127,7 +123,7 @@ export default function FinalCheck({
         </dl>
       </MoreInfo>
 
-      {error && <p className="fcheck__error" role="alert">{error}</p>}
+      {(error || submission.error) && <Notice tone="danger" role="alert">{submission.error || error}{submission.unknown && <button type="button" className="btn" disabled={busy} onClick={() => void submission.check()}>접수 상태 다시 확인</button>}</Notice>}
 
       {/* 서류 업로드에서 이미 막으므로 평소에는 나오지 않는다. 새로고침 등으로 바로 들어와 제출을 눌렀을 때만 남은 항목을 보여 준다. */}
       {attempted && !data.can_submit && !data.already_submitted && (
@@ -135,13 +131,13 @@ export default function FinalCheck({
       )}
 
       <div className="flow__actions">
-        <button type="button" className="btn" onClick={onBack}>
+        <button type="button" className="btn" disabled={busy} onClick={onBack}>
           이전
         </button>
         <button
           type="button"
           className="btn btn--primary"
-          disabled={data.already_submitted || busy}
+          disabled={data.already_submitted || busy || submission.unknown}
           onClick={() => {
             setAttempted(true)
             if (!data.can_submit) { window.requestAnimationFrame(() => document.getElementById('fcheck-todo')?.focus()); return }

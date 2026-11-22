@@ -10,6 +10,7 @@
  */
 import { lazy, Suspense, useEffect, useState } from 'react'
 
+import { handleApplicantHistory } from './lib/applicant-navigation.ts'
 import logo from './assets/brand/jbyouthhub-logo.png'
 import { currentMode, goToHome, routeUrl, type Mode } from './navigation-url.ts'
 import './app-shell.css'
@@ -32,7 +33,8 @@ export default function App() {
   const [toolsHost, setToolsHost] = useState<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    const onHistoryChange = () => {
+    const onHistoryChange = (event: PopStateEvent) => {
+      if (handleApplicantHistory(event)) return
       // 한 번 실린 화면별 CSS는 내려가지 않는다. 다른 화면의 주소로 이동하면 문서를 새로 불러온다.
       if (currentMode() !== mode) {
         window.location.reload()

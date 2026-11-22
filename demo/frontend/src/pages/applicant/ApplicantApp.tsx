@@ -9,6 +9,7 @@
  */
 import { useEffect, useState } from 'react'
 
+import { requestApplicantLeave } from '../../lib/applicant-navigation.ts'
 import { routeUrl } from '../../navigation-url.ts'
 import logo from '../../assets/brand/jbyouthhub-logo.png'
 import ApplyFlow from './ApplyFlow.tsx'
@@ -72,7 +73,7 @@ export default function ApplicantApp() {
       <a className="skip-link" href="#main">본문으로 건너뛰기</a>
       <header className="shell">
         <div className="shell__inner">
-          <button type="button" className="shell__home" onClick={() => go({ screen: 'finder' }, '/')} aria-label="사업 찾기로 이동">
+          <button type="button" className="shell__home" onClick={() => requestApplicantLeave(() => go({ screen: 'finder' }, '/'))} aria-label="사업 찾기로 이동">
             <img className="shell__logo" src={logo} alt="전북지역거점 청년지원센터 전북청년허브센터" />
           </button>
           <div className="shell__tools" ref={setHeaderHost} />
