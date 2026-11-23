@@ -1,3 +1,4 @@
+import { confirmOfficerLeave, handleOfficerHistory } from './pages/officer/review-navigation.ts'
 /**
  * 진입점. 주소로 신청자 쪽과 담당자 쪽 중 하나를 고른다.
  *
@@ -34,6 +35,7 @@ export default function App() {
 
   useEffect(() => {
     const onHistoryChange = (event: PopStateEvent) => {
+      if (mode === 'officer' && handleOfficerHistory(event)) return
       if (handleApplicantHistory(event)) return
       // 한 번 실린 화면별 CSS는 내려가지 않는다. 다른 화면의 주소로 이동하면 문서를 새로 불러온다.
       if (currentMode() !== mode) {
@@ -51,6 +53,7 @@ export default function App() {
   }, [mode])
 
   const goHome = () => {
+    if (mode === 'officer' && !confirmOfficerLeave()) return
     if (mode === 'officer') routeUrl('/officer')
     else goToHome()
     setScreenKey((key) => key + 1)

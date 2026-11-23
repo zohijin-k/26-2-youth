@@ -1,4 +1,6 @@
 """Synthetic per-program review, stale-evidence and decision boundary checks."""
+
+from demo.backend.tests.review_revision_support import decision_precondition
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import select
@@ -80,7 +82,7 @@ def test_another_program_cannot_open_or_mutate_application(client, monkeypatch, 
 def test_unconfirmed_review_cannot_be_approved_through_either_entry(client, monkeypatch, legacy):
     posting, application, _ = submitted(client, monkeypatch)
     path = f'/api/officer/applications/{application["id"]}' if legacy else review_path(posting, application)
-    response = client.post(path + '/decision', json={'decision': 'approve', 'role': 'province'})
+    response = client.post(path + '/decision', json=decision_precondition(path + '/decision', {'decision': 'approve', 'role': 'province'}))
     assert response.status_code == 409, response.text
     assert stored_review(application['id']).officer_decision is None
 
@@ -91,10 +93,10 @@ def test_all_checks_allow_final_approval_and_final_state_is_closed(client, monke
     response = check_all(client, path)
     assert response.status_code == 200, response.text
     assert response.json()['can_approve']
-    result = client.post(path + '/decision', json={'decision': 'approve', 'role': 'province', 'memo': '합성 원본과 기준 확인'})
+    result = client.post(path + '/decision', json=decision_precondition(path + '/decision', {'decision': 'approve', 'role': 'province', 'memo': '합성 원본과 기준 확인'}))
     assert result.status_code == 200 and result.json()['decision']['label'] == '최종 선정', result.text
     assert client.get(path).json()['status'] == 'decided'
-    assert client.post(path + '/decision', json={'decision': 'hold', 'memo': '재검토'}).status_code == 409
+    assert client.post(path + '/decision', json=decision_precondition(path + '/decision', {'decision': 'hold', 'memo': '재검토'})).status_code == 409
     assert check_all(client, path).status_code == 409
 
 
@@ -102,16 +104,16 @@ def test_all_checks_allow_final_approval_and_final_state_is_closed(client, monke
 def test_hold_and_reject_require_reason_and_transition_state(client, monkeypatch, decision, expected_status):
     posting, application, _ = submitted(client, monkeypatch)
     path = review_path(posting, application)
-    assert client.post(path + '/decision', json={'decision': decision, 'memo': '   '}).status_code == 422
-    result = client.post(path + '/decision', json={'decision': decision, 'memo': '합성 확인 사유'})
+    assert client.post(path + '/decision', json=decision_precondition(path + '/decision', {'decision': decision, 'memo': '   '})).status_code == 422
+    result = client.post(path + '/decision', json=decision_precondition(path + '/decision', {'decision': decision, 'memo': '합성 확인 사유'}))
     assert result.status_code == 200, result.text
     detail = client.get(path).json()
     assert detail['status'] == expected_status
     assert detail['decision']['memo'] == '합성 확인 사유'
     if decision == 'hold':
-        assert client.post(path + '/decision', json={'decision': 'approve'}).status_code == 409
+        assert client.post(path + '/decision', json=decision_precondition(path + '/decision', {'decision': 'approve'})).status_code == 409
         assert check_all(client, path).status_code == 200
-        assert client.post(path + '/decision', json={'decision': 'approve'}).status_code == 200
+        assert client.post(path + '/decision', json=decision_precondition(path + '/decision', {'decision': 'approve'})).status_code == 200
 
 
 def test_changed_evidence_invalidates_checks_and_rejects_stale_confirmation(client, monkeypatch):
@@ -129,7 +131,7 @@ def test_changed_evidence_invalidates_checks_and_rejects_stale_confirmation(clie
     response = client.put(path + '/checks', json={'fingerprint': old_checks['fingerprint'],
         'document_ids': old_checks['document_ids'], 'checklist_ids': old_checks['checklist_ids']})
     assert response.status_code == 409
-    assert client.post(path + '/decision', json={'decision': 'approve'}).status_code == 409
+    assert client.post(path + '/decision', json=decision_precondition(path + '/decision', {'decision': 'approve'})).status_code == 409
     assert check_all(client, path).status_code == 200
 
 
@@ -166,18 +168,18 @@ def test_frozen_criteria_show_recorded_rule_results_and_source_documents(client,
 def test_held_needs_review_cannot_bypass_bulk_approval_after_checks(client, monkeypatch):
     posting, application, _ = submitted(client, monkeypatch)
     path = review_path(posting, application)
-    assert client.post(path + '/decision', json={'decision': 'hold', 'memo': '합성 추가 확인'}).status_code == 200
+    assert client.post(path + '/decision', json=decision_precondition(path + '/decision', {'decision': 'hold', 'memo': '합성 추가 확인'})).status_code == 200
     assert check_all(client, path).status_code == 200
-    result = client.post('/api/officer/applications/decisions', json={'decision': 'approve',
-        'role': 'province', 'application_ids': [application['id']]})
+    result = client.post('/api/officer/applications/decisions', json=decision_precondition('/api/officer/applications/decisions', {'decision': 'approve',
+        'role': 'province', 'application_ids': [application['id']]}))
     assert result.status_code == 409, result.text
     assert stored_review(application['id']).officer_decision == 'hold'
 
 
 def test_duplicate_generic_bulk_targets_are_rejected_before_a_decision(client, monkeypatch):
     posting, application, _ = submitted(client, monkeypatch)
-    result = client.post('/api/officer/applications/decisions', json={'decision': 'hold',
-        'memo': '합성 확인', 'role': 'province', 'application_ids': [application['id'], application['id']]})
+    result = client.post('/api/officer/applications/decisions', json=decision_precondition('/api/officer/applications/decisions', {'decision': 'hold',
+        'memo': '합성 확인', 'role': 'province', 'application_ids': [application['id'], application['id']]}))
     assert result.status_code == 422, result.text
     assert stored_review(application['id']).officer_decision is None
 
@@ -194,7 +196,7 @@ def test_missing_written_original_blocks_approval_even_with_checks(client, monke
     assert response.status_code == 200
     assert not response.json()['can_approve']
     assert client.get(path + '/written.pdf').status_code == 404
-    assert client.post(path + '/decision', json={'decision': 'approve'}).status_code == 409
+    assert client.post(path + '/decision', json=decision_precondition(path + '/decision', {'decision': 'approve'})).status_code == 409
 
 
 
@@ -269,11 +271,36 @@ def test_reject_page_notice_reaches_the_applicant_status_but_the_memo_does_not(c
     path = review_path(posting, application)
     status = client.get(f'/api/applications/{application["id"]}/status')
     assert status.status_code == 200 and status.json()['rejection'] is None
-    result = client.post(path + '/decision', json={'decision': 'reject', 'memo': '합성 내부 메모',
-                                                   'notice': '제출하신 신청이 아래 사유로 반려되었습니다.\n- 합성 사유'})
+    result = client.post(path + '/decision', json=decision_precondition(path + '/decision', {'decision': 'reject', 'memo': '합성 내부 메모',
+                                                   'notice': '제출하신 신청이 아래 사유로 반려되었습니다.\n- 합성 사유'}))
     assert result.status_code == 200, result.text
     body = client.get(f'/api/applications/{application["id"]}/status').json()
     assert body['rejection']['notice'] == '제출하신 신청이 아래 사유로 반려되었습니다.\n- 합성 사유'
     assert body['rejection']['decided_at']
     assert '합성 내부 메모' not in str(body)
     assert stored_review(application['id']).officer_memo == '합성 내부 메모'
+
+
+def test_generic_and_legacy_decisions_share_cas_but_checks_are_independent(client, monkeypatch):
+    posting, application, _ = submitted(client, monkeypatch)
+    path = review_path(posting, application)
+    aid = application['id']
+    initial = client.get(path).json()
+    version = initial['revision']
+    assert version == 1
+    body = {'decision':'hold','memo':'synthetic generic latest','expected_revision':version}
+    first = client.post(path+'/decision',json=body)
+    assert first.status_code == 200 and first.json()['revision'] == version+1
+    before = stored_review(aid).model_dump()
+    legacy = f'/api/officer/applications/{aid}/decision'
+    stale = client.post(legacy,json={**body,'memo':'synthetic stale legacy'})
+    assert stale.status_code == 409 and stale.json()['detail']['code'] == 'REVIEW_REVISION_CONFLICT'
+    assert stored_review(aid).model_dump() == before
+    missing = client.post(path+'/decision',json={'decision':'hold','memo':'synthetic legacy no token'})
+    assert missing.status_code == 428 and stored_review(aid).model_dump() == before
+    assert check_all(client,path).status_code == 200
+    assert stored_review(aid).revision == version+1
+    result = client.post(legacy,json={**body,'expected_revision':version+1,'memo':'synthetic legacy current'})
+    assert result.status_code == 200 and result.json()['revision'] == version+2
+    stale = client.post(path+'/decision',json={**body,'expected_revision':version+1})
+    assert stale.status_code == 409 and stored_review(aid).revision == version+2

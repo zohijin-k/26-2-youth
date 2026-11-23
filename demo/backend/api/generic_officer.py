@@ -129,6 +129,7 @@ def detail(posting_id: int, application_id: int, role: str = Query(ROLE_PROVINCE
                'stage1_status': review.stage1_status if review else None,
                'stage2_status': review.stage2_status if review else None},
         'documents': documents, 'criteria': criteria_for(app, review),
+        'revision': review.revision if review else None,
         'decision': {'decision': review.officer_decision if review else None,
                      'memo': review.officer_memo if review else None,
                      'officer_role': review.officer_role if review else None,
@@ -172,7 +173,7 @@ def decide(posting_id: int, application_id: int, body: officer.DecisionRequest) 
     _load(posting_id, application_id)
     role = _role(body.role)
     officer._check_action(role, body.decision)
-    officer._apply_decision(application_id, role, body.decision, body.memo, body.notice)
+    officer._apply_decision(application_id, role, body.decision, body.memo, body.notice, body.expected_revision)
     return detail(posting_id, application_id, body.role)
 
 

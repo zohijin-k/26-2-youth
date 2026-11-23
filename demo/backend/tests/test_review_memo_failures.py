@@ -1,4 +1,6 @@
 """Synthetic decisions traverse real auth, transactions and response serialization."""
+
+from demo.backend.tests.review_revision_support import decision_precondition
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 from datetime import datetime
@@ -33,7 +35,7 @@ def fixture(client, monkeypatch):
 
 
 def save(client, aid, memo='합성 메모', **extra):
-    return client.post(f'/api/officer/applications/{aid}/decision', json={'role':'province','decision':'hold','memo':memo,**extra})
+    return client.post(f'/api/officer/applications/{aid}/decision', json=decision_precondition(f'/api/officer/applications/{aid}/decision', {'role':'province','decision':'hold','memo':memo,**extra}))
 
 
 def assert_only_human_changes(before, after, aid):
@@ -49,7 +51,7 @@ def assert_only_human_changes(before, after, aid):
             if (a['id'] if table == 'application' else a['application_id']) != aid:
                 assert a == b
             else:
-                allowed = {'updated_at','status'} if table == 'application' else {'officer_role','officer_decision','officer_memo','reject_notice','decided_at'}
+                allowed = {'updated_at','status'} if table == 'application' else {'officer_role','officer_decision','officer_memo','reject_notice','decided_at','revision'}
                 assert {k:v for k,v in a.items() if k not in allowed} == {k:v for k,v in b.items() if k not in allowed}
 
 
@@ -112,16 +114,20 @@ def test_memo_unauthorized_or_invalid_role_cannot_mutate(client, monkeypatch, ac
     assert snapshot()==before
 
 
-def test_concurrent_decisions_replace_one_memo_without_duplicate_review(client, monkeypatch):
+def test_concurrent_decisions_reject_stale_memo_without_duplicate_review(client, monkeypatch):
     aid,did,original=fixture(client,monkeypatch);before=snapshot()
+    from threading import Barrier
+    barrier=Barrier(2)
     def request(memo):
         with closing(TestClient(app)) as requester:
             requester.cookies.update(client.cookies)
-            return save(requester,aid,memo).status_code
+            body=decision_precondition(f'/api/officer/applications/{aid}/decision',{'role':'province','decision':'hold','memo':memo})
+            barrier.wait(timeout=10)
+            return requester.post(f'/api/officer/applications/{aid}/decision',json=body).status_code
     with ThreadPoolExecutor(max_workers=2) as pool:
         statuses=list(pool.map(request,['동시 합성 메모 A','동시 합성 메모 B']))
-    assert statuses == [200,200]
+    assert sorted(statuses) == [200,409]
     with models.get_session() as session:
         rows=session.exec(select(models.Review).where(models.Review.application_id==aid)).all()
-        assert len(rows)==1 and rows[0].officer_memo in ['동시 합성 메모 A','동시 합성 메모 B']
+        assert len(rows)==1 and rows[0].revision == 2 and rows[0].officer_memo in ['동시 합성 메모 A','동시 합성 메모 B']
     assert_only_human_changes(before,snapshot(),aid)

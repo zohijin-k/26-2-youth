@@ -1,4 +1,6 @@
 """Synthetic published-program API flow, isolation and conservative decisions."""
+
+from demo.backend.tests.review_revision_support import decision_precondition
 from copy import deepcopy
 from datetime import date
 import base64
@@ -175,7 +177,7 @@ def test_unreadable_documents_route_to_review_and_bulk_approval_is_blocked(clien
     assert result.status_code==200,result.text
     officer=client.get('/api/officer/applications',params={'program':f'posting_{posting["id"]}','queue':'needs_check'}).json()
     assert officer['total']==1
-    bulk=client.post('/api/officer/applications/decisions',json={'role':'province','decision':'approve','application_ids':[row['id']]})
+    bulk=client.post('/api/officer/applications/decisions',json=decision_precondition('/api/officer/applications/decisions', {'role':'province','decision':'approve','application_ids':[row['id']]}))
     assert bulk.status_code in (400,409),bulk.text
 
 

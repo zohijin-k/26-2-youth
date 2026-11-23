@@ -40,7 +40,7 @@ test('real decision HTTP failure preserves status and has a bounded request', as
     return new Response('{"detail":"private exception"}', { status: 503 })
   }
   try {
-    await assert.rejects(postDecision(7, { role: 'province', decision: 'hold', memo: '합성 메모' }), (error: unknown) => error instanceof HttpError && error.status === 503 && !error.message.includes('private'))
+    await assert.rejects(postDecision(7, { role: 'province', decision: 'hold', memo: '합성 메모', expected_revision: 1 }), (error: unknown) => error instanceof HttpError && error.status === 503 && !error.message.includes('private'))
     assert.equal(calls, 1)
   } finally { globalThis.window = previousWindow; globalThis.fetch = previousFetch }
 })

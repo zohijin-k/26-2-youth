@@ -9,6 +9,9 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { fetchApplicationReasons } from '../../api.ts'
 import { NOTICE_MAX, NOTICE_INTRO, reasonLines, toggleReason } from './reject-notice.ts'
 import { OfficerConfirm } from './OfficerModern.tsx'
+import { useOfficerDraftGuard } from './useReviewDraft.ts'
+import { reviewSaveError } from './review-save.ts'
+import { matchesReviewSave, type ReviewSnapshot } from './review-draft.ts'
 import './reject-application.css'
 
 export interface RejectSummary { name: string; application_no: string; program_name?: string }
@@ -21,10 +24,12 @@ interface Props {
   /** 사업 기준처럼 서류 밖에서 온 확인 필요 사유. */
   extraReasons?: () => Promise<string[]>
   onCancel: () => void
-  onSubmit: (notice: string, memo: string) => Promise<void>
+  onSubmit: (notice: string, memo: string, expectedRevision: number) => Promise<void>
+  verify: () => Promise<ReviewSnapshot>
+  onSaved: () => void
 }
 
-export default function RejectApplication({ applicationId, role, load, extraReasons, onCancel, onSubmit }: Props) {
+export default function RejectApplication({ applicationId, role, load, extraReasons, onCancel, onSubmit, verify, onSaved }: Props) {
   const [summary, setSummary] = useState<RejectSummary | null>(null)
   const [reasons, setReasons] = useState<string[] | null>(null)
   const [picked, setPicked] = useState<string[]>([])
@@ -34,26 +39,69 @@ export default function RejectApplication({ applicationId, role, load, extraReas
   const [busy, setBusy] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [attempt, setAttempt] = useState(0)
+  const baseline = useRef<ReviewSnapshot | null>(null)
+  const lock = useRef(false)
+  const live = useRef(true)
+  const [needsCheck, setNeedsCheck] = useState(false)
+  const [latest, setLatest] = useState<ReviewSnapshot | null>(null)
+  const [confirmed, setConfirmed] = useState(false)
+  useOfficerDraftGuard(!confirmed && (!!notice || !!memo || busy || needsCheck))
+  useEffect(() => { live.current = true; return () => { live.current = false } }, [])
   const heading = useRef<HTMLHeadingElement>(null)
   const uid = useId()
   useEffect(() => {
     let current = true
-    Promise.all([load(), fetchApplicationReasons(applicationId, role), extraReasons ? extraReasons() : Promise.resolve([])])
-      .then(([info, data, extra]) => { if (current) { setSummary(info); setReasons(reasonLines(data, extra)); setError('') } })
+    Promise.all([load(), fetchApplicationReasons(applicationId, role), extraReasons ? extraReasons() : Promise.resolve([]), verify()])
+      .then(([info, data, extra, snapshot]) => { if (current) { if (!baseline.current) baseline.current = snapshot; setSummary(info); setReasons(reasonLines(data, extra)); setError('') } })
       .catch((problem: unknown) => { if (current) setError(problem instanceof Error ? problem.message : '반려할 신청 정보를 불러오지 못했습니다.') })
     return () => { current = false }
-  }, [applicationId, role, load, extraReasons, attempt])
+  }, [applicationId, role, load, extraReasons, verify, attempt])
   useEffect(() => { if (summary) heading.current?.focus() }, [summary])
   const pick = (reason: string, on: boolean) => {
     setPicked((prior) => on ? [...prior, reason] : prior.filter((value) => value !== reason))
     setNotice((prior) => toggleReason(prior, reason, on))
   }
-  const ready = !!notice.trim() && notice.length <= NOTICE_MAX && !busy
+  const ready = !!notice.trim() && notice.length <= NOTICE_MAX && !busy && !needsCheck
   const submit = async () => {
+    if (lock.current || !ready) return
+    lock.current = true
     setBusy(true); setError('')
-    try { await onSubmit(notice.trim(), memo.trim() || notice.trim()) }
-    catch (problem: unknown) { setError(problem instanceof Error ? problem.message : '반려하지 못했습니다.'); setBusy(false) }
+    const sentMemo = memo.trim() || notice.trim()
+    try {
+      const before = await verify()
+      if (!live.current) return
+      if (baseline.current && JSON.stringify([before.revision, before.decision]) !== JSON.stringify([baseline.current.revision, baseline.current.decision])) {
+        setLatest(before); setNeedsCheck(true); setError('저장 전 서버의 심사 결과가 달라졌습니다. 입력은 유지됩니다. 서버 상태를 확인해 주세요.'); return
+      }
+      if (!baseline.current?.revision) throw new Error('심사 버전 없음')
+      const expectedRevision = baseline.current.revision
+      await onSubmit(notice.trim(), sentMemo, expectedRevision)
+      const saved = await verify()
+      if (!live.current) return
+      if (!matchesReviewSave(saved, { decision: 'reject', memo: sentMemo, expectedRevision })) throw new Error('저장 결과 불일치')
+      setConfirmed(true)
+      onSaved()
+    } catch (problem: unknown) {
+      if (live.current) {
+        setNeedsCheck(true); setError(reviewSaveError(problem))
+        try { const current = await verify(); if (live.current) setLatest(current) } catch { /* Keep input and gate closed. */ }
+      }
+    } finally { lock.current = false; if (live.current) setBusy(false) }
   }
+  const check = async () => {
+    if (lock.current) return
+    lock.current = true; setBusy(true)
+    try {
+      const latest = await verify()
+      if (!live.current) return
+      if (latest.decision.decision === 'reject') {
+        setError('서버에 반려 결과가 있습니다. 입력은 유지됩니다. 공개 반려 안내는 이 조회에서 확인할 수 없으므로 자동 재전송하지 않습니다. 심사 화면에서 결과를 확인해 주세요.')
+      } else { setError('서버의 현재 심사 상태를 확인했습니다. 최신 메모와 작성 중인 입력을 비교한 뒤 재검토를 확인해 주세요.') }
+      setLatest(latest)
+    } catch (problem) { if (live.current) setError(reviewSaveError(problem)) }
+    finally { lock.current = false; if (live.current) setBusy(false) }
+  }
+
   return <main className="om om-page reject-page">
     <button type="button" className="om-text reject-page__back" disabled={busy} onClick={onCancel}>← 심사 화면으로</button>
     {!summary ? <p className={error ? 'om-notice' : undefined} role={error ? 'alert' : 'status'}>{error || '반려할 신청 정보를 불러오는 중입니다.'}
@@ -82,6 +130,14 @@ export default function RejectApplication({ applicationId, role, load, extraReas
         <textarea aria-labelledby={`${uid}-memo`} rows={3} maxLength={2000} value={memo} disabled={busy} onChange={(event) => setMemo(event.target.value)} />
       </section>
       {error && <p className="om-notice" role="alert">{error}</p>}
+      {needsCheck && latest && <section aria-label="최신 심사 상태">
+        <h2>서버에 저장된 심사 결과와 메모 · 버전 {latest.revision}</h2>
+        <p>{latest.decision.label ?? latest.decision.decision ?? '미처리'}</p>
+        <blockquote style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{latest.decision.memo || '저장된 메모 없음'}</blockquote>
+        <p>작성 중인 내부 메모와 반려 안내는 입력란에 유지됩니다. 최신 상태와 비교해 주세요.</p>
+        <button type="button" className="btn" disabled={busy || latest.decision.decision === 'reject'} onClick={() => { baseline.current = latest; setLatest(null); setNeedsCheck(false); setError('최신 상태를 재검토했습니다. 입력을 확인한 뒤 반려를 명시적으로 다시 요청할 수 있습니다.') }}>최신 심사 상태를 확인했습니다 · 입력 유지</button>
+      </section>}
+      {needsCheck && <button type="button" className="btn" disabled={busy} onClick={() => void check()}>서버 상태 확인</button>}
       <div className="reject-page__actions">
         <button type="button" className="btn" disabled={busy} onClick={onCancel}>취소</button>
         <button type="button" className="btn btn--primary" disabled={!ready} onClick={() => setConfirming(true)}>{busy ? '처리 중…' : '반려 확정'}</button>

@@ -355,6 +355,9 @@ def submit(app:Application) -> dict[str,Any]:
     if app.status!='draft': raise HTTPException(400,'이미 제출된 신청입니다.')
     issues=blockers(app)
     if issues: raise HTTPException(400,'아직 제출할 수 없습니다. '+ ' '.join(item['message'] for item in issues))
+    with get_session() as session:
+        if session.exec(select(Review).where(Review.application_id == app.id)).first():
+            raise HTTPException(409, '이미 심사 기록이 있는 신청 건입니다.')
     review=run_review(app)
     from .api.forms import snapshot_written_pdf
     with get_session() as session:
