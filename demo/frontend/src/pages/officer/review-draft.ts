@@ -10,7 +10,7 @@ export interface DraftState<T> {
   loadError: string; needsCheck: boolean; conflict: boolean; latestReady: boolean
 }
 const token = (value: ReviewSnapshot) => JSON.stringify([value.revision, value.decision])
-const matches = (value: ReviewSnapshot, wanted: { decision: string; memo: string; expectedRevision: number }) =>
+export const matchesReviewSave = (value: ReviewSnapshot, wanted: { decision: string; memo: string; expectedRevision: number }) =>
   value.revision === wanted.expectedRevision + 1 && value.decision.decision === wanted.decision && (value.decision.memo ?? '') === wanted.memo
 
 /** Memory-only editor. The baseline revision is enforced by the server CAS. */
@@ -51,7 +51,7 @@ export class ReviewDraft<T extends ReviewSnapshot> {
       if (!this.baseline) {
         this.baseline = data
         this.update({ data, memo: data.decision.memo ?? '', phase: 'IDLE', message: '' })
-      } else if (this.wanted && matches(data, this.wanted)) this.confirmed(data)
+      } else if (this.wanted && matchesReviewSave(data, this.wanted)) this.confirmed(data)
       else if (token(data) !== token(this.baseline)) {
         this.update({ data, phase: 'CONFLICT', needsCheck: true, conflict: true, latestReady: true, message: '서버의 심사 결과 또는 메모가 달라졌습니다. 입력은 유지됩니다. 최신 상태를 확인해 주세요.' })
       } else {
@@ -90,7 +90,7 @@ export class ReviewDraft<T extends ReviewSnapshot> {
       if (!this.live || request !== this.generation) return
       const verified = await this.load()
       if (!this.live || request !== this.generation) return
-      if (matches(verified, wanted)) this.confirmed(verified)
+      if (matchesReviewSave(verified, wanted)) this.confirmed(verified)
       else this.update({ data: verified, phase: 'CONFLICT', needsCheck: true, conflict: true, latestReady: true, message: '조회한 서버 상태가 요청한 결과와 다릅니다. 입력한 메모는 유지됩니다. 최신 상태를 확인해 주세요.' })
     } catch (error) {
       if (error instanceof HttpError && error.status === 409 && error.code === 'REVIEW_REVISION_CONFLICT') {

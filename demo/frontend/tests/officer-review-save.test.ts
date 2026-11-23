@@ -1,7 +1,7 @@
 import { requireReviewRevision, requireReviewRevisions } from '../src/lib/review-revision.ts'
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { ReviewDraft, type ReviewSnapshot } from '../src/pages/officer/review-draft.ts'
+import { matchesReviewSave, ReviewDraft, type ReviewSnapshot } from '../src/pages/officer/review-draft.ts'
 import { reviewSaveError } from '../src/pages/officer/review-save.ts'
 import { HttpError } from '../src/lib/http-error.ts'
 
@@ -63,6 +63,21 @@ test('preflight detects a changed server snapshot, preserves input and requires 
 test('a GET mismatch after POST remains stale and never overwrites a draft', async () => {
   const s = setup(); await s.editor.check(); s.editor.edit('sent'); s.write = async () => { s.server = row('other writer', 'approve') }
   await s.editor.save('hold'); assert.equal(s.editor.state.conflict, true); assert.equal(s.editor.state.memo, 'sent')
+})
+
+test('rejection confirmation requires the exact successor even when another write has the same memo and decision', async () => {
+  const wanted = { decision: 'reject', memo: 'sent', expectedRevision: 1 }
+  assert.equal(matchesReviewSave(row('sent', 'reject', 2), wanted), true)
+  for (const revision of [1, 3, 4]) assert.equal(matchesReviewSave(row('sent', 'reject', revision), wanted), false)
+  assert.equal(matchesReviewSave(row('another memo', 'reject', 2), wanted), false)
+  assert.equal(matchesReviewSave(row('sent', 'hold', 2), wanted), false)
+  const s = setup(); await s.editor.check(); s.editor.edit('sent')
+  s.write = async (decision, memo) => { s.server = row(memo, decision, 3) }
+  await s.editor.save('reject')
+  assert.equal(s.editor.state.phase, 'CONFLICT')
+  assert.equal(s.editor.state.needsCheck, true)
+  assert.equal(s.editor.state.memo, 'sent')
+  assert.equal(s.writes, 1)
 })
 
 test('unmounted response cannot affect another editor or fire saved callbacks', async () => {

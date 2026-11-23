@@ -11,7 +11,7 @@ import { NOTICE_MAX, NOTICE_INTRO, reasonLines, toggleReason } from './reject-no
 import { OfficerConfirm } from './OfficerModern.tsx'
 import { useOfficerDraftGuard } from './useReviewDraft.ts'
 import { reviewSaveError } from './review-save.ts'
-import type { ReviewSnapshot } from './review-draft.ts'
+import { matchesReviewSave, type ReviewSnapshot } from './review-draft.ts'
 import './reject-application.css'
 
 export interface RejectSummary { name: string; application_no: string; program_name?: string }
@@ -74,10 +74,11 @@ export default function RejectApplication({ applicationId, role, load, extraReas
         setLatest(before); setNeedsCheck(true); setError('저장 전 서버의 심사 결과가 달라졌습니다. 입력은 유지됩니다. 서버 상태를 확인해 주세요.'); return
       }
       if (!baseline.current?.revision) throw new Error('심사 버전 없음')
-      await onSubmit(notice.trim(), sentMemo, baseline.current.revision)
+      const expectedRevision = baseline.current.revision
+      await onSubmit(notice.trim(), sentMemo, expectedRevision)
       const saved = await verify()
       if (!live.current) return
-      if (saved.decision.decision !== 'reject' || saved.decision.memo !== sentMemo) throw new Error('저장 결과 불일치')
+      if (!matchesReviewSave(saved, { decision: 'reject', memo: sentMemo, expectedRevision })) throw new Error('저장 결과 불일치')
       setConfirmed(true)
       onSaved()
     } catch (problem: unknown) {
