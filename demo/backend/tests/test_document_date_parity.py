@@ -254,7 +254,11 @@ def test_actual_upload_final_check_submit_and_officer_detail_dates(client, tmp_p
     with models.get_session() as session:
         review = session.exec(select(models.Review).where(models.Review.application_id == aid)).one()
         assert 'DECLARED_DATE_MISMATCH' not in {r['code'] for r in review.review_payload_json['reasons']}
-        assert review.stage1_status == expected, review.review_payload_json["reasons"]
+        # The interview date result stays unchanged; the selected receipts now
+        # independently require an officer even when the interview passes.
+        expected_stage1 = 'NEEDS_REVIEW' if expected == 'PASS' else expected
+        assert review.stage1_status == expected_stage1, review.review_payload_json["reasons"]
+        assert 'RECEIPT_MANUAL_REVIEW' in {r['code'] for r in review.review_payload_json['reasons']}
         if expected == 'NEEDS_REVIEW':
             assert review.final_status != 'PASS'
 
