@@ -278,6 +278,20 @@ def _blockers(app: Application) -> list[dict[str, Any]]:
     criteria_version = for_application(app)
     criteria = read_criteria(criteria_version)
     items.extend(document_blockers(checklist, documents))
+    from ..receipt_review import is_receipt
+    from . import common
+
+    receipt_slots = {req.slot_key: req for req in checklist if req.upload and is_receipt(req)}
+    for document in documents:
+        req = receipt_slots.get(document.slot_key)
+        if req is None:
+            continue
+        original = (common.STORAGE.parent / document.file_path).resolve()
+        if not original.is_relative_to(common.STORAGE.resolve()) or not original.is_file():
+            items.append({
+                "kind": "document", "target": req.slot_key, "label": req.label,
+                "message": "영수증 원본 파일을 찾을 수 없습니다. 원본을 다시 올려 주세요.", "goto": "upload",
+            })
 
     # 근로확인서류가 있는 사업에서만 근로유형을 묻는다. 취업패키지는 근로요건이
     # 없으므로 이 항목 자체가 없다.
@@ -319,7 +333,12 @@ def _warnings(app: Application, documents: list[Any]) -> list[str]:
             notes.append("가구원 수는 건강보험 자격확인서 기준으로 판정합니다.")
         elif facts.household_size_issue:
             notes.append(facts.household_size_issue)
-    review_count = sum(1 for d in documents if d.stage1_status == "NEEDS_REVIEW")
+    from ..receipt_review import RECEIPT_REVIEW_TIER
+    receipt_count = sum(1 for d in documents if (d.ocr_json or {}).get("tier") == RECEIPT_REVIEW_TIER)
+    if receipt_count:
+        notes.append(f"결제영수증 {receipt_count}건은 담당자 확인 대상입니다. 담당자가 원본과 신청 금액을 직접 확인합니다.")
+    review_count = sum(1 for d in documents if d.stage1_status == "NEEDS_REVIEW"
+                       and (d.ocr_json or {}).get("tier") != RECEIPT_REVIEW_TIER)
     if review_count:
         notes.append(
             f"담당자 확인 예정 서류가 {review_count}건 있습니다. 제출은 가능하지만 담당자가 원본을 "
@@ -506,6 +525,13 @@ def _run_review(app: Application) -> Review:
 
     # 병합 PDF의 미배정 페이지는 심사 대상이 아니다. 담당자 확인용으로만 남는다.
     rows = [document_fact(d) for d in documents if d.slot_key != UNASSIGNED_SLOT]
+    from ..receipt_review import is_receipt, RECEIPT_REVIEW_CODE, RECEIPT_REVIEW_MESSAGE
+
+    requirements = checklist_for(app)
+    receipt_slots = {req.slot_key for req in requirements if is_receipt(req)}
+    receipt_rows = [row for row in rows if row["slot_key"] in receipt_slots]
+    rows = [row for row in rows if row["slot_key"] not in receipt_slots]
+    engine_requirements = [req for req in requirements if not is_receipt(req)]
 
     # 서식5는 파일이 아니라 전자서명 + 동의 로그로 갈음한다 (R1.2 / E4).
     consents = list_consents(app.id or 0)
@@ -547,8 +573,7 @@ def _run_review(app: Application) -> Review:
         income_percent=sheet.income_percent if sheet and program.has_income_requirement else None,
         income_over_limit=sheet.income_over_limit if sheet and program.has_income_requirement else None,
     )
-    requirements = checklist_for(app)
-    result = run_pipeline(applicant, to_engine_documents(rows, requirements), requirements)
+    result = run_pipeline(applicant, to_engine_documents(rows, engine_requirements), engine_requirements)
     payload = inject_file_refs(result.review_payload, rows)
 
     if payload is None:
@@ -575,6 +600,23 @@ def _run_review(app: Application) -> Review:
         inject_file_refs(payload, rows)
 
     final_status = result.status.value
+    non_receipt_final_status = final_status
+    stage1_status = result.stage1.status.value
+    if receipt_rows:
+        for row in receipt_rows:
+            payload.setdefault("documents", []).append({
+                "document_id": row["document_id"], "slot_key": row["slot_key"],
+                "doc_type": str(DocType.PAYMENT_RECEIPT), "file_name": row["file_name"],
+                "file_format": row["file_format"], "file_ref": f"/api/files/{row['document_id']}",
+                "ocr_confidence": None, "status": "NEEDS_REVIEW",
+            })
+            payload.setdefault("reasons", []).append({
+                "stage": "stage1_documents", "code": RECEIPT_REVIEW_CODE,
+                "doc_type": str(DocType.PAYMENT_RECEIPT), "slot_key": row["slot_key"],
+                "document_id": row["document_id"], "message": RECEIPT_REVIEW_MESSAGE,
+            })
+        stage1_status = _merge_statuses(stage1_status, "NEEDS_REVIEW")
+        final_status = _merge_statuses(final_status, "NEEDS_REVIEW")
     stage2_status = result.stage2.status.value if result.stage2 else None
     household_needs_review = bool(program.has_income_requirement and facts.household_size_issue)
     income_needs_review = bool(
@@ -654,13 +696,15 @@ def _run_review(app: Application) -> Review:
     # (추진체계: 지원대상자 및 서류보완 안내(1차) → 7일 내 서류 보완안내)
     supplement_deadline: datetime | None = None
     supplement = supplement_for_application(app)
-    if supplement["allowed"] and final_status != "PASS":
+    # Routine manual receipt review is not a detected deficiency and must not
+    # start an automatic supplementation deadline by itself.
+    if supplement["allowed"] and _merge_statuses(non_receipt_final_status, *additional_statuses) != "PASS":
         supplement_deadline = datetime.now() + timedelta(days=supplement["days"] or 0)
 
     return Review(
         application_id=app.id or 0,
         final_status=final_status,
-        stage1_status=result.stage1.status.value,
+        stage1_status=stage1_status,
         stage2_status=stage2_status,
         score_json=mask_data(sheet.as_dict()) if sheet else {},
         total_score=sheet.total if sheet else None,

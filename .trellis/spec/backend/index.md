@@ -47,3 +47,5 @@ The goal is to help AI assistants and new team members understand how YOUR proje
 **Language**: All documentation should be written in **English**.
 
 - [Review integrity and household discovery](./review-integrity.md): lifetime DML guards, cross-application preservation, mixed-version tests and seed retention.
+
+- [Manual youth receipts](./receipt-manual-review.md): receipt-only OCR exclusion, original-presence and existing CAS audit boundary.

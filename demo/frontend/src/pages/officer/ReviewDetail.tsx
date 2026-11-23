@@ -368,7 +368,10 @@ function ReviewDetailContent({
             </Panel>
           )}
 
-          {activeDoc && <Panel title={`판독 결과 — ${activeDoc.label}`}>
+          {activeDoc?.ocr_tier === 'manual_receipt' && <Panel title={`담당자 확인 대상 — ${activeDoc.label}`}>
+            <p>결제영수증은 담당자가 원본과 신청 금액을 직접 확인합니다. 검토한 내용과 판단 근거는 아래 담당자 처리의 메모에 기록해 주세요.</p>
+          </Panel>}
+          {activeDoc && activeDoc.ocr_tier !== 'manual_receipt' && <Panel title={`판독 결과 — ${activeDoc.label}`}>
             <dl className="ocr">
               <dt>판별된 서류</dt>
               <dd>
