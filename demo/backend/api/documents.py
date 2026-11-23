@@ -345,7 +345,7 @@ async def upload_document(
     checklist = _checklist(app)
     req = find_slot(checklist, slot_key)
     # bank_account is displayed as fulfilled in the checklist, but has its own
-    # validated attachment flow. No other non-upload slot is accepted.
+    # validated upload flow. No other non-upload slot is accepted.
     if req is None or (not req.upload and slot_key != "bank_account"):
         raise HTTPException(400, f"업로드 대상이 아닌 슬롯입니다: {slot_key}")
     if generic.is_generic(app.program_code):

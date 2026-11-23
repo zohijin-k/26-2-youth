@@ -415,17 +415,19 @@ def test_exam_date_required(client) -> None:
     check("엉뚱한 서류는 여전히 부적합", wrong["status"], "FAIL")
     check("사유", [f["code"] for f in wrong["findings"]], ["WRONG_DOCUMENT_TYPE"])
 
-    print("\n  -- 결제영수증은 금액을 읽어 실비 계산의 근거로 남긴다")
+    print("\n  -- 결제영수증은 원본과 신청 금액을 담당자가 확인한다")
     receipt = _upload(client, app_id, "certificate_1_receipt", "S10_결제영수증_응시료43000.pdf")
-    check("영수증 판정", receipt["status"], "PASS")
-    check("판독된 결제금액", receipt["extracted"].get("결제금액"), "43000")
+    check("영수증 수동 검토", receipt["status"], "NEEDS_REVIEW")
+    check("영수증 수동 검토 사유", [f["code"] for f in receipt["findings"]], ["RECEIPT_MANUAL_REVIEW"])
+    check("영수증 자동 추출 없음", receipt["extracted"], {})
 
     mismatch_app = create_job_application(client, selections=[
         {"item_type": "photo", "count": 1, "receipts": [17000]},
     ])
     mismatch = _upload(client, mismatch_app, "photo_1_receipt", "S10_결제영수증_사진18000.pdf")
     check("입력 금액과 판독 금액 불일치는 확인필요", mismatch["status"], "NEEDS_REVIEW")
-    check_true("금액 불일치 코드", any(f["code"] == "RECEIPT_AMOUNT_MISMATCH" for f in mismatch["findings"]))
+    check("신청 금액 불일치도 원본 수동 검토", [f["code"] for f in mismatch["findings"]], ["RECEIPT_MANUAL_REVIEW"])
+    check("금액 불일치 자동 추출 없음", mismatch["extracted"], {})
 
 
 # ---------------------------------------------------------------- 6. S10 e2e
@@ -488,7 +490,8 @@ def test_s10_end_to_end(client) -> int:
             ).all()
         )
     assert review is not None
-    check("엔진 최종 판정", review.final_status, "PASS")
+    check("영수증 포함 최종 수동 검토", review.final_status, "NEEDS_REVIEW")
+    check("두 영수증 수동 검토 사유", sum(r["code"] == "RECEIPT_MANUAL_REVIEW" for r in review.review_payload_json["reasons"]), 2)
     check("점수제가 아니므로 총점 없음", review.total_score, None)
     check("심사표 없음", review.score_json, {})
     check("소득요건이 없어 2단계도 통과", review.stage2_status, "PASS")
@@ -653,6 +656,7 @@ def _isolate(tmp: Path) -> None:
     from ..api import applications as applications_api
     from ..api import documents as documents_api
     from ..api import files as files_api
+    from ..api import common as common_api
 
     models.engine = create_engine(
         f"sqlite:///{tmp / 'p5.db'}", connect_args={"check_same_thread": False}
@@ -663,6 +667,7 @@ def _isolate(tmp: Path) -> None:
     applications_api.STORAGE = storage
     applications_api.SIGNATURES = storage / "signatures"
     files_api.STORAGE = storage
+    common_api.STORAGE = storage
 
 
 def main() -> int:

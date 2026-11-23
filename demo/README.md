@@ -373,3 +373,5 @@ cd demo/frontend
 npx tsc -b && npx oxlint && npx vite build
 node --test src/forms/phone.test.ts src/pages/officer/bulk-actions.test.ts src/lib/*.test.ts tests/*.test.ts
 ```
+
+2026-11-23 standalone 시나리오의 기존 실패 재현과 CAS·날짜·영수증 기대값 수정은 [검증 기록](../docs/scenario-stabilization.md)에 있습니다.

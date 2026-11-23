@@ -20,7 +20,7 @@ def validate_original(path: Path) -> None:
     """Check only the file envelope so an officer can open the original.
 
     No text/OCR, document classification, image-quality or confidence evaluation.
-    Invalid attachments are HTTP errors, never automatic document FAIL results.
+    Invalid files are HTTP errors, never automatic document FAIL results.
     """
     kind = path.suffix.lstrip('.').lower()
     try:
@@ -33,7 +33,7 @@ def validate_original(path: Path) -> None:
             raise ValueError('wrong file envelope')
         with pymupdf.open(path) as original:
             if original.needs_pass or original.page_count < 1 or (actual == 'pdf') != original.is_pdf:
-                raise ValueError('unviewable attachment')
+                raise ValueError('unviewable file')
             for page in original:
                 if page.rect.is_empty or page.rect.is_infinite:
                     raise ValueError('unviewable page')
