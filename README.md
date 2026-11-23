@@ -96,8 +96,8 @@ node --test src/forms/phone.test.ts src/pages/officer/bulk-actions.test.ts src/l
 
 기대 결과는 다음과 같습니다.
 
-- 엔진: own 모델을 설치한 상태에서, 합성 글꼴을 `python -m engine_v2.tools.fetch_synth_fonts`로 받아 두었으면 1,267개 통과, 받지 않았으면 1,264개 통과·3개 건너뜀입니다. 글꼴은 `engine_v2/data/synth_fonts/`에 받으며 커밋하지 않습니다.
-- 백엔드: 1,645개 통과입니다(범용 사업·서식·신청 흐름 및 개인정보 경계 시험 포함).
+- 엔진: 2026-11-23 기준 own 모델을 설치하고 합성 글꼴을 받지 않은 상태에서 1,273개 통과·3개 건너뜀입니다. OCR 여러 쪽 읽기 시험 9개를 포함합니다. 건너뛴 시험의 합성 글꼴은 `python -m engine_v2.tools.fetch_synth_fonts`로 `engine_v2/data/synth_fonts/`에 받으며 커밋하지 않습니다.
+- 백엔드: 2,325개 통과입니다(2026-11-23 기준, 범용 사업·서식·신청 흐름 및 개인정보 경계 시험 포함).
 - `npm run lint`: 종료 코드 0, 경고 없음입니다.
 - `npm run build`: 종료 코드 0입니다. 두 화면을 나눠 싣기 때문에 청크 크기 안내는 나오지 않습니다.
 - `node src/forms/phone.test.ts`: 신청자 서식의 전화번호 형식 단위 시험입니다. Node가 TypeScript 파일을 직접 실행하므로 이 명령은 Node 22.18 이상에서 실행합니다. 통과하면 오류 없이 종료 코드 0으로 끝납니다. `node src/pages/officer/bulk-actions.test.ts`는 담당자 신청 목록의 구분과 일괄 처리 버튼 규칙 단위 시험입니다.

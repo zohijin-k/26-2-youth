@@ -525,14 +525,20 @@ def s8_needs_review(client) -> dict[str, Any]:
         "/api/officer/applications",
         params={"role": ROLE_PROVINCE, "ai_status": "NEEDS_REVIEW"},
     ).json()
-    decision = client.post(
+    from .run_p4_scenarios import current_revision
+    revision = current_revision(client, app_id, ROLE_PROVINCE)
+    decision_response = client.post(
         f"/api/officer/applications/{app_id}/decision",
         json={
             "role": ROLE_PROVINCE,
             "decision": "approve",
             "memo": "판독 신뢰도 낮아 원본 육안 확인함. 초본 주소이력 포함 확인 — 승인.",
+            "expected_revision": revision,
         },
-    ).json()
+    )
+    check("S8 CAS 결정 HTTP", decision_response.status_code, 200)
+    decision = decision_response.json()
+    check("S8 CAS revision 증가", decision["revision"], revision + 1)
 
     with models.get_session() as s:
         review = s.exec(
@@ -642,13 +648,18 @@ def s10_job_package(client) -> dict[str, Any]:
     saved = client.get(f"/api/applications/{app_id}/subsidy-items").json()
     suit = next(l for l in saved["estimate"]["lines"] if l["item_type"] == "suit")
     final = client.get(f"/api/applications/{app_id}/final-check").json()
-    body = client.post(f"/api/applications/{app_id}/submit").json()
+    submitted = client.post(f"/api/applications/{app_id}/submit")
+    check("S10 제출 HTTP", submitted.status_code, 200)
+    body = submitted.json()
+    check("S10 수동 영수증만으로 보완 기한 없음", body["supplement"], None)
 
     with models.get_session() as s:
         review = s.exec(
             select(models.Review).where(models.Review.application_id == app_id)
         ).first()
     assert review is not None
+    manual = [r for r in review.review_payload_json["reasons"] if r["code"] == "RECEIPT_MANUAL_REVIEW"]
+    check("S10 필수 영수증 수동 검토 사유", len(manual), 2)
     status = client.get(f"/api/applications/{app_id}/status").json()
     officer = client.get(
         "/api/officer/applications",
@@ -728,6 +739,7 @@ def _isolate(root: Path) -> None:
     from ..api import applications as applications_api
     from ..api import documents as documents_api
     from ..api import files as files_api
+    from ..api import common as common_api
 
     models.engine = create_engine(
         f"sqlite:///{root / 'demo.db'}", connect_args={"check_same_thread": False}
@@ -738,6 +750,7 @@ def _isolate(root: Path) -> None:
     applications_api.STORAGE = storage
     applications_api.SIGNATURES = storage / "signatures"
     files_api.STORAGE = storage
+    common_api.STORAGE = storage
 
 
 def _reset(root: Path) -> ResetReport:

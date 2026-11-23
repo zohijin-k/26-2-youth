@@ -34,16 +34,22 @@
       "certificate_1_receipt"
     ],
     "exam_without_date_status": "FAIL",
-    "exam_without_date_codes": ["MISSING_REQUIRED_FIELD"],
+    "exam_without_date_codes": [
+      "MISSING_REQUIRED_FIELD"
+    ],
     "granted_total": 193000,
     "suit_receipt": 70000,
     "suit_granted": 50000,
-    "suit_calculation": { "$contains": "70,000원 > 한도 50,000원" },
+    "suit_calculation": {
+      "$contains": "70,000원 > 한도 50,000원"
+    },
     "can_submit": true,
-    "supplement_warning": { "$contains": "7일" },
+    "supplement_warning": {
+      "$contains": "7일"
+    },
     "first_come_position": 1,
     "first_come_remaining": 899,
-    "final_status": "PASS",
+    "final_status": "NEEDS_REVIEW",
     "total_score": null,
     "score_sheet": {},
     "officer_sort": "submitted",
@@ -56,6 +62,7 @@
     "응시확인서·성적표는 '응시일 표기 필수'다. 응시일이 없으면 부적합이고 무엇을 요청해야 하는지까지 안내한다.",
     "두배적금은 보완이 없지만 취업패키지는 7일이다. 미비가 남은 채 접수되면 그 순간부터 D-7 카운트다운이 돈다.",
     "담당자 목록도 사업에 따라 달라진다 — 두배적금은 점수순, 취업패키지는 접수순 + 총량 900건 진행률 배지.",
-    "취업패키지는 사업계획서에 신청서·자가진단 서식 원본이 없다. 항목 구성은 (데모 추정치) 라벨을 달아 두었다."
+    "취업패키지는 사업계획서에 신청서·자가진단 서식 원본이 없다. 항목 구성은 (데모 추정치) 라벨을 달아 두었다.",
+    "영수증은 OCR 자동 판정 없이 담당자가 원본을 확인한다. 수동 검토만 남은 경우 보완 기한을 자동 시작하지 않는다."
   ]
 }

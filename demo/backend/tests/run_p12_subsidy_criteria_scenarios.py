@@ -121,17 +121,23 @@ def test_interview_linking(client) -> None:
     check("같은 면접확인서의 중복 연결 거부", duplicate.status_code, 400)
 
 
+def check_manual_receipt(label: str, result: dict) -> None:
+    check(label + " 수동 검토", result["status"], "NEEDS_REVIEW")
+    check(label + " 자동 추출 없음", result["extracted"], {})
+    check(label + " 수동 검토 사유", [f["code"] for f in result["findings"]], ["RECEIPT_MANUAL_REVIEW"])
+
+
 def test_receipt_amounts(client) -> None:
     print("\n[3] 영수증 판독 금액 — 일치·불일치·판독 실패")
     match_app = client.post("/api/applications", json={"program_code": "job_package"}).json()["id"]
     _set_item(client, match_app, "photo", 1, receipts=[18000])
     match = p5._upload(client, match_app, "photo_1_receipt", "S10_결제영수증_사진18000.pdf", "2026-03-25")
-    check("입력 금액과 판독 금액이 같으면 통과", match["status"], "PASS")
+    check_manual_receipt("입력 금액 일치", match)
 
     mismatch_app = client.post("/api/applications", json={"program_code": "job_package"}).json()["id"]
     _set_item(client, mismatch_app, "photo", 1, receipts=[17000])
     mismatch = p5._upload(client, mismatch_app, "photo_1_receipt", "S10_결제영수증_사진18000.pdf", "2026-03-25")
-    check("입력 금액과 판독 금액이 다르면 담당자 확인", mismatch["status"], "NEEDS_REVIEW")
+    check_manual_receipt("입력 금액 불일치", mismatch)
 
     missing_app = client.post("/api/applications", json={"program_code": "job_package"}).json()["id"]
     _set_item(client, missing_app, "photo", 1, receipts=[18000])
@@ -139,18 +145,18 @@ def test_receipt_amounts(client) -> None:
         detected_doc_type=DocType.PAYMENT_RECEIPT,
         confidence=0.9, image_quality=0.9, fields={"결제일": "2026-03-25"}, tier="fixture",
     )
-    with patch("demo.backend.api.documents.read_document", return_value=unreadable_result):
+    with patch("demo.backend.api.documents.read_document", return_value=unreadable_result) as reader:
         unreadable = p5._upload(client, missing_app, "photo_1_receipt", "S10_결제영수증_사진18000.pdf", "2026-03-25")
-    check("금액 판독 실패는 담당자 확인", unreadable["status"], "NEEDS_REVIEW")
-    check("금액 판독 실패 사유", [f["code"] for f in unreadable["findings"]], ["RECEIPT_AMOUNT_UNREADABLE"])
+    check("금액 판독 실패 reader 미호출", reader.call_count, 0)
+    check_manual_receipt("금액 판독 실패", unreadable)
 
     no_ocr_app = client.post("/api/applications", json={"program_code": "job_package"}).json()["id"]
     _set_item(client, no_ocr_app, "photo", 1, receipts=[18000])
     unavailable = OcrResult(detected_doc_type=None, confidence=0.0, image_quality=1.0, fields={}, tier="none")
-    with patch("demo.backend.api.documents.read_document", return_value=unavailable):
+    with patch("demo.backend.api.documents.read_document", return_value=unavailable) as reader:
         no_ocr = p5._upload(client, no_ocr_app, "photo_1_receipt", "S10_결제영수증_사진18000.pdf", "2026-03-25")
-    check("OCR 엔진 결과가 없으면 담당자 확인", no_ocr["status"], "NEEDS_REVIEW")
-    check("OCR 엔진 없음 사유", [f["code"] for f in no_ocr["findings"]], ["RECEIPT_OCR_UNAVAILABLE"])
+    check("OCR 엔진 없음 reader 미호출", reader.call_count, 0)
+    check_manual_receipt("OCR 엔진 없음", no_ocr)
 
 
 def test_payment_date_basis(client) -> None:
@@ -171,10 +177,11 @@ def test_payment_date_basis(client) -> None:
         fields={"결제금액": "18000", "결제일": "2025-12-20", "발급일": "2025-12-20"},
         tier="fixture",
     )
-    with patch("demo.backend.api.documents.read_document", return_value=ocr_result):
+    with patch("demo.backend.api.documents.read_document", return_value=ocr_result) as reader:
         result = p5._upload(client, app_id, "photo_1_receipt", "S10_결제영수증_사진18000.pdf", "2025-12-20")
-    check("지원연도 이전 결제일은 기준 위반", result["status"], "FAIL")
-    check("결제일 기준 위반 코드", any(f["code"] == "DOCUMENT_ISSUED_TOO_EARLY" for f in result["findings"]), True)
+    check("결제일 자동 판독 미호출", reader.call_count, 0)
+    check_manual_receipt("과거 결제일도 담당자 검토", result)
+    check("자동 날짜 부적합 없음", any(f["code"] == "DOCUMENT_ISSUED_TOO_EARLY" for f in result["findings"]), False)
 
 
 def test_legacy_and_frozen_criteria(client) -> None:
