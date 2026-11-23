@@ -153,3 +153,9 @@ cd demo/frontend
 npx tsc -b && npx oxlint && npx vite build
 node --test src/forms/phone.test.ts src/pages/officer/bulk-actions.test.ts src/lib/*.test.ts tests/*.test.ts
 ```
+
+## 결제영수증 검토
+
+취업지원패키지의 정장비·사진비·자격증 응시료 결제영수증은 **담당자 확인 대상**입니다. OCR·Document AI로 판독하거나 자동 적합·부적합을 만들지 않습니다. 필수 영수증은 해당 업로드 칸에 정상적인 PDF·JPG·PNG 원본을 제출해야 하며, 권한 있는 담당자가 원본과 신청 금액을 직접 확인하고 기존 심사 메모·처리에 판단 근거를 기록합니다. 합본 PDF를 영수증 칸에 올려도 다른 필수 서류 칸은 채워지지 않습니다. 다른 서류는 각 칸에 제출하며 기존 자동 판독·행정 규칙을 유지합니다.
+
+정책 범위와 검증 명령은 [영수증 검토 안내](docs/receipt-manual-review.md), 기존 미결정 항목은 [Phase 7 정책 결정표](docs/phase7-policy-decisions.md)를 확인하세요. PRODUCTION_NOT_READY를 유지합니다.

@@ -30,6 +30,7 @@ from ..ocr.base import OcrResult
 from engine_v2.pipeline.privacy import mask_data
 from ..rules.doc_check import CheckFinding, CheckResult, THRESHOLD_NOTES, check_document
 from ..rules.doc_types import DocType
+from ..receipt_review import RECEIPT_REVIEW_TIER
 from ..rules.criteria import for_application, read_criteria
 from ..rules.programs import get_program
 from ..rules.required_docs import (
@@ -222,6 +223,9 @@ def _parse_date(value: str | None) -> date | None:
 
 
 def _ocr_json(ocr: OcrResult) -> dict[str, Any]:
+    if ocr.tier == RECEIPT_REVIEW_TIER:
+        # No fabricated detection, confidence, quality, dates or extracted values.
+        return {"tier": RECEIPT_REVIEW_TIER, "fields": {}, "bboxes": {}}
     return mask_data({
         "detected_doc_type": str(ocr.detected_doc_type) if ocr.detected_doc_type else None,
         "confidence": ocr.confidence,

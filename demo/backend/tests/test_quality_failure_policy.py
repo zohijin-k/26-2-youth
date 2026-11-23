@@ -85,24 +85,17 @@ def test_specific_date_page_and_quality_failures_all_reach_one_blocker(tmp_path)
 
 
 @pytest.mark.parametrize("size", [(970,1282), (586,709), (1654,2338)])
-def test_receipt_ocr_absence_retains_quality_specific_failure_only_when_measured(size, tmp_path):
+def test_receipt_manual_review_does_not_measure_quality(size, tmp_path):
     path = tmp_path / "FAKE.png"
     Image.new("RGB", size, "white").save(path)
-    from demo.backend.ocr.file_evidence import normalize_image_quality, attach_file_evidence
-    read = OcrResult(None, 0, image_quality=1, tier="none")
-    attach_file_evidence(read, str(path))
-    normalize_image_quality(read, str(path))
     requirement = DocRequirement("exam_receipt", DocType.PAYMENT_RECEIPT, "가짜 영수증")
-    _, result = upload_assessment.assess_upload(path, requirement, reader=lambda *_: read)
-    assert "RECEIPT_OCR_UNAVAILABLE" in result.codes
-    if size[0] == 1654:
-        assert result.status == "NEEDS_REVIEW"
-        assert not any(f.severity == "FAIL" for f in result.findings)
-    else:
-        assert result.status == "FAIL"
-        expected = "IMAGE_RESOLUTION_TOO_LOW" if size[0] == 586 else "LOW_IMAGE_QUALITY"
-        assert next(f.severity for f in result.findings if f.code == expected) == "FAIL"
-        assert not ("LOW_IMAGE_QUALITY" in result.codes and "IMAGE_RESOLUTION_TOO_LOW" in result.codes)
+    def forbidden(*args):
+        raise AssertionError("A receipt must never enter OCR or quality evaluation")
+    ocr, result = upload_assessment.assess_upload(path, requirement, reader=forbidden)
+    assert ocr.tier == "manual_receipt" and not ocr.fields
+    assert result.status == "NEEDS_REVIEW"
+    assert result.codes == ["RECEIPT_MANUAL_REVIEW"]
+    assert all(f.severity == "NEEDS_REVIEW" for f in result.findings)
 
 
 @pytest.mark.parametrize("partial", [False, True])

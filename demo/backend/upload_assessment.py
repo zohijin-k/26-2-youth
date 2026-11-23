@@ -17,6 +17,7 @@ from .rules.doc_check import CheckFinding, CheckResult, check_document
 from .rules.doc_types import DocType
 from .rules.identity import Identity
 from .rules.required_docs import DocRequirement, find_slot
+from .receipt_review import is_receipt, validate_original, assessment as receipt_assessment
 
 
 def suggested_other_slot_label(
@@ -55,6 +56,9 @@ def assess_upload(
     reader: Callable[[str, DocType | None], OcrResult] = read_document,
 ) -> tuple[OcrResult, CheckResult]:
     """Read the original path and run the same explicit-slot upload assessment."""
+    if is_receipt(req):
+        validate_original(path)
+        return receipt_assessment()
     if req.doc_type == DocType.UNKNOWN:
         # An officer-defined document has no established reader or type rule.
         # Keep its original for inline inspection without sending it to OCR or
