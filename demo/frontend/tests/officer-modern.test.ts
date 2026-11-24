@@ -11,7 +11,8 @@ function declarations(css: string): Record<string, string[]> {
   return tokens
 }
 test('officer scoped tokens keep every applicant token name and value', () => {
-  const applicant = readFileSync(new URL('../src/styles/tokens.css', import.meta.url), 'utf8')
+  // 신청자 토큰 = 사업 고유 값(brand.css) + 공용 토큰(tokens.css). 담당자 사본은 둘을 합친 것과 같아야 한다.
+  const applicant = readFileSync(new URL('../src/styles/brand.css', import.meta.url), 'utf8') + readFileSync(new URL('../src/styles/tokens.css', import.meta.url), 'utf8')
   const officer = readFileSync(new URL('../src/pages/officer/officer-modern-tokens.css', import.meta.url), 'utf8')
   assert.deepEqual(declarations(officer), declarations(applicant))
   assert.equal(officer.includes(':root'), false)

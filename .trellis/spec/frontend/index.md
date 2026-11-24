@@ -18,6 +18,7 @@ This directory contains guidelines for frontend development. Fill in each file w
 | [Component Guidelines](./component-guidelines.md) | Component patterns, props, composition | To fill |
 | [Hook Guidelines](./hook-guidelines.md) | Custom hooks, data fetching patterns | To fill |
 | [State Management](./state-management.md) | Local state, global state, server state | To fill |
+| [Shared Applicant Design Rules](./shared-design-rules.md) | Tokens, brand layer and style rules shared with 26-2-savings-applicant; sync and check scripts | Documented |
 | [Applicant Design System](./applicant-design-system.md) | Applicant-only tokens, dialogs, upload feedback and verification boundaries | Documented |
 | [Applicant PDF Workspace](./pdf-form-workspace.md) | Original PDF rendering, public numbering, save transitions, signature lifecycle | Documented |
 | [Program authoring and review](./program-authoring.md) | One-shot analysis, editable preview, confirmations and per-program review | Documented |
