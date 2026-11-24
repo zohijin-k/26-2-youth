@@ -1,15 +1,20 @@
 @import '../../styles/ui-tokens.css';
 
-/* Officer-only copy of applicant design values. Keep declarations in sync. */
+/* Officer-only copy of applicant design values (styles/brand.css of youth + styles/tokens.css). Keep declarations in sync. */
 .om {
-  /* brand — 로고에서 뽑은 값 */
+  /* 주 색 척도: 버튼 · 링크 · 단계 표시 · 선택 표시가 읽는다(tokens.css의 --color-primary 등). */
   --brand-5:#f2f5fa; --brand-10:#dfe7f6; --brand-20:#bdcdea; --brand-30:#8ea8d7; --brand-40:#557bbe;
   --brand-50:#2c5baf; --brand-60:#173975; --brand-70:#102956; --brand-80:#0b1d3d;
+
   /* 장식 전용: 글자 · 상태 · 버튼 색으로 쓰지 않는다. */
   --brand-accent-1:#b82d2b; --brand-accent-2:#e6b943; --brand-accent-3:#8db243;
   --brand-tint-a:#f4f8ec; --brand-tint-b:#fcf6e6;       /* 접수증 머리 등 옅은 그라데이션 */
+
   /* 머리글 맨 위 띠. 디자인 시안(line.png)의 노랑 · 초록 · 파랑 · 빨강, 네 칸 같은 너비. 장식 전용. */
-  --stripe-1:#f0be30; --stripe-2:#90bc3b; --stripe-3:#2c85c3; --stripe-4:#ce2834;
+  --brand-stripe:linear-gradient(90deg, #f0be30 0 25%, #90bc3b 25% 50%, #2c85c3 50% 75%, #ce2834 75% 100%);
+
+  /* 머리글 로고 높이(머리글 높이는 공용 --shell-h). 로고마다 가로세로 비율이 달라 사업별로 둔다. */
+  --logo-h:48px; --logo-h-sm:40px;
 
   /* neutral — 고정 */
   --gray-0:#fff; --gray-5:#f4f5f6; --gray-10:#e6e8ea; --gray-20:#cdd1d5; --gray-30:#b1b8be; --gray-40:#8a949e;
@@ -28,6 +33,7 @@
   --color-border:var(--gray-20); --color-border-strong:var(--gray-60); --color-divider:var(--gray-10);
   --color-primary:var(--brand-60); --color-primary-hover:var(--brand-70); --color-primary-pressed:var(--brand-80);
   --color-focus:var(--brand-50); --color-dim:rgb(0 0 0 / 60%);
+  --color-highlight:#ffeb3b;   /* 형광펜 표시(다시 올려야 하는 원인 한 줄). 글자는 --color-text */
 
   /* type */
   --font-ui:'Pretendard GOV','Pretendard','Apple SD Gothic Neo','Malgun Gothic','맑은 고딕','Noto Sans KR',system-ui,sans-serif;
@@ -51,7 +57,6 @@
   /* control / layout */
   --control-lg:56px; --control-md:48px; --control-sm:40px; --ease:160ms ease;
   --shell-max:1200px; --content-max:880px; --gutter:24px; --shell-h:72px;
-  --frame-max:1280px; --frame-outer:#e8ecf1; /* 넓은 화면에서 화면 전체를 묶는 박스 폭과 바깥 바탕 */
   --field-short:360px;      /* 성명·휴대폰처럼 짧은 값의 입력 칸 */
   --sign-max:560px;         /* 서명 칸 최대 폭 */
   --z-sticky:20; --z-skip:90; --z-modal:100;
@@ -120,4 +125,13 @@
   --info-5: var(--ui-color-info-bg);
   --info-10: var(--ui-color-info-border);
   --info-60: var(--ui-color-info-text);
+}
+
+/* 사업별 주 색 연결(tokens.css와 같다). 청년정책 brand 값은 6B 주 색과 같아 담당자 화면 모양은 그대로다. */
+.om {
+  --color-primary: var(--brand-60);
+  --color-primary-hover: var(--brand-70);
+  --color-primary-pressed: var(--brand-80);
+  --color-surface-brand: var(--brand-5);
+  --color-text-brand: var(--brand-60);
 }

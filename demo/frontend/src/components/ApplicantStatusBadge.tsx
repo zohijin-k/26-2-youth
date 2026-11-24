@@ -7,5 +7,5 @@ const PRESENTATION: Record<DocStatus, {label: string; icon: IconName; tone: stri
 }
 export default function ApplicantStatusBadge({status}: {status: DocStatus; audience?: 'applicant'}) {
   const item = PRESENTATION[status]
-  return <span className={`badge badge--${item.tone}`}><Icon name={item.icon} size={16} />{item.label}</span>
+  return <span className={`badge badge--solid badge--${item.tone}`}><Icon name={item.icon} size={16} />{item.label}</span>
 }

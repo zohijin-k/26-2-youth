@@ -20,6 +20,7 @@ import ProgramInfo from './ProgramInfo.tsx'
 import '../../styles/tokens.css'
 import '../../styles/base.css'
 import '../../styles/components.css'
+import './applicant-adapters.css'
 import './applicant-shell.css'
 
 

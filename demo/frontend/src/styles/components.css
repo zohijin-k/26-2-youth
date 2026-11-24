@@ -1,10 +1,12 @@
 /*
- * 신청자 화면 공용 컴포넌트 클래스. 변수는 tokens.css에서만 가져온다.
- * 신청자 쪽 입구만 불러오므로 담당자 화면에는 닿지 않는다. 대화상자처럼 화면 틀 바깥(body 바로 아래)에
- * 그려지는 것도 같은 모양이어야 하므로 신청자 화면 안에서는 전역 규칙이다.
+ * 공용 컴포넌트 클래스 — 두배적금(26-2-savings-applicant)과 청년정책(26-2-youth) 신청자 화면이 같은 파일을 쓴다.
+ * 원본은 26-2-youth에 있다. 고칠 때는 원본을 고치고 demo/frontend/scripts/sync-shared-styles.mjs로 복사한다.
+ * 변수는 tokens.css에서만 가져온다. 사업별로 다른 값(주 색 척도 · 로고 · 머리글 띠)은 brand.css에 있다.
+ * 대화상자처럼 화면 틀 바깥(body 바로 아래)에 그려지는 것도 같은 모양이어야 하므로 전역 규칙이다.
+ * 청년정책은 신청자 쪽 입구만 이 파일을 불러오므로 담당자 화면에는 닿지 않는다.
  *
  * 차례: icon · btn · flow__actions · field · input/select · check/radio · date-triple ·
- *       notice · badge · card · spinner · progress · link · fact-list · dialog · more · segmented
+ *       notice · badge/status-badge · card · spinner · progress · link · fact-list · dl-inline · dialog · more · segmented
  */
 
 /* ── icon ─────────────────────────────────────────────────────────────── */
@@ -347,8 +349,10 @@ textarea.input {
 .notice--danger .link { color: var(--danger-60); }
 
 /* ── badge ────────────────────────────────────────────────────────────── */
-/* 알약 모양이 아닌 4px 모서리 사각 배지. 아이콘이나 글자로 뜻을 함께 전한다. */
-.badge {
+/* 알약 모양이 아닌 4px 모서리 사각 배지. 아이콘이나 글자로 뜻을 함께 전한다.
+   .status-badge는 두배적금의 서류 상태 표시가 쓰는 이름이며 같은 모양이다. */
+.badge,
+.status-badge {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-1);
@@ -365,7 +369,8 @@ textarea.input {
   white-space: nowrap;
 }
 
-.badge .icon { width: 16px; height: 16px; }
+.badge .icon,
+.status-badge .icon { width: 16px; height: 16px; }
 
 .badge--neutral { border-color: var(--gray-10); background: var(--gray-5); color: var(--color-text-subtle); }
 .badge--brand { border-color: var(--brand-10); background: var(--brand-5); color: var(--brand-60); }
@@ -373,6 +378,14 @@ textarea.input {
 .badge--warning { border-color: var(--warning-10); background: var(--warning-5); color: var(--warning-60); }
 .badge--success { border-color: var(--success-10); background: var(--success-5); color: var(--success-60); }
 .badge--danger { border-color: var(--danger-10); background: var(--danger-5); color: var(--danger-60); }
+
+/* 서류 확인 결과는 한눈에 갈리도록 꽉 채운 바탕에 흰 글씨로 보여 준다.
+   청년정책은 .badge--solid를 함께 붙이고, 두배적금은 서류 상태 이름 클래스를 그대로 쓴다. */
+.badge--solid.badge--success,
+.status-badge--uploaded { border-color: var(--success-60); background: var(--success-60); color: var(--color-text-on-primary); }
+.badge--solid.badge--danger,
+.status-badge--reupload_required { border-color: var(--danger-60); background: var(--danger-60); color: var(--color-text-on-primary); }
+.badge--solid.badge--warning { border-color: var(--warning-60); background: var(--warning-60); color: var(--color-text-on-primary); }
 
 /* ── card ─────────────────────────────────────────────────────────────── */
 .card {
@@ -477,6 +490,19 @@ textarea.input {
 
 .link:hover { color: var(--color-primary-hover); text-decoration-thickness: 2px; }
 
+/* 새 창으로 열리는 링크: 글자 뒤에 바깥 화살표를 붙인다(글자색을 따른다). */
+.link--external::after {
+  content: '';
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  margin-left: var(--sp-1);
+  vertical-align: -0.08em;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M13.5 4.5h6v6M19.5 4.5 11 13M17.5 13.5V18a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 18V8A1.5 1.5 0 0 1 6 6.5h4.5'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M13.5 4.5h6v6M19.5 4.5 11 13M17.5 13.5V18a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 18V8A1.5 1.5 0 0 1 6 6.5h4.5'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
 /* ── fact-list ────────────────────────────────────────────────────────── */
 /* "항목 이름 — 값" 목록. 확인 대화상자 · 본인인증 결과 · 접수증이 쓴다. */
 .fact-list {
@@ -506,6 +532,41 @@ textarea.input {
 
 @media (max-width: 600px) {
   .fact-list { gap: var(--sp-2) var(--sp-4); }
+}
+
+/* ── dl-inline ────────────────────────────────────────────────────────── */
+/* <dl class="dl-inline"><div><dt>발급일</dt><dd>2026. 3. 3.</dd></div>…</dl>
+   항목 이름과 값은 한 덩어리로 줄바꿈한다. */
+.dl-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px var(--sp-2);
+  margin: 0;
+  padding: 0;
+  font-size: var(--fs-15);
+}
+
+.dl-inline > div {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  max-width: 100%;
+  padding: 2px var(--sp-2);
+  border-radius: var(--radius-4);
+  background: var(--gray-5);
+}
+
+.dl-inline dt {
+  flex: none;
+  color: var(--color-text-subtle);
+  white-space: nowrap;
+}
+
+.dl-inline dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--color-text);
+  font-weight: var(--fw-medium);
 }
 
 /* ── dialog ───────────────────────────────────────────────────────────── */
@@ -596,52 +657,6 @@ textarea.input {
   .dialog__foot { flex-direction: column-reverse; padding: var(--sp-4); }
   .dialog__foot > .btn { width: 100%; }
 }
-
-/* Applicant-only adapters for shared renderers. The officer chunk never imports these. */
-.skeleton__line, .skeleton__block { --skeleton-base: var(--gray-5); --skeleton-shine: var(--gray-10); border-radius: var(--radius-4); }
-.skeleton__card { border-color: var(--color-border); border-radius: var(--radius-12); background: var(--color-surface); }
-.form-date { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
-.form-date input { height: var(--control-md); padding: 0 var(--sp-2); border: 1px solid var(--color-border-strong); border-radius: var(--radius-8); background: var(--color-surface); color: var(--color-text); font: inherit; font-size: var(--fs-16); text-align: center; }
-.form-date input[aria-invalid=true] { border: 2px solid var(--danger-50); }
-.form-date__y { width: 88px; }
-.form-date__m, .form-date__d { width: 64px; }
-.form-date__unit { margin: 0; font-size: var(--fs-16); }
-.file-link { display: inline-flex; align-items: center; min-height: var(--control-sm); max-width: 100%; padding: 0; border: 0; background: transparent; color: var(--color-text-brand); font: inherit; text-decoration: underline; text-align: left; overflow-wrap: anywhere; cursor: pointer; }
-.document-dialog { max-width: var(--shell-max); height: calc(100dvh - var(--sp-8)); }
-.document-dialog .dialog__body { display: flex; flex-direction: column; min-height: 0; padding: 0 var(--sp-4) var(--sp-4); }
-.document-dialog .dialog__foot { flex-wrap: wrap; }
-.fpreview { display: flex; flex: 1; flex-direction: column; min-height: 0; }
-.fpreview__bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--sp-3); padding: var(--sp-3); background: var(--gray-5); }
-.fpreview__meta { font-size: var(--fs-15); color: var(--color-text-subtle); }
-.fpreview__zoom { display: flex; gap: var(--sp-2); }
-.fpreview__zoom button { display: grid; place-items: center; min-width: var(--control-sm); height: var(--control-sm); border: 1px solid var(--color-border-strong); border-radius: var(--radius-6); background: var(--color-surface); color: var(--color-text); font: inherit; font-size: var(--fs-15); cursor: pointer; }
-.fpreview__zoom button:disabled { color: var(--gray-60); background: var(--gray-10); border-color: var(--gray-20); }
-.fpreview__stage { min-height: 0; overflow: auto; padding: var(--sp-4); background: var(--gray-10); }
-.fpreview__img { display: block; max-width: none; margin: auto; }
-.signature-box { display: flex; flex-wrap: wrap; gap: var(--sp-3); min-width: 0; }
-.signature-frame { position: relative; display: block; max-width: 100%; overflow: hidden; border: 1px solid var(--color-border-strong); border-radius: var(--radius-8); background: var(--color-surface); }
-.signature-pad { display: block; max-width: 100%; touch-action: none; cursor: crosshair; }
-.signature-placeholder { position: absolute; inset: 0; display: grid; place-items: center; color: var(--color-text-muted); pointer-events: none; font-size: var(--fs-15); }
-.signature-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
-.signature-state, .signature-image { color: var(--color-text-subtle); font-size: var(--fs-15); }
-.signature-image { display: grid; gap: var(--sp-2); max-width: 100%; }
-.signature-image input { max-width: 100%; font: inherit; }
-.fact-list dd.receipt__number { font-size: var(--fs-19); font-weight: var(--fw-bold); }
-
-/* Responsive tables retain their headings and show a label beside every mobile value. */
-:where(.fcheck__docs, .mypage__docs, .subsidy__table) { width: 100%; border-collapse: collapse; font-size: var(--fs-15); }
-:where(.fcheck__docs, .mypage__docs, .subsidy__table) :where(th, td) { padding: var(--sp-3); border-bottom: 1px solid var(--color-divider); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
-:where(.fcheck__docs, .mypage__docs, .subsidy__table) th { background: var(--gray-5); color: var(--color-text-subtle); font-weight: var(--fw-bold); }
-@media (max-width: 600px) {
-  :where(.fcheck__docs, .mypage__docs, .subsidy__table), :where(.fcheck__docs, .mypage__docs, .subsidy__table) :where(tbody, tfoot) { display: block; }
-  :where(.fcheck__docs, .mypage__docs, .subsidy__table) thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-  :where(.fcheck__docs, .mypage__docs, .subsidy__table) tr { display: block; margin-bottom: var(--sp-4); padding-bottom: var(--sp-3); border-bottom: 1px solid var(--color-border); }
-  :where(.fcheck__docs, .mypage__docs, .subsidy__table) :where(td, tbody th, tfoot th) { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-1); border: 0; padding: var(--sp-2) 0; }
-  :where(.fcheck__docs, .mypage__docs, .subsidy__table) td[data-label]::before { content: attr(data-label); color: var(--color-text-subtle); font-size: var(--fs-13); font-weight: var(--fw-bold); }
-}
-@media print { .document-dialog--printable { position: fixed; inset: 0; max-width: none; height: auto; max-height: none; box-shadow: none; } .document-dialog--printable .dialog__head, .document-dialog--printable .dialog__foot { display: none; } .document-dialog--printable .dialog__body { padding: 0; overflow: visible; } }
-
-.pdf-form__email-hint { font-size: var(--fs-13); }
 
 /* ── more (접어 둔 설명) ──────────────────────────────────────────────── */
 /* 화면에는 한 줄만 두고 자세한 안내는 눌러서 펼친다. 요약 줄 전체가 누르는 자리다. */

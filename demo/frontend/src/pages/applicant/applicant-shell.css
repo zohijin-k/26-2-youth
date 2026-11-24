@@ -17,18 +17,12 @@
   background: var(--color-surface);
 }
 
-/* 맨 위 장식 띠. 노랑 · 초록 · 파랑 · 빨강 네 칸을 같은 너비로 둔다(담당자 머리글과 같다). 뜻을 전하는 색이 아니다. */
+/* 맨 위 장식 띠(brand.css --brand-stripe: 노랑 · 초록 · 파랑 · 빨강 네 칸, 담당자 머리글과 같다). 뜻을 전하는 색이 아니다. */
 .shell::before {
   content: '';
   display: block;
   height: 4px;
-  background: linear-gradient(
-    90deg,
-    var(--stripe-1) 0 25%,
-    var(--stripe-2) 25% 50%,
-    var(--stripe-3) 50% 75%,
-    var(--stripe-4) 75% 100%
-  );
+  background: var(--brand-stripe);
 }
 
 .shell__inner {
@@ -62,7 +56,7 @@
 .shell__logo {
   display: block;
   width: auto;
-  height: 48px;
+  height: var(--logo-h);
 }
 
 /* ApplyFlow가 신청번호와 마이페이지 버튼을 그려 넣는 자리. */
@@ -185,27 +179,11 @@
   font-weight: var(--fw-bold);
 }
 
-/* 넓은 화면: 바깥은 옅은 회색, 머리글 · 본문 · 바닥글을 가운데 박스 하나로 묶는다. */
-@media (min-width: 1360px) {
-  html:has(.app-shell--applicant) { background: var(--frame-outer); }
-
-  .app-shell--applicant {
-    box-sizing: border-box;
-    max-width: var(--frame-max);
-    min-height: calc(100dvh - var(--sp-6) * 2);
-    margin: var(--sp-6) auto;
-    overflow: clip;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-12);
-    box-shadow: var(--shadow-1);
-  }
-}
-
 @media (max-width: 600px) {
   /* 좁은 화면에서 로고 옆에 다 들어가지 않으면 신청번호·마이페이지 줄이 로고 아래 오른쪽으로 내려간다. */
   .shell__inner { flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); padding-block: var(--sp-3); }
   .shell__tools { margin-left: auto; }
-  .shell__logo { height: 40px; }
+  .shell__logo { height: var(--logo-h-sm); }
   .shell__application-controls { gap: var(--sp-3); }
   .shell__application-number strong { font-size: var(--fs-13); }
 
