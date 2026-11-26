@@ -60,8 +60,11 @@ def prepare_submission(client, monkeypatch, tmp_path):
     """Authored fixture evidence, real API flow and real automatic review pipeline."""
     samples = tmp_path / "authored-samples"
     samples.mkdir(exist_ok=True)
+    from demo.fixtures.make_samples import make as make_sample
+
+    # Fixture results apply only to the generator's sample bodies, not to any file with a key name.
     for filename in job.S10_UPLOADS.values():
-        (samples / filename).write_bytes(pdf())
+        make_sample(Path(filename).stem, samples)
     monkeypatch.setattr(job, "SAMPLES", samples)
     monkeypatch.setattr(forms, "STORAGE", common.STORAGE)
     return job.create_job_application(client, selections=job.S10_SELECTION, uploads=job.S10_UPLOADS)
