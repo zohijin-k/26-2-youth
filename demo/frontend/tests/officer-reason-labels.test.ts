@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { fieldDisplay, primaryReason, reasonDisplay } from '../src/pages/officer/reason-labels.ts'
+import { fieldDisplay, primaryReason, reasonDisplay, stageLabel } from '../src/pages/officer/reason-labels.ts'
 
 test('SCAN_UNVERIFIED reads as Korean completeness guidance; the code survives only as diagnostics', () => {
   const shown = fieldDisplay('주소이력불확실사유', 'SCAN_UNVERIFIED')
@@ -52,4 +52,12 @@ test('primary reason follows backend priority', () => {
   const first = { code: 'A', priority: 1 }
   assert.equal(primaryReason([second, first]), first)
   assert.equal(primaryReason([]), null)
+})
+
+test('stage statuses read in Korean, never as engine codes', () => {
+  assert.equal(stageLabel('NEEDS_REVIEW'), '확인필요')
+  assert.equal(stageLabel('PASS'), '적합')
+  assert.equal(stageLabel('FAIL'), '부적합')
+  assert.equal(stageLabel(null), '-')
+  assert.equal(stageLabel('SOMETHING_NEW'), '판정 없음')
 })

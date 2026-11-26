@@ -28,7 +28,7 @@ import { dotClass } from './format.ts'
 import { useReviewDraft } from './useReviewDraft.ts'
 import ReviewSaveStatus from './ReviewSaveStatus.tsx'
 import { reviewSaveError } from './review-save.ts'
-import { fieldDisplay, primaryReason, reasonDisplay, type ReasonLike } from './reason-labels.ts'
+import { fieldDisplay, primaryReason, reasonDisplay, stageLabel, type ReasonLike } from './reason-labels.ts'
 
 interface Props {
   applicationId: number
@@ -259,8 +259,8 @@ function ReviewDetailContent({
               <span className="verdict__action">{detail.ai.recommended_action}</span>
             </div>
             <ul className="verdict__stages">
-              <li>1단계 서류 적합성: {detail.ai.stage1_status ?? '-'}</li>
-              <li>2단계 통합 자격심사: {detail.ai.stage2_status ?? '-'}</li>
+              <li>1단계 서류 적합성: {stageLabel(detail.ai.stage1_status)}</li>
+              <li>2단계 통합 자격심사: {stageLabel(detail.ai.stage2_status)}</li>
             </ul>
             {primary && (
               <div className="reasons__primary" role="note">

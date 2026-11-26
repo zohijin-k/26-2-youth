@@ -96,3 +96,11 @@ export function reasonDisplay(item: ReasonLike): ReasonDisplay {
 export function primaryReason<T extends ReasonLike>(reasons: readonly T[]): T | null {
   return reasons.find((reason) => reason.priority === 1) ?? reasons[0] ?? null
 }
+
+const STAGE_LABELS: Record<string, string> = { PASS: '적합', NEEDS_REVIEW: '확인필요', FAIL: '부적합' }
+
+/** 1·2단계 판정 상태 → 한국어. 모르는 값은 코드 대신 '판정 없음'. */
+export function stageLabel(status: string | null | undefined): string {
+  if (!status) return '-'
+  return STAGE_LABELS[status] ?? '판정 없음'
+}
