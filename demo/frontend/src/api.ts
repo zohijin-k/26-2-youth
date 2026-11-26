@@ -787,6 +787,30 @@ export interface ApplicationReasons {
   missing: { slot_key: string; label: string }[]
 }
 
+/** 확인 사유 한 건의 담당자 화면 표현. code는 진단 정보에서만 보인다. */
+export interface ReasonView {
+  code: string
+  message: string
+  severity?: 'FAIL' | 'NEEDS_REVIEW'
+  title?: string
+  category?: string
+  category_label?: string
+  explanation?: string
+  details?: string[]
+  detail?: string
+  how_to_fix?: string
+  stored_message?: string
+  origin?: { code: string; message: string }
+}
+
+export interface ApplicationReason extends ReasonView {
+  stage: string
+  doc_type: string | null
+  document_id?: number | null
+  slot_key?: string | null
+  priority?: number
+}
+
 export interface OfficerDocument {
   document_id: number
   slot_key: string
@@ -813,6 +837,8 @@ export interface OfficerDocument {
   ocr_fallback_reason: string | null
   /** 판독을 유지한 경우 담당자가 참고할 품질 메모 */
   ocr_quality_note: string | null
+  /** 담당자 화면용 분류·제목·설명 (backend review_reasons, 응답 시점). findings는 저장값 그대로다. */
+  finding_views?: ReasonView[]
   declared_issue_date: string | null
   uploaded_at: string
 }
@@ -854,7 +880,10 @@ export interface ReviewDetailData {
     stage1_status: string | null
     stage2_status: string | null
     recommended_action: string
-    reasons: { stage: string; code: string; message: string; doc_type: string | null }[]
+    /** 서류별 실제 사유와 맞춘 신청 단위 사유 (backend review_reasons.project_reasons). */
+    reasons: ApplicationReason[]
+    /** 감사·진단: 엔진이 저장한 신청 단위 사유 원문. */
+    stored_reasons?: { stage: string; code: string; message: string; doc_type: string | null }[]
   }
   /** 취업지원패키지 항목별 지급 내역. */
   subsidy: SubsidyEstimate | null
