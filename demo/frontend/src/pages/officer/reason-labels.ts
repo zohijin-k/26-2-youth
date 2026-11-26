@@ -41,8 +41,10 @@ export interface FieldDisplay {
   diagnostic: string | null
 }
 
-export function fieldDisplay(key: string, value: string): FieldDisplay {
+export function fieldDisplay(key: string, raw: unknown): FieldDisplay {
   const label = FIELD_LABELS[key] ?? key
+  // 판독값은 문자열이 원칙이지만 화면이 깨지지 않도록 다른 형식은 글자로 바꿔 보인다.
+  const value = typeof raw === 'string' ? raw : raw == null ? '' : typeof raw === 'object' ? JSON.stringify(raw) : String(raw)
   if (key === '주소이력불확실사유') {
     const codes = value.split(',').map((code) => code.trim()).filter(Boolean)
     const items = [...new Set(codes.map((code) => ADDRESS_UNCERTAIN_LABELS[code] ?? '그 밖의 사유 (진단 정보 참고)'))]

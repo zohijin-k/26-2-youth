@@ -61,3 +61,9 @@ test('stage statuses read in Korean, never as engine codes', () => {
   assert.equal(stageLabel(null), '-')
   assert.equal(stageLabel('SOMETHING_NEW'), '판정 없음')
 })
+
+test('non-string field values never crash the panel', () => {
+  assert.deepEqual(fieldDisplay('주소이력건수', 9 as unknown as string).items, ['9'])
+  assert.deepEqual(fieldDisplay('쪽표기자료', { markers: [[1, 3]] } as unknown as string).items, ['{"markers":[[1,3]]}'])
+  assert.deepEqual(fieldDisplay('주소이력불확실사유', null as unknown as string).items, ['없음'])
+})
