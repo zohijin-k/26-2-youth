@@ -40,6 +40,7 @@ THRESHOLD_NOTES: list[str] = [
 CODE_SCREEN_CAPTURE = "SCREEN_CAPTURE_SUSPECTED"
 CODE_MISSING_ADDRESS_HISTORY = "MISSING_ADDRESS_HISTORY"
 CODE_PAST_ADDRESS_OMISSION_SUSPECTED = "PAST_ADDRESS_OMISSION_SUSPECTED"
+CODE_ADDRESS_HISTORY_INCOMPLETE = "ADDRESS_HISTORY_INCOMPLETE"
 CODE_RESIDENT_APPLICANT_UNREADABLE = "RESIDENT_APPLICANT_UNREADABLE"
 CODE_UNKNOWN_DOCUMENT_TYPE = "UNKNOWN_DOCUMENT_TYPE"
 CODE_MISSING_REQUIRED_FIELD = "MISSING_REQUIRED_FIELD"
@@ -885,6 +886,23 @@ def _check_document(
             "과거 주소 변동사항이 빠진 초본으로 보입니다. 정부24에서 '과거의 주소 변동사항'을 포함해 다시 발급받으면 거주기간이 정확히 계산됩니다.",
             severity="NEEDS_REVIEW",
             detail="판독한 주소 이력이 1건뿐이어서 과거 주소 변동사항이 생략됐을 가능성이 있습니다. 부적합으로 단정하지 않습니다.",
+        ))
+
+    if (
+        req.doc_type is DocType.RESIDENT_ABSTRACT
+        and ocr.detected_doc_type is DocType.RESIDENT_ABSTRACT
+        and ocr.fields.get("주소이력상태") == "불확실"
+    ):
+        # 11-26: 주소 이력을 끝까지 빠짐없이 읽었는지 확인하지 못함 (ocr/localocr.py 주소이력불확실사유).
+        # 확인필요만 낸다: 전입일·현주소시도는 '불확실'이라 자동 판정에 쓰이지 않고, 다른 확정 FAIL은 그대로다.
+        findings.append(CheckFinding(
+            CODE_ADDRESS_HISTORY_INCOMPLETE,
+            "초본 주소 이력을 자동으로 끝까지 확인하지 못했습니다. 전입일과 주소 이력은 담당자가 원본에서 확인합니다.",
+            how_to_fix="그대로 두셔도 담당자가 원본을 확인합니다. 주소 이력이 모든 쪽에 선명하게 보이는 초본 전체를 다시 올리면 더 빨리 확인됩니다.",
+            severity="NEEDS_REVIEW",
+            detail=f"세부 사유: {ocr.fields.get('주소이력불확실사유') or '미상'} "
+                   "(NUMBER_START 순번이 1로 시작하지 않음, UNREAD_ROWS 표를 못 찾은 쪽의 이력 번호, "
+                   "END_UNCONFIRMED 마지막 이력 아래 끝 표시 미확인, SCAN_UNVERIFIED 스캔 초본 완결성 자동 확인 제한).",
         ))
 
     if nhis_review_needed:
