@@ -834,7 +834,11 @@ def main(argv: list[str] | None = None) -> int:
 
         print("\n[멱등성] 1회차와 2회차의 결과가 글자 하나까지 같은가")
         for scenario in SCENARIOS:
-            same = rounds[0][scenario] == rounds[1][scenario]
+            # Wall-clock latency is checked independently against the same upper bound
+            # in each round; it is not a deterministic reset outcome.
+            first = {key: value for key, value in rounds[0][scenario].items() if key != "slowest_upload_ms"}
+            second = {key: value for key, value in rounds[1][scenario].items() if key != "slowest_upload_ms"}
+            same = first == second
             check(f"{scenario} 재현", same, True)
             if not same:
                 for key in rounds[0][scenario]:
