@@ -371,7 +371,8 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
     const count = progress && progress.total > 0 ? `${progress.completed} / ${progress.total}` : ''
     if (index === currentIndex) return { state: peeking ? '미리 보기' : '현재', count }
     if (stepComplete(index)) return { state: '완료', count: index === 2 ? count : '' }
-    return { state: peeking && index === reachedIndex ? '진행 중' : '예정', count }
+    // 아직 오지 않은 단계는 상태 글자 없이 번호만 둔다.
+    return { state: peeking && index === reachedIndex ? '진행 중' : '', count }
   }
 
   /** 단계 표시에서 갈 수 있는 곳: 이미 거친 단계, 다녀간 서류 업로드, 그리고 "확인 및 제출" 미리 보기. */
@@ -401,7 +402,8 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
       )}
       <div className="headband"><div className="flow__overview">
         <header className="flow__head flow__head--compact">
-          <h1 ref={stageHeading} tabIndex={-1}>{program.name} 신청<span className="sr-only"> · {stageNames[stage]}</span></h1>
+          {/* 화면에는 보이지 않는 제목. 단계가 바뀌면 여기로 포커스가 와서 화면 읽기 프로그램이 읽는다. */}
+          <h1 ref={stageHeading} tabIndex={-1} className="sr-only">{program.name} 신청 · {stageNames[stage]}</h1>
           {program.is_first_come && <span className="flow__submission-order">선착순 접수</span>}
         </header>
         <ol className="flow__stages" aria-label="신청 단계">
@@ -421,7 +423,7 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
                   <span className="flow__stage-copy">
                     <span className="flow__stage-caption">
                       <span>{i + 1}단계</span>
-                      <span className="flow__stage-status">{state}</span>
+                      {state && <span className="flow__stage-status">{state}</span>}
                       {count && <span className="flow__stage-count">{count}</span>}
                     </span>
                     <span className="flow__stage-label">{label}</span>
