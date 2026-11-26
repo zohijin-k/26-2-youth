@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { createApplication, fetchApplication, fetchFinalCheck, fetchPosting, fetchStatus, patchApplication, type ApplicationRow, type Blocker, type Identity, type SubmitResult } from '../../api.ts'
 import PdfFormsWorkspace, { ApplicantFormsBulkMenu } from '../../forms/PdfFormsWorkspace.tsx'
+import { savableEmail, withSavableEmail } from '../../forms/email.ts'
 import { EMPTY_FORM1, type Form1Value } from '../../forms/form1-model.ts'
 import { EMPTY_CONSENT } from '../../forms/consent-model.ts'
 import IdentityCheck from './IdentityCheck.tsx'
@@ -58,6 +59,8 @@ export default function GenericProgramFlow({ postingId, headerHost }: { postingI
   const pendingCreate = useRef<Promise<ApplicationRow> | null>(null)
   const saveQueue = useRef<Promise<unknown>>(Promise.resolve())
   const latestForm = useRef(form)
+  // 부분 저장에 실을 수 있는 마지막 이메일. 주소를 다 치기 전에는 이 값을 보낸다(withSavableEmail).
+  const savableEmailRef = useRef('')
   const navigation = useSaveBeforeLeave(!receipt && (stage === 'forms' || !!saveError), () => flush(), uploadBusy || continuing || workspaceBusy)
   useBeforeUnload(saving || continuing || !!saveError || uploadBusy)
   useDocumentTitle(`${title} 신청`)
@@ -80,6 +83,7 @@ export default function GenericProgramFlow({ postingId, headerHost }: { postingI
         setTitle(metadata.title); setGuidance(metadata.guidance_text)
         setApp(restored); setForm({ ...EMPTY_FORM1, ...restored.form1_json } as Form1Value)
         latestForm.current = { ...EMPTY_FORM1, ...restored.form1_json } as Form1Value
+        savableEmailRef.current = savableEmail(latestForm.current.email, '')
         setIdentity(restored.identity_json?.name ? restored.identity_json as Identity : null)
         if (restored.status !== 'draft') {
           const status = await fetchStatus(restored.id)
@@ -116,7 +120,8 @@ export default function GenericProgramFlow({ postingId, headerHost }: { postingI
     latestForm.current = value; setForm(value)
     if (!app) return
     setSaving(true); setSavePhase('saving'); setSaveError('')
-    const operation = saveQueue.current.catch(() => undefined).then(() => patchApplication(app.id, { form1: value }))
+    const form1 = withSavableEmail(value, savableEmailRef)
+    const operation = saveQueue.current.catch(() => undefined).then(() => patchApplication(app.id, { form1 }))
     saveQueue.current = operation
     void operation.then(() => { if (saveQueue.current === operation) setSavePhase('saved') }).catch((problem: unknown) => { setSavePhase('failed'); setSaveError(mutationError(problem, '서식을 저장하지 못했습니다.')) }).finally(() => { if (saveQueue.current === operation) setSaving(false) })
   }
@@ -182,7 +187,7 @@ export default function GenericProgramFlow({ postingId, headerHost }: { postingI
     <div className="flow__body">
       {stage === 'identity' && <><IdentityCheck lead={<Notice tone="info">{guidance || '공고문을 확인한 뒤 본인인증을 진행해 주세요.'}</Notice>} appId={app?.id ?? null} ensureApplication={ensureApplication} identity={identity} onNext={() => setStage('forms')} onVerified={(verified, _mobile, applicationId) => {
         setIdentity(verified)
-        void fetchApplication(applicationId).then((row) => { setApp(row); const value = { ...EMPTY_FORM1, ...row.form1_json } as Form1Value; setForm(value); latestForm.current = value; setStage('forms') }).catch((problem: unknown) => setError(friendlyError(problem, '신청 내용을 불러오지 못했습니다.')))
+        void fetchApplication(applicationId).then((row) => { setApp(row); const value = { ...EMPTY_FORM1, ...row.form1_json } as Form1Value; setForm(value); latestForm.current = value; savableEmailRef.current = savableEmail(value.email, ''); setStage('forms') }).catch((problem: unknown) => setError(friendlyError(problem, '신청 내용을 불러오지 못했습니다.')))
       }} /></>}
       {stage === 'forms' && app && <><PdfFormsWorkspace saveStatus={<SaveStatus phase={saving || navigation.pending ? 'saving' : savePhase} />} generic applicationId={app.id} identity={identity} form1={form} answers={{}} consent={EMPTY_CONSENT} checkResult={null} onForm1={save} onAnswers={() => undefined} onConsent={() => undefined} onBusyChange={setWorkspaceBusy} onFlush={flush} onContinue={() => { if (continuing) return; setContinuing(true); void flush().then(() => setStage('upload')).catch(() => undefined).finally(() => setContinuing(false)) }} continuing={continuing || navigation.pending} error={navigation.error || saveError} readOnly={!!receipt} onProgress={onProgress} /><p className="field__hint">서식 {progress.completed} / {progress.total} 작성 완료</p></>}
       {stage === 'upload' && app && !receipt && <><DocumentUpload applicationId={app.id} onProgress={onUploadProgress} onPendingChange={setUploadBusy} />{gateError && <Notice tone="danger" role="alert">{gateError}</Notice>}{finalGate && <MissingItems id="upload-gate" title="아직 제출할 수 없습니다. 아래 항목을 모두 마쳐야 다음으로 넘어갑니다." blockers={finalGate} current="upload" onGoto={(next) => { setFinalGate(null); setStage(next === 'subsidy' ? 'forms' : next) }} />}<div className="flow__actions"><button className="btn" disabled={uploadBusy} onClick={() => setStage('forms')}>이전</button><button className="btn btn--primary" disabled={uploadBusy} aria-busy={gateChecking || undefined} onClick={() => void goToFinal()}>{gateChecking && <Spinner />}최종 확인으로</button></div></>}
