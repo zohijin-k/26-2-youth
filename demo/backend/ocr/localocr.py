@@ -46,6 +46,16 @@ ENGINE_ENV = "ENGINE_V2_OCR"
 #: 서류 내부 검증이 없는 서류는 엔진 임계값(0.85) 아래로 묶어 담당자 확인으로 보낸다.
 GENERIC_CONFIDENCE_CAP = 0.8
 
+#: 11-26 임시 안전장치 (Phase 1). OCR로 읽은(글자층이 아닌 쪽이 하나라도 있는) 주민등록초본은 자동 적합(PASS)을
+#: 내지 않는다. 마지막 이력까지 빠짐없이 읽었는지(문서 완결성)를 독립적으로 확인할 검증된 기준이 아직 없기 때문이다:
+#: 이미지에서 마지막 이력 줄들이 빠지고 '이하 여백'만 남은 초본은 순번·끝 표시만으로는 정상 초본과 구분되지 않는다.
+#: 적용 범위: 이 모듈 _from_resident가 만드는 초본 결과 중 OCR 쪽이 있는 것 → 주소이력불확실사유 SCAN_UNVERIFIED
+#: (→ doc_check ADDRESS_HISTORY_INCOMPLETE, 확인필요; 전입일·현주소시도는 '불확실'로 두어 자동 판정에 쓰지 않는다).
+#: 신뢰도는 낮추지 않으므로 발급일 등 확정 FAIL은 그대로 FAIL이다.
+#: 바꾸지 않는 것: 글자층 PDF 판독(pdftext, 글자층 좌표 판독), 등본·그 밖의 서류, 사업별 규칙, 다른 검증.
+#: 해제 조건: .trellis/spec/backend/resident-scan-completeness.md의 '자동 PASS 재허용 조건'을 독립 표본으로 충족할 때.
+SCAN_ABSTRACT_REVIEW_GUARD = True
+
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _logger = logging.getLogger(__name__)
 
@@ -121,6 +131,29 @@ def _entry_bbox(entry, pages) -> BBox | None:
     return BBox(entry.page, round(x0, 1), round(y0, 1), round(x1, 1), round(y1, 1))
 
 
+def _number_column_ordinals(pages, ra) -> set[int]:
+    """순번 칸(x < COL_NO_MAX_X)의 본문 영역에 보이는 1~3자리 번호. 표를 찾았는지와 무관하게 모은다."""
+    from engine_v2.pipeline.layout import normalize
+
+    seen: set[int] = set()
+    for page, result in pages:
+        for word in normalize(result.words, page.page, page.pixel_size):
+            if word.x0 < ra.COL_NO_MAX_X and ra.HEADER_MAX_Y < word.cy < ra.FOOTER_Y:
+                if found := re.match(r"(\d{1,3})(?!\d)", word.text.strip()):
+                    seen.add(int(found.group(1)))
+    return seen
+
+
+def _history_end_label(ex) -> str:
+    """11-26: 주소 이력 끝을 무엇으로 확인했는지 (근거 종류와 쪽 번호만, 값 없음)."""
+    kind, page = getattr(ex, "history_end", "NONE"), getattr(ex, "history_end_page", None)
+    if kind == "BLANK_MARKER":
+        return f"이하 여백 ({page}쪽)"
+    if kind == "NEXT_SECTION":
+        return f"다음 구역(병역사항) 시작 ({page}쪽)"
+    return "확인되지 않음" if ex.history else "이력 없음"
+
+
 def _from_resident(ex, pages, ra, v2types) -> OcrResult:
     """engine_v2 초본 추출 결과 → 데모 OcrResult (필드 이름은 데모 규칙이 쓰는 그대로)."""
     detected = (DocType.RESIDENT_ABSTRACT if ex.detected_type == v2types.RESIDENT_ABSTRACT
@@ -181,6 +214,35 @@ def _from_resident(ex, pages, ra, v2types) -> OcrResult:
            for validation in ex.validations):
         confidence = min(confidence, .4)
         fields["판독경고"] = "주소 이력의 순번 또는 날짜를 완전히 확인하지 못했습니다."
+    # 11-26: 주소 이력 완결성 (youth). 아래 사유가 하나라도 있으면 전입일·현주소시도를 '불확실'로 두고
+    # doc_check가 ADDRESS_HISTORY_INCOMPLETE(확인필요)를 낸다. 신뢰도는 낮추지 않는다: 발급일 등 확정 FAIL을
+    # 보류로 바꾸지 않기 위해서다. 주소이력건수는 읽은 줄 수 그대로 둔다(1건 안내 규칙만 쓴다).
+    #   NUMBER_START    순번이 1로 시작하지 않음. engine_v2 순번 검증은 이어지기만 하면 시작 번호를 묻지 않는다
+    #                   (test_contiguous_numbering_start_remains_compatible); 첫 쪽 표를 못 찾아 1~3번이 빠진
+    #                   스캔이 9/9 통과·자동 적합이 됐다.
+    #   UNREAD_ROWS     순번 칸에 마지막 건보다 큰 번호가 보임 (표 머리글을 못 찾은 쪽의 이력이 추출에서 빠짐).
+    #   END_UNCONFIRMED 스캔에서 마지막 건 아래 끝 표시(이하 여백·다음 구역)를 확인하지 못함.
+    #   SCAN_UNVERIFIED 스캔 초본 완결성 자동 확인 제한 (SCAN_ABSTRACT_REVIEW_GUARD).
+    if ex.detected_type == v2types.RESIDENT_ABSTRACT:
+        numbers = sorted(entry.no for entry in ex.history if entry.no is not None)
+        scanned = any(page.source.value != "text_layer" for page, _ in pages)  # _pages_engine과 같은 기준
+        # 담당자 감사·진단용 끝 근거: 근거 종류와 쪽 번호만 남긴다 (값 없음).
+        fields["주소이력끝근거"] = _history_end_label(ex)
+        uncertain = [code for code, hit in (
+            ("NUMBER_START", bool(numbers) and numbers[0] != 1),
+            ("UNREAD_ROWS", bool(numbers) and any(seen > numbers[-1]
+                                                  for seen in _number_column_ordinals(pages, ra))),
+            ("END_UNCONFIRMED", scanned and bool(ex.history)
+             and getattr(ex, "history_end", "NONE") not in ("BLANK_MARKER", "NEXT_SECTION")),
+            ("SCAN_UNVERIFIED", scanned and SCAN_ABSTRACT_REVIEW_GUARD),
+        ) if hit]
+        if uncertain:
+            fields["주소이력상태"] = "불확실"
+            fields["주소이력불확실사유"] = ",".join(uncertain)
+            for label in ("전입일", "현주소시도"):
+                if label in fields:
+                    fields[label] = "불확실"
+                bboxes.pop(label, None)
 
     return OcrResult(
         detected_doc_type=detected,
