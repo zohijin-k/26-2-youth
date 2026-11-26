@@ -488,6 +488,44 @@
   display: block;
 }
 
+/* 11-27: 사유는 한국어 분류·제목·설명으로 보이고, 내부 코드·엔진 원문은 '감사·진단 정보'에 접는다. */
+.reasons em.reasons__doc { display: inline; }
+.reasons__category {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 0 4px;
+  border: 1px solid #e0c48a;
+  border-radius: 4px;
+  color: #7a4b00;
+  font-size: 11.5px;
+}
+.reasons__title { margin-right: 2px; }
+.reasons__details { margin: 2px 0 0; padding-left: 16px; color: var(--muted); }
+.reasons__open {
+  margin-left: 6px;
+  padding: 0 6px;
+  border: 1px solid #c9ced6;
+  border-radius: 4px;
+  background: #fff;
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.reasons__audit { margin-top: 2px; color: var(--muted); font-size: 11.5px; }
+.reasons__audit summary { cursor: pointer; }
+.reasons__audit p { margin: 2px 0 0; overflow-wrap: anywhere; }
+.reasons__primary {
+  margin: 8px 0 0;
+  padding: 6px 8px;
+  border: 1px solid #e0c48a;
+  border-radius: 6px;
+  background: #fff8e6;
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+.reasons__primary-tag { display: block; font-weight: 700; color: #7a4b00; }
+.fields__items { margin: 0; padding-left: 16px; }
+
 .checks {
   list-style: none;
   margin: 0;

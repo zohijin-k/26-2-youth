@@ -28,6 +28,7 @@ import { dotClass } from './format.ts'
 import { useReviewDraft } from './useReviewDraft.ts'
 import ReviewSaveStatus from './ReviewSaveStatus.tsx'
 import { reviewSaveError } from './review-save.ts'
+import { fieldDisplay, primaryReason, reasonDisplay, stageLabel, type ReasonLike } from './reason-labels.ts'
 
 interface Props {
   applicationId: number
@@ -157,6 +158,14 @@ function ReviewDetailContent({
   }
 
 
+  /** 사유 → 그 서류 원본. */
+  const openDoc = (documentId: number | null) => {
+    if (documentId == null) return
+    setActiveForm(null)
+    setActiveDocId(documentId)
+  }
+  const primary = primaryReason(detail.ai.reasons)
+
   const highlight =
     !viewingForm && focus && focus.documentId === activeDoc?.document_id ? focus.bbox : null
 
@@ -250,15 +259,22 @@ function ReviewDetailContent({
               <span className="verdict__action">{detail.ai.recommended_action}</span>
             </div>
             <ul className="verdict__stages">
-              <li>1단계 서류 적합성: {detail.ai.stage1_status ?? '-'}</li>
-              <li>2단계 통합 자격심사: {detail.ai.stage2_status ?? '-'}</li>
+              <li>1단계 서류 적합성: {stageLabel(detail.ai.stage1_status)}</li>
+              <li>2단계 통합 자격심사: {stageLabel(detail.ai.stage2_status)}</li>
             </ul>
+            {primary && (
+              <div className="reasons__primary" role="note">
+                <span className="reasons__primary-tag">우선 확인</span>
+                <ReasonText reason={primary} docType={primary.doc_type}
+                  onOpen={primary.document_id != null ? () => openDoc(primary.document_id ?? null) : undefined} />
+              </div>
+            )}
             {detail.ai.reasons.length > 0 ? (
               <ul className="reasons">
                 {detail.ai.reasons.map((r, i) => (
                   <li key={i}>
-                    <code>{r.code}</code> {r.message}
-                    {r.doc_type && <em> ({r.doc_type})</em>}
+                    <ReasonText reason={r} docType={r.doc_type}
+                      onOpen={r.document_id != null ? () => openDoc(r.document_id ?? null) : undefined} />
                   </li>
                 ))}
               </ul>
@@ -406,10 +422,15 @@ function ReviewDetailContent({
               <dd>{activeDoc.declared_issue_date ?? '-'}</dd>
             </dl>
             <ul className="fields">
-              {Object.entries(activeDoc.extracted).map(([key, value]) => (
+              {Object.entries(activeDoc.extracted).map(([key, value]) => {
+                const shown = fieldDisplay(key, value)
+                return (
                 <li key={key}>
-                  <span className="fields__key">{key}</span>
-                  <span className="fields__value">{value}</span>
+                  <span className="fields__key">{shown.label}</span>
+                  <span className="fields__value">
+                    {shown.items.length > 1 ? <ul className="fields__items">{shown.items.map((item) => <li key={item}>{item}</li>)}</ul> : shown.items[0]}
+                    {shown.diagnostic && <details className="reasons__audit"><summary>감사·진단 정보</summary><p>저장값: <code>{shown.diagnostic}</code></p></details>}
+                  </span>
                   {activeDoc.bboxes[key] && (
                     <button
                       type="button"
@@ -420,13 +441,13 @@ function ReviewDetailContent({
                     </button>
                   )}
                 </li>
-              ))}
+              )})}
             </ul>
             {activeDoc.findings.length > 0 && (
               <ul className="reasons">
-                {activeDoc.findings.map((f, i) => (
+                {(activeDoc.finding_views ?? activeDoc.findings).map((f, i) => (
                   <li key={i}>
-                    <code>{f.code}</code> {f.message}
+                    <ReasonText reason={f} />
                     {f.how_to_fix && <em> {f.how_to_fix}</em>}
                   </li>
                 ))}
@@ -480,5 +501,26 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
       <h3 className="panel__title">{title}</h3>
       <div className="panel__body">{children}</div>
     </section>
+  )
+}
+
+/** 확인 사유 한 건: 분류 · 제목 · 설명. 내부 코드와 엔진 원문은 '감사·진단 정보'에 접어 둔다. */
+function ReasonText({ reason, docType, onOpen }: { reason: ReasonLike; docType?: string | null; onOpen?: () => void }) {
+  const view = reasonDisplay(reason)
+  return (
+    <>
+      {view.category && <span className="reasons__category">{view.category}</span>}
+      {view.title && <strong className="reasons__title">{view.title}</strong>}{view.title && ' '}
+      {view.body}
+      {docType && <em className="reasons__doc"> ({docType})</em>}
+      {view.details.length > 0 && <ul className="reasons__details">{view.details.map((item) => <li key={item}>{item}</li>)}</ul>}
+      {onOpen && <button type="button" className="reasons__open" onClick={onOpen}>원본 보기</button>}
+      {view.diagnostics.length > 0 && (
+        <details className="reasons__audit">
+          <summary>감사·진단 정보</summary>
+          {view.diagnostics.map((line) => <p key={line}>{line}</p>)}
+        </details>
+      )}
+    </>
   )
 }

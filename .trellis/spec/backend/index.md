@@ -29,6 +29,7 @@ This directory contains guidelines for backend development. Fill in each file wi
 | [Public notice drafts](./notice-drafts.md) | Provenance, conservative grammar and existing-rule bindings | Active |
 | [Form draft detection](./form-draft-detection.md) | Inline blanks, choice words, signature marks, false-positive guards, dedupe and officer snap | Active |
 | [Scanned resident completeness](./resident-scan-completeness.md) | 11-26 temporary no-auto-PASS guard for OCR-read 초본, end evidence, audit field and re-allow conditions | Active |
+| [Officer reason projection](./officer-reason-projection.md) | 11-27 response-time mapping of stored stage1 reasons to each document's actual review reason; scan completeness vs OCR confidence; audit origin | Active |
 
 ---
 
