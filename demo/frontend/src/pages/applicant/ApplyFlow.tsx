@@ -34,6 +34,7 @@ import SubsidyItems from './SubsidyItems.tsx'
 import PdfFormsWorkspace, { ApplicantFormsBulkMenu } from '../../forms/PdfFormsWorkspace.tsx'
 import { EMPTY_CONSENT, type ConsentValue } from '../../forms/consent-model.ts'
 import { CONSENT_OPTIONS } from '../../forms/consent-model.ts'
+import { savableEmail, withSavableEmail } from '../../forms/email.ts'
 import { EMPTY_FORM1, type Form1Value } from '../../forms/form1-model.ts'
 import type { SelfCheckAnswers } from '../../forms/form2-model.ts'
 import { currentParams, routeUrl } from '../../navigation-url.ts'
@@ -151,6 +152,8 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
   const uploadState = `${uploadProgress.completed}/${uploadProgress.total}`
   const finalGate = finalGateResult?.upload === uploadState ? finalGateResult.blockers : null
   const saveQueue = useRef<Promise<void>>(Promise.resolve())
+  // 부분 저장에 실을 수 있는 마지막 이메일. 주소를 다 치기 전에는 이 값을 보낸다(withSavableEmail).
+  const savableEmailRef = useRef('')
   const flushPending = useRef<Promise<void> | null>(null)
   const [flushing, setFlushing] = useState(false)
   const navigation = useSaveBeforeLeave(!submitted && (stage === 'forms' || saveState === 'failed' || consentDirty), () => flushForms(), uploadPending || formContinuing || workspaceBusy)
@@ -181,7 +184,9 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
         setAppNo(application.application_no)
         const savedIdentity = application.identity_json
         setIdentity(savedIdentity?.name && savedIdentity.birth ? savedIdentity as Identity : null)
-        setForm1(lockIdentity({ ...EMPTY_FORM1, ...application.form1_json } as Form1Value, savedIdentity?.name && savedIdentity.birth ? savedIdentity as Identity : null))
+        const restoredForm1 = lockIdentity({ ...EMPTY_FORM1, ...application.form1_json } as Form1Value, savedIdentity?.name && savedIdentity.birth ? savedIdentity as Identity : null)
+        setForm1(restoredForm1)
+        savableEmailRef.current = savableEmail(restoredForm1.email, '')
         setAnswers(application.self_check_json as SelfCheckAnswers)
         setSelectedSubsidyTypes(subsidy.selections.length)
         const consentValue = (type: string) => {
@@ -388,7 +393,7 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
   const onForm1 = (next: Form1Value) => {
     const locked = lockIdentity(next, identity)
     setForm1(locked)
-    save({ form1: locked })
+    save({ form1: withSavableEmail(locked, savableEmailRef) })
   }
 
   return (
@@ -455,7 +460,7 @@ export default function ApplyFlow({ headerHost }: { headerHost: HTMLElement | nu
             setIdentity(verified)
             const locked = lockIdentity({ ...form1, mobile }, verified)
             setForm1(locked)
-            save({ form1: locked }, verifiedAppId)
+            save({ form1: withSavableEmail(locked, savableEmailRef) }, verifiedAppId)
             setStage('forms')
             window.scrollTo({ top: 0 })
           }}
