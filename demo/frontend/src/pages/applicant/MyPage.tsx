@@ -68,7 +68,7 @@ export default function MyPage({ applicationId }: { applicationId: number }) {
         {data.progress.map((p, i) => (
           <li key={p.label} className={`mpstep mpstep--${p.state}`} aria-current={p.state === 'current' ? 'step' : undefined}>
             <span className="mpstep__no" aria-hidden="true">{p.state === 'done' ? <Icon name="check" size={16} /> : p.state === 'current' ? null : i + 1}</span>
-            <span className="mpstep__label">{p.label}</span><span className="mpstep__state">{p.state === 'current' ? '진행 중' : p.state === 'done' ? '완료' : '예정'}</span>
+            <span className="mpstep__label">{p.label}</span>{p.state !== 'todo' && <span className="mpstep__state">{p.state === 'current' ? '진행 중' : '완료'}</span>}
           </li>
         ))}
       </ol>

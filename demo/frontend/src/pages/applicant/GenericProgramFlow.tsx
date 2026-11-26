@@ -163,15 +163,15 @@ export default function GenericProgramFlow({ postingId, headerHost }: { postingI
   const peeking = stage === 'final' && peekFrom !== null
   const reached = stage === 'final' && peekFrom !== null ? stageIndex(peekFrom) : current
   const stepComplete = (index: number) => !!receipt || index < reached
-  const stepState = (index: number) => index === current ? (peeking ? '미리 보기' : '현재') : stepComplete(index) ? '완료' : peeking && index === reached ? '진행 중' : '예정'
+  const stepState = (index: number) => index === current ? (peeking ? '미리 보기' : '현재') : stepComplete(index) ? '완료' : peeking && index === reached ? '진행 중' : ''
   const canPreview = identity !== null && !receipt && !uploadBusy && current < 3
   const previewFinal = () => navigation.leave(() => { setPeekFrom(stage); setStage('final') })
   return <div className={`flow flow--active${stage === 'upload' ? ' flow--fluid' : ''}`}>
     {headerHost && app && createPortal(<div className="shell__application-controls"><span className="shell__application-number">신청번호 <strong>{app.application_no}</strong></span><button className="btn btn--small" disabled={uploadBusy} onClick={() => navigation.leave(() => setStage('mypage'))}>마이페이지</button></div>, headerHost)}
-    <div className="headband"><div className="flow__overview"><header className="flow__head"><h1>{title} 신청</h1></header><ol className="flow__stages" aria-label="신청 단계">{STEPS.map((step, index) => {
+    <div className="headband"><div className="flow__overview"><header className="flow__head"><h1 className="sr-only">{title} 신청</h1></header><ol className="flow__stages" aria-label="신청 단계">{STEPS.map((step, index) => {
       const isCurrent = index === current
       const complete = stepComplete(index)
-      const content = <><span className="flow__stage-no" aria-hidden="true">{complete && !isCurrent ? <Icon name="check" size={18} /> : !isCurrent ? index + 1 : null}</span><span className="flow__stage-copy"><span className="flow__stage-caption"><span>{index + 1}단계</span><span className="flow__stage-status">{stepState(index)}</span></span><span className="flow__stage-label">{step.label}</span></span></>
+      const content = <><span className="flow__stage-no" aria-hidden="true">{complete && !isCurrent ? <Icon name="check" size={18} /> : !isCurrent ? index + 1 : null}</span><span className="flow__stage-copy"><span className="flow__stage-caption"><span>{index + 1}단계</span>{stepState(index) && <span className="flow__stage-status">{stepState(index)}</span>}</span><span className="flow__stage-label">{step.label}</span></span></>
       return <li key={step.key} className={isCurrent ? (peeking ? 'is-current is-preview' : 'is-current') : complete ? 'is-complete' : 'is-waiting'}>
         {index === 3 && canPreview
           ? <button type="button" className="flow__stage-content" onClick={previewFinal}>{content}</button>
