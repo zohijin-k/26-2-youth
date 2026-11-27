@@ -50,7 +50,7 @@ GENERIC_CONFIDENCE_CAP = 0.8
 #: 내지 않는다. 마지막 이력까지 빠짐없이 읽었는지(문서 완결성)를 독립적으로 확인할 검증된 기준이 아직 없기 때문이다:
 #: 이미지에서 마지막 이력 줄들이 빠지고 '이하 여백'만 남은 초본은 순번·끝 표시만으로는 정상 초본과 구분되지 않는다.
 #: 적용 범위: 이 모듈 _from_resident가 만드는 초본 결과 중 OCR 쪽이 있는 것 → 주소이력불확실사유 SCAN_UNVERIFIED
-#: (→ doc_check ADDRESS_HISTORY_INCOMPLETE, 확인필요; 전입일·현주소시도는 '불확실'로 두어 자동 판정에 쓰지 않는다).
+#: (→ doc_check ADDRESS_HISTORY_INCOMPLETE, 확인필요; 전입일·현주소시도·주소변동내역은 '불확실'로 두어 자동 판정에 쓰지 않는다).
 #: 신뢰도는 낮추지 않으므로 발급일 등 확정 FAIL은 그대로 FAIL이다.
 #: 바꾸지 않는 것: 글자층 PDF 판독(pdftext, 글자층 좌표 판독), 등본·그 밖의 서류, 사업별 규칙, 다른 검증.
 #: 해제 조건: .trellis/spec/backend/resident-scan-completeness.md의 '자동 PASS 재허용 조건'을 독립 표본으로 충족할 때.
@@ -58,6 +58,43 @@ SCAN_ABSTRACT_REVIEW_GUARD = True
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _logger = logging.getLogger(__name__)
+
+#: 1차 경로가 서식을 정하지 못한 PDF를 다시 읽는 렌더링 해상도.
+#: batch_assess(A-스캔)와 같은 방식: 모든 층·투명도를 합성한 RGB, 알파 없음.
+RENDER_RETRY_DPI = 300
+#: 대체 판독 사유 코드. 결과의 fallback_reason에 ``RENDER_RETRY:<코드>``로 남는다(담당자 화면 전용).
+RETRY_CODES = (
+    "IMAGE_UNCLASSIFIED",       # 그림 길: OCR 글자는 있으나 서식 단서 없음
+    "IMAGE_OCR_EMPTY",          # 그림 길: OCR 글자 0 (큰 배경 그림만 꺼낸 경우 포함)
+    "IMAGE_PREPROCESS_ERROR",   # 그림 길: 본문 그림 꺼내기 오류 (흑백 마스크 등)
+    "IMAGE_TEXT_PAGE",          # 그림 길: 첫 쪽은 그림, 뒤쪽에 글자층
+    "TEXT_RECLASS_NONE",        # 글자층 길: 모든 쪽 다시 판별도 실패 (숨은 글자층 포함)
+    "TEXT_RECLASS_DISCARD",     # 글자층 길: 모든 쪽 다시 판별 결과가 이 계층 담당 밖이라 버려짐
+)
+_CLASS_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}")
+
+
+def exception_code(exc: BaseException) -> str:
+    """예외 클래스 이름만 돌려준다. 예외 문장(서류 내용이 섞일 수 있음)은 읽지 않는다."""
+    name = type(exc).__name__
+    return name if _CLASS_NAME.fullmatch(name) else "OTHER"
+
+
+def render_pages(path: Path) -> list:
+    """모든 쪽을 300dpi로 렌더링한다 (engine_v2.tools.batch_assess._inspect와 같은 렌더링)."""
+    import pymupdf
+    from engine_v2.pipeline.preprocess import PageImage, PageSource
+
+    pages = []
+    with pymupdf.open(path) as document:
+        if document.needs_pass:
+            return []
+        for index, page in enumerate(document):
+            pix = page.get_pixmap(dpi=RENDER_RETRY_DPI, colorspace=pymupdf.csRGB, alpha=False)
+            pages.append(PageImage(index, PageSource.RENDER, (page.rect.width, page.rect.height),
+                                   png=pix.tobytes("png"), pixel_size=(pix.width, pix.height),
+                                   dpi=RENDER_RETRY_DPI))
+    return pages
 
 
 def engine_decision() -> tuple[str, str]:
@@ -79,6 +116,37 @@ def engine_decision() -> tuple[str, str]:
 
 def _engine_name() -> str:
     return engine_decision()[0]
+
+
+def preload_own() -> str:
+    """서버 시작 때 own 모델(쪽 작업 세션 포함)을 미리 불러 첫 요청 지연을 없앤다.
+
+    자동 스레드(OWN_OCR_* 미설정)일 때는 한 쪽씩 읽는 세션(intra 4)과 쪽 동시 읽기 세션
+    (3쪽 이상: intra 2, 작업 수만큼; 2쪽: intra 4 두 개, 코어가 허락할 때)을 함께 불러온다.
+
+    결과 코드만 돌려준다: LOADED / SKIPPED(own이 아님) / FAILED.
+    실패해도 아무것도 바꾸지 않는다. 그때는 지금처럼 첫 OCR 호출이 불러오고
+    같은 오류를 그 자리에서 낸다(세션 캐시는 실패를 기억하지 않는다).
+    """
+    try:
+        if engine_decision()[0] != "own":
+            return "SKIPPED"
+        import io
+
+        from PIL import Image
+        from engine_v2.pipeline.ocr import own
+
+        own.sessions()
+        own.prepare_page_workers(own.MAX_PAGE_WORKERS)
+        own.prepare_page_workers(2)  # 2쪽 문서용 세션(자동·코어 8개 이상: intra 4 두 개, 그 밖은 이미 불러온 것)
+        # 빈 그림 한 장으로 판독 경로의 지연 import(cv2·pyclipper)와 첫 실행 준비를 끝낸다.
+        blank = io.BytesIO()
+        Image.new("RGB", (32, 32), "white").save(blank, format="PNG")
+        own.recognize(blank.getvalue(), (32, 32))
+        return "LOADED"
+    except Exception as exc:  # noqa: BLE001 - 시작은 막지 않는다
+        _logger.warning("own 모델 미리 불러오기 실패(첫 호출 때 불러옴): %s", exception_code(exc))
+        return "FAILED"
 
 
 def _import_v2():
@@ -131,16 +199,51 @@ def _entry_bbox(entry, pages) -> BBox | None:
     return BBox(entry.page, round(x0, 1), round(y0, 1), round(x1, 1), round(y1, 1))
 
 
+def _shared_image_groups(pages, marker_pages) -> list[list[int] | None] | None:
+    """11-19 D10: per counted page (marker_pages order), [image group, render number] when its
+    embedded main image (same xref) is also read as another page of this PDF, else None. None when
+    no page shares one.
+
+    The same xref gives the same OCR input twice even when the rendered pages differ; the page check
+    then reviews a marker repeated across different renders of one image (PAGE_IMAGE_SHARED). Numbers
+    only (group and render numbers, never the xref or digest).
+    """
+    if not marker_pages:
+        return None
+    seen = {page.page: (getattr(page, "image_xref", None), getattr(page, "render_digest", None))
+            for page, _ in pages}
+    shared = sorted({xref for xref, digest in seen.values() if xref is not None and digest is not None})
+    if not shared:
+        return None
+    renders: list[str] = []  # render numbers in page order
+    for xref, digest in seen.values():
+        if xref in shared and digest is not None and digest not in renders:
+            renders.append(digest)
+    groups: list[list[int] | None] = []
+    for number in marker_pages:
+        xref, digest = seen.get(number, (None, None))
+        groups.append([shared.index(xref), renders.index(digest)] if xref in shared and digest else None)
+    return groups
+
+
 def _number_column_ordinals(pages, ra) -> set[int]:
-    """순번 칸(x < COL_NO_MAX_X)의 본문 영역에 보이는 1~3자리 번호. 표를 찾았는지와 무관하게 모은다."""
-    from engine_v2.pipeline.layout import normalize
+    """주소 이력 구역의 순번 칸(x < COL_NO_MAX_X)에 보이는 1~3자리 번호. 표를 찾았는지와 무관하게 모은다.
+
+    쪽마다 이력 표 끝(추출기 _table_end와 같은 정의: '이하 여백' 줄 또는 순번 칸의 '병역' 구역 머리글) 아래는
+    다른 구역이므로 세지 않는다 (11-21: 끝 뒤 구역은 확인필요 사유를 더하지 않는다). 추출기처럼 쪽마다 따로
+    자르며, 앞 쪽의 구역 머리글이 뒤 쪽 이력을 가리지 않는다.
+    """
+    from engine_v2.pipeline.layout import group_lines, normalize
 
     seen: set[int] = set()
     for page, result in pages:
-        for word in normalize(result.words, page.page, page.pixel_size):
-            if word.x0 < ra.COL_NO_MAX_X and ra.HEADER_MAX_Y < word.cy < ra.FOOTER_Y:
-                if found := re.match(r"(\d{1,3})(?!\d)", word.text.strip()):
-                    seen.add(int(found.group(1)))
+        lines = group_lines(normalize(result.words, page.page, page.pixel_size))
+        end = ra._table_end(lines, ra.HEADER_MAX_Y)
+        for line in lines:
+            for word in line:
+                if word.x0 < ra.COL_NO_MAX_X and ra.HEADER_MAX_Y < word.cy < end:
+                    if found := re.match(r"(\d{1,3})(?!\d)", word.text.strip()):
+                        seen.add(int(found.group(1)))
     return seen
 
 
@@ -162,9 +265,15 @@ def _from_resident(ex, pages, ra, v2types) -> OcrResult:
     fields: dict[str, str] = {}
     bboxes: dict[str, BBox] = {}
 
-    fields["쪽표기자료"] = json.dumps({
-        "markers": ex.page_markers, "confidence": ex.page_marker_confidence,
-    })
+    page_data = {"markers": ex.page_markers, "confidence": ex.page_marker_confidence}
+    if getattr(ex, "blank_pages", 0):
+        page_data["blank_pages"] = ex.blank_pages  # 쪽 수 확인에서 뺀 내용 없는 쪽
+    if getattr(ex, "sheet_markers", None):
+        page_data["sheets"] = ex.sheet_markers  # 한 장에 여러 쪽(모아찍기)의 쪽표기
+    shared = _shared_image_groups(pages, getattr(ex, "marker_pages", None))
+    if shared is not None:
+        page_data["image_groups"] = shared  # 같은 주 그림(xref)을 읽은 쪽 묶음 (D10)
+    fields["쪽표기자료"] = json.dumps(page_data)
     from engine_v2.extractors.address_dates import assess
     if ex.detected_type == v2types.RESIDENT_ABSTRACT:
         fields["주소날짜검증자료"] = json.dumps(assess(pages, type_confidence=ex.type_confidence), ensure_ascii=False)
@@ -201,6 +310,54 @@ def _from_resident(ex, pages, ra, v2types) -> OcrResult:
         if len(ex.history) >= 2:
             fields["주소변동내역"] = "포함"
 
+    # 주소 이력 누락 의심 (공통, 두 사업 같은 코드): 아래 사유가 하나라도 있으면 전입일(과 사유에 따라
+    # 주소이력건수·현주소시도·주소변동내역)을 '불확실'로 두고 doc_check가 ADDRESS_HISTORY_INCOMPLETE(확인필요)를 낸다.
+    # 신뢰도는 낮추지 않는다: 발급일 등 확정 FAIL을 보류로 바꾸지 않기 위해서다.
+    #   NUMBER_GAP        (11-18) 순번이 1..N으로 빈틈·중복 없이 이어지지 않음 (메모 줄 순번 포함)
+    #   NUMBER_UNREADABLE (11-18) 번호 없는 이력이 있어 연속성 확인 불가
+    #   EMPTY_PAGE        (11-18) 표 머리글은 찾았는데 이력 줄을 0건 읽은 쪽
+    #   NUMBER_START      (11-26) 읽은 이력 번호가 1로 시작하지 않음 (첫 쪽 표를 못 찾아 앞 이력이 빠짐)
+    #   UNREAD_ROWS       (11-26) 순번 칸에 마지막 건보다 큰 번호가 보임 (표를 못 찾은 쪽의 이력이 빠짐)
+    #   TABLE_NOT_FOUND·ROWS_UNREADABLE (11-21) 후속 쪽 표 미확인·후속 이력 판독 불완전 (추출기 history_table_issues)
+    #   END_UNCONFIRMED   (11-26) 스캔에서 마지막 건 아래 끝 표시(이하 여백·다음 구역)를 확인하지 못함
+    #   SCAN_UNVERIFIED   (11-26) 스캔 초본 완결성 자동 확인 제한 (SCAN_ABSTRACT_REVIEW_GUARD)
+    if ex.detected_type == v2types.RESIDENT_ABSTRACT:
+        # OCR로 읽은 쪽이 있으면 스캔(사진)본이다. 모든 쪽이 글자층일 때만 글자층 판독이다 (_pages_engine과 같은 기준).
+        scanned = any(page.source.value != "text_layer" for page, _ in pages)
+        numbers = sorted(entry.no for entry in ex.history if entry.no is not None)
+        uncertain = [code for code, hit in (
+            ("NUMBER_GAP", getattr(ex, "history_numbers", "NA") == "GAP"),
+            ("NUMBER_UNREADABLE", getattr(ex, "history_numbers", "NA") == "UNREADABLE"),
+            ("EMPTY_PAGE", getattr(ex, "history_empty_page", False)),
+            ("NUMBER_START", bool(numbers) and numbers[0] != 1),
+            ("UNREAD_ROWS", bool(numbers) and any(seen > numbers[-1]
+                                                  for seen in _number_column_ordinals(pages, ra))),
+            # 11-26: 마지막 건 바로 아래 단독 '이하 여백'으로 이력 끝을 확인하지 못함 (끝 이력 누락·하단 잘림 가능).
+            ("END_UNCONFIRMED", scanned and bool(ex.history)
+             and getattr(ex, "history_end", "NONE") not in ("BLANK_MARKER", "NEXT_SECTION")),
+            ("SCAN_UNVERIFIED", scanned and SCAN_ABSTRACT_REVIEW_GUARD),
+        ) if hit]
+        # 담당자 감사·진단용 끝 근거: 근거 종류와 쪽 번호만 남긴다 (값 없음).
+        fields["주소이력끝근거"] = _history_end_label(ex)
+        table_issues = getattr(ex, "history_table_issues", [])
+        uncertain.extend(table_issues)
+        if uncertain:
+            fields["주소이력상태"] = "불확실"
+            fields["주소이력불확실사유"] = ",".join(uncertain)
+            # 11-26 사유(END_UNCONFIRMED·SCAN_UNVERIFIED)만 있으면 읽은 줄 수(주소이력건수)는 그대로 둔다:
+            # 자동 판정에 쓰이는 전입일·현주소시도만 '불확실'로 두고, 1건 초본 안내(PAST_ADDRESS_OMISSION_SUSPECTED)는 유지한다.
+            count_uncertain = bool(set(uncertain) - {"END_UNCONFIRMED", "SCAN_UNVERIFIED"})
+            for label in ("전입일", "주소이력건수"):
+                if label == "주소이력건수" and not count_uncertain:
+                    continue
+                if label in fields:
+                    fields[label] = "불확실"
+                bboxes.pop(label, None)
+            if table_issues or {"END_UNCONFIRMED", "SCAN_UNVERIFIED"} & set(uncertain):
+                for label in ("현주소시도", "주소변동내역"):
+                    if label in fields:
+                        fields[label] = "불확실"
+
     passed = sum(v.passed for v in ex.validations)
     fields["판독검증"] = f"{passed}/{len(ex.validations)} 통과"
     failed = [v.name for v in ex.validations if not v.passed]
@@ -211,40 +368,12 @@ def _from_resident(ex, pages, ra, v2types) -> OcrResult:
     key = [f[k].confidence for k in ("issue_date", "name", "birth_date") if k in f]
     confidence = min([ex.type_confidence, *key]) if "issue_date" in f else 0.5
     if any(not validation.passed and validation.name.startswith(("history", "occurred"))
+           and validation.name != "history_tables_readable"
            for validation in ex.validations):
         confidence = min(confidence, .4)
         fields["판독경고"] = "주소 이력의 순번 또는 날짜를 완전히 확인하지 못했습니다."
-    # 11-26: 주소 이력 완결성 (youth). 아래 사유가 하나라도 있으면 전입일·현주소시도를 '불확실'로 두고
-    # doc_check가 ADDRESS_HISTORY_INCOMPLETE(확인필요)를 낸다. 신뢰도는 낮추지 않는다: 발급일 등 확정 FAIL을
-    # 보류로 바꾸지 않기 위해서다. 주소이력건수는 읽은 줄 수 그대로 둔다(1건 안내 규칙만 쓴다).
-    #   NUMBER_START    순번이 1로 시작하지 않음. engine_v2 순번 검증은 이어지기만 하면 시작 번호를 묻지 않는다
-    #                   (test_contiguous_numbering_start_remains_compatible); 첫 쪽 표를 못 찾아 1~3번이 빠진
-    #                   스캔이 9/9 통과·자동 적합이 됐다.
-    #   UNREAD_ROWS     순번 칸에 마지막 건보다 큰 번호가 보임 (표 머리글을 못 찾은 쪽의 이력이 추출에서 빠짐).
-    #   END_UNCONFIRMED 스캔에서 마지막 건 아래 끝 표시(이하 여백·다음 구역)를 확인하지 못함.
-    #   SCAN_UNVERIFIED 스캔 초본 완결성 자동 확인 제한 (SCAN_ABSTRACT_REVIEW_GUARD).
-    if ex.detected_type == v2types.RESIDENT_ABSTRACT:
-        numbers = sorted(entry.no for entry in ex.history if entry.no is not None)
-        scanned = any(page.source.value != "text_layer" for page, _ in pages)  # _pages_engine과 같은 기준
-        # 담당자 감사·진단용 끝 근거: 근거 종류와 쪽 번호만 남긴다 (값 없음).
-        fields["주소이력끝근거"] = _history_end_label(ex)
-        uncertain = [code for code, hit in (
-            ("NUMBER_START", bool(numbers) and numbers[0] != 1),
-            ("UNREAD_ROWS", bool(numbers) and any(seen > numbers[-1]
-                                                  for seen in _number_column_ordinals(pages, ra))),
-            ("END_UNCONFIRMED", scanned and bool(ex.history)
-             and getattr(ex, "history_end", "NONE") not in ("BLANK_MARKER", "NEXT_SECTION")),
-            ("SCAN_UNVERIFIED", scanned and SCAN_ABSTRACT_REVIEW_GUARD),
-        ) if hit]
-        if uncertain:
-            fields["주소이력상태"] = "불확실"
-            fields["주소이력불확실사유"] = ",".join(uncertain)
-            for label in ("전입일", "현주소시도"):
-                if label in fields:
-                    fields[label] = "불확실"
-                bboxes.pop(label, None)
 
-    return OcrResult(
+    return _business_resident_marks(OcrResult(
         detected_doc_type=detected,
         confidence=round(confidence, 2),
         image_quality=_quality([p for p, _ in pages]),
@@ -255,7 +384,13 @@ def _from_resident(ex, pages, ra, v2types) -> OcrResult:
         tier=NAME,
         classification_confidence=ex.type_confidence,
         classification_evidence=ex.classification_evidence,
-    )
+    ), "\n".join(r.text for _, r in pages))
+
+
+def _business_resident_marks(result: OcrResult, text: str) -> OcrResult:
+    """사업별 초본 표시 (공통 _from_resident 밖). youth: 없음 (열람용 표시 정책은 두배적금 전용, 11-18 S3)."""
+    del text
+    return result
 
 
 def ensure_nhis_required_fields(result: OcrResult) -> OcrResult:
@@ -787,7 +922,10 @@ class LocalOcr:
                     result.engine = _pages_engine(pages)
                     return result
                 if detected not in (DocType.RESIDENT_ABSTRACT, DocType.RESIDENT_CERTIFICATE):
-                    return None
+                    # 첫 쪽 글자층으로도, 모든 쪽 다시 판별로도 이 계층이 맡을 서식을 정하지 못했다.
+                    # 숨은 글자층·짧은 글자층 뒤의 그림을 A-스캔과 같은 렌더링으로 한 번 더 읽는다.
+                    return self._render_retry(path, engine, "TEXT_RECLASS_NONE" if detected is None
+                                              else "TEXT_RECLASS_DISCARD")
                 # Coordinate fallback changes classification only. Fields still
                 # use the established resident reader and review rules.
                 result = _from_resident(ra.extract(pages), pages, ra, v2types)
@@ -822,9 +960,9 @@ class LocalOcr:
         try:
             page_images = preprocess(path)
         except ValueError:
-            return None
+            return self._render_retry(path, engine, "IMAGE_PREPROCESS_ERROR")
         if any(p.source == PageSource.TEXT_LAYER for p in page_images):
-            return None
+            return self._render_retry(path, engine, "IMAGE_TEXT_PAGE")
 
         pages = []
         for p, read in zip(page_images, _read_pages(run_ocr, engine, page_images)):
@@ -832,20 +970,63 @@ class LocalOcr:
             if r.error:
                 return None  # 엔진 미설치 등 → 다음 계층
             pages.append((p, r))
+        return self._from_ocr_pages(pages, page_images, path, engine, retry=True)
 
+    def _render_retry(self, path: Path, engine: str, code: str) -> OcrResult | None:
+        """1차 경로가 서식을 정하지 못한 PDF만 300dpi 렌더링 OCR로 한 번 더 판별한다.
+
+        서식을 찾았을 때만 결과를 돌려주고 사유 코드를 남긴다. 못 찾으면 None으로
+        지금까지와 같이 다음 계층에 넘긴다. 다시 읽은 결과에서는 또 대체하지 않는다.
+        """
+        if path.suffix.lower() != ".pdf" or engine == "off" or code not in RETRY_CODES:
+            return None
+        run_ocr = _import_v2()[3]
+        page_images = render_pages(path)
+        if not page_images:
+            return None
+        pages = []
+        for page, reader in zip(page_images, _read_pages(run_ocr, engine, page_images)):
+            read = reader()
+            if read.error:
+                return None
+            pages.append((page, read))
+        result = self._from_ocr_pages(pages, page_images, path, engine, retry=False)
+        if result is None or result.detected_doc_type is None:
+            return None
+        result.fallback_reason = f"RENDER_RETRY:{code}"
+        return result
+
+    def _from_ocr_pages(self, pages, page_images, path: Path, engine: str, *, retry: bool) -> OcrResult | None:
+        """OCR한 쪽들로 서식을 판별하고 그 서식의 판독기를 고른다."""
+        from . import pdftext
+
+        ra, payment_extractor, acquisition_extractor, _, _, _, v2types, _, _, insurance4_extractor = _import_v2()
         text = "\n".join(result.text for _, result in pages)
         detected, evidence = pdftext.classify_pages_with_evidence(pages)
         if detected is None:
+            code = "IMAGE_UNCLASSIFIED" if text.strip() else "IMAGE_OCR_EMPTY"
+            retry_error = None
+            if retry:
+                try:
+                    recovered = self._render_retry(path, engine, code)
+                except Exception as exc:  # noqa: BLE001 - 사유만 남기고 1차 결과를 유지한다
+                    recovered, retry_error = None, exc
+                if recovered is not None:
+                    return recovered
             # Do not discard successfully read words and independent folios just
             # because damaged title glyphs cannot establish a document type.
             from .file_evidence import independent_page_markers
             markers = independent_page_markers(pages)
             if markers is None:
+                if retry_error is not None:
+                    raise retry_error  # read_document가 예외 클래스 이름을 대체 사유로 남긴다.
                 return None  # Keep prior fallback results when there is no new usable evidence.
             fields = {"독립쪽표기자료": json.dumps(markers)}
             result = OcrResult(fields=fields, page_count=len(pages), tier=NAME,
                                engine=engine, image_quality=_quality(page_images),
                                classification_evidence=evidence)
+            if retry_error is not None:
+                result.fallback_reason = f"RENDER_RETRY_ERROR:{exception_code(retry_error)}"
             if path.suffix.lower() != ".pdf":
                 _merge_image_heuristics(result, path)
             return result

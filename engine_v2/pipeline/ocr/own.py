@@ -57,22 +57,41 @@ def _env_count(name: str, default: int) -> int:
     return default
 
 
-#: onnxruntime threads per session (env OWN_OCR_INTRA_THREADS, read at import).
-#: Page workers are bounded so that workers x INTRA_OP_THREADS never exceeds the
+THREAD_ENV = ('OWN_OCR_INTRA_THREADS', 'OWN_OCR_PAGE_WORKERS')
+#: Automatic thread choice by page count (11-19): on when neither variable is set (unset or empty).
+#: A document read one page at a time (one OCR page, or any sequential read) uses one session with
+#: ``single_intra_threads()`` threads; 2+ pages read concurrently use page sessions with
+#: INTRA_OP_THREADS threads each. Setting either variable fixes the values as before (auto off).
+AUTO_THREADS = not any(os.environ.get(name, '').strip() for name in THREAD_ENV)
+#: Auto: onnxruntime threads of the single (sequential) session, capped at the logical CPU count.
+SINGLE_INTRA_THREADS = 4
+#: onnxruntime threads per page session (env OWN_OCR_INTRA_THREADS, read at import; fixed mode:
+#: every session). Page workers are bounded so that workers x INTRA_OP_THREADS never exceeds the
 #: logical CPU count.
 INTRA_OP_THREADS = _env_count('OWN_OCR_INTRA_THREADS', 2)
 #: Upper bound on concurrent page sessions (memory: one det+rec pair each);
 #: env OWN_OCR_PAGE_WORKERS, read at import. 1 reads pages sequentially.
 MAX_PAGE_WORKERS = _env_count('OWN_OCR_PAGE_WORKERS', 4)
+#: Auto (11-19 T4b): a two-page document reads both pages at once on two page sessions with this
+#: many threads each, when 2 x TWO_PAGE_INTRA_THREADS fits the logical CPU count; otherwise (and for
+#: 3+ pages, and in fixed mode) page sessions use INTRA_OP_THREADS. Its slot 0 is the single session.
+TWO_PAGE_INTRA_THREADS = 4
 _worker = threading.local()
 
 
-def _load_sessions():
+def single_intra_threads() -> int:
+    """Threads of the single (sequential) session: auto 4 within the CPU count, fixed INTRA_OP_THREADS."""
+    if not AUTO_THREADS:
+        return INTRA_OP_THREADS
+    return max(1, min(SINGLE_INTRA_THREADS, os.cpu_count() or 1))
+
+
+def _load_sessions(intra_threads: int | None = None):
     verify_models(MODEL_DIR)
     import onnxruntime as ort
     ort.disable_telemetry_events()
     options = ort.SessionOptions()
-    options.intra_op_num_threads = INTRA_OP_THREADS
+    options.intra_op_num_threads = INTRA_OP_THREADS if intra_threads is None else intra_threads
     options.inter_op_num_threads = 1
     det, rec = [ort.InferenceSession(str(MODEL_DIR / name), sess_options=options,
                                     providers=['CPUExecutionProvider']) for name in ('det.onnx', 'rec.onnx')]
@@ -87,34 +106,73 @@ def _load_sessions():
 
 @lru_cache(maxsize=1)
 def sessions():
-    return _load_sessions()
+    """The single (sequential) sessions: one OCR page, or pages read one at a time."""
+    return _load_sessions(single_intra_threads())
+
+
+def shares_single_session(slot: int, intra_threads: int) -> bool:
+    """Page slot 0 reuses the single sessions() when their thread counts agree.
+
+    Fixed mode: always (every session uses INTRA_OP_THREADS), as before. Auto: only when the page
+    threads equal ``single_intra_threads()``, i.e. a two-page document (intra 4) on 8+ cores; 3+
+    pages (intra 2) keep their own slot 0. onnxruntime runs one session from several threads safely.
+    """
+    return slot == 0 and (not AUTO_THREADS or intra_threads == single_intra_threads())
 
 
 @lru_cache(maxsize=None)
-def page_sessions(slot: int):
-    """Sessions owned by one concurrent page worker; slot 0 is the shared sessions()."""
-    return sessions() if slot == 0 else _load_sessions()
+def page_sessions(slot: int, intra_threads: int):
+    """Sessions owned by one concurrent page worker, with ``intra_threads`` threads.
+
+    ``intra_threads`` is ``page_intra_threads(pages)`` of the document (always passed, so one
+    slot and thread count is one cache entry). Slot 0 is the single sessions() when
+    ``shares_single_session``; otherwise every (slot, threads) pair has its own session, so
+    two-page sessions (intra 4) never share with 3+-page ones (intra 2).
+    """
+    return sessions() if shares_single_session(slot, intra_threads) else _load_sessions(intra_threads)
+
+
+def page_intra_threads(pages: int) -> int:
+    """Threads of each concurrent page session for a document of ``pages`` OCR pages.
+
+    Auto: two pages use TWO_PAGE_INTRA_THREADS when two such sessions fit the logical CPU count;
+    everything else (3+ pages, fewer cores, fixed mode) uses INTRA_OP_THREADS as before.
+    """
+    if (AUTO_THREADS and pages == 2 and MAX_PAGE_WORKERS >= 2 and
+            (os.cpu_count() or 1) >= 2 * TWO_PAGE_INTRA_THREADS):
+        return TWO_PAGE_INTRA_THREADS
+    return INTRA_OP_THREADS
 
 
 def page_workers(pages: int) -> int:
-    """Concurrent page readers for a document, within the CPU budget."""
-    return max(1, min(pages, MAX_PAGE_WORKERS, (os.cpu_count() or 1) // INTRA_OP_THREADS))
+    """Concurrent page readers for a document, within the CPU budget (workers x threads <= cores)."""
+    return max(1, min(pages, MAX_PAGE_WORKERS, (os.cpu_count() or 1) // page_intra_threads(pages)))
 
 
 def prepare_page_workers(pages: int) -> int:
-    """Load every worker slot in the calling thread; 1 (sequential) when any load fails."""
+    """Load every worker slot in the calling thread; 1 (sequential) when any load fails.
+
+    One worker reads pages one at a time on the single sessions(): no page session is loaded.
+    """
     workers = page_workers(pages)
+    if workers == 1:
+        return 1
+    intra = page_intra_threads(pages)
     try:
         for slot in range(workers):
-            page_sessions(slot)
+            page_sessions(slot, intra)
     except Exception:  # noqa: BLE001 - the sequential path reports the same error per page
         return 1
     return workers
 
 
-def bind_page_worker(slot: int) -> None:
-    """Thread initializer: recognize() in this thread uses page_sessions(slot)."""
+def bind_page_worker(slot: int, intra_threads: int | None = None) -> None:
+    """Thread initializer: recognize() in this thread uses page_sessions(slot, intra_threads).
+
+    ``intra_threads``: ``page_intra_threads(pages)`` of the document (None: INTRA_OP_THREADS).
+    """
     _worker.slot = slot
+    _worker.intra = INTRA_OP_THREADS if intra_threads is None else intra_threads
 
 
 def _ordered_box(points):
@@ -225,9 +283,11 @@ def _crop(image, box):
 
 
 def recognize(png: bytes, size: tuple[int, int]) -> list[OcrWord]:
-    slot = getattr(_worker, 'slot', 0)
+    # None: not a page-worker thread (one page, or pages read one at a time) -> the single sessions.
+    slot = getattr(_worker, 'slot', None)
     # Clear missing-model error even without optional image libraries.
-    det, rec, chars = sessions() if slot == 0 else page_sessions(slot)
+    det, rec, chars = (sessions() if slot is None else
+                       page_sessions(slot, getattr(_worker, 'intra', None) or INTRA_OP_THREADS))
     import cv2
     import numpy as np
     image = cv2.imdecode(np.frombuffer(png, dtype=np.uint8), cv2.IMREAD_COLOR)

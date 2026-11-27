@@ -33,6 +33,7 @@ from .api import (
 from .engine_adapter import apply_runtime_overrides
 from .models import init_db
 from .generic_access import GenericApplicantAccess
+from .ocr.localocr import preload_own
 from .officer_auth import OfficerAccess, router as officer_auth_router
 from .rules.programs import PROGRAMS, get_program
 from .rules.self_check import item_numbers
@@ -44,6 +45,8 @@ async def lifespan(app: FastAPI):
     # 엔진 config를 공고문 실제값으로 덮어쓴다. 엔진 파일은 건드리지 않는다.
     apply_runtime_overrides()
     init_db()
+    # own OCR 모델을 미리 불러 첫 업로드의 모델 로드 지연을 없앤다. 실패하면 첫 호출 때 불러온다.
+    preload_own()
     yield
 
 
