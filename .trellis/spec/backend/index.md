@@ -30,6 +30,7 @@ This directory contains guidelines for backend development. Fill in each file wi
 | [Form draft detection](./form-draft-detection.md) | Inline blanks, choice words, signature marks, false-positive guards, dedupe and officer snap | Active |
 | [Scanned resident completeness](./resident-scan-completeness.md) | 11-26 temporary no-auto-PASS guard for OCR-read 초본, end evidence, audit field and re-allow conditions | Active |
 | [Common OCR parity](./common-ocr-parity.md) | 11-27 common OCR (pipeline, PP-OCRv5 ONNX, 초본 extractor and completeness signals, page integrity) identical in savings-officer and youth; manifest + CI parity test; business rules separate | Active |
+| [OCR resource limits](./ocr-resource-limits.md) | 11-27 CPU·memory guard for own OCR: page images made and released one at a time, MuPDF cache release, no CPU arena, workload limits (pages, pixels, seconds); over a limit the whole document goes to officer review, never a partial read | Active |
 | [Officer reason projection](./officer-reason-projection.md) | 11-27 response-time mapping of stored stage1 reasons to each document's actual review reason; scan completeness vs OCR confidence; audit origin | Active |
 
 ---

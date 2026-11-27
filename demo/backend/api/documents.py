@@ -206,6 +206,21 @@ def set_doc_context(application_id: int, body: DocContextRequest) -> dict[str, A
         return _checklist_response(app)
 
 
+#: 업로드 본문을 옮겨 적는 조각 크기.
+_UPLOAD_CHUNK_BYTES = 1024 * 1024
+
+
+async def _store_upload(file: UploadFile, path: Path) -> None:
+    """업로드 파일을 조각 단위로 옮겨 적는다 (11-27 자원 보호).
+
+    전에는 `await file.read()`로 파일 전체를 메모리에 올린 뒤 썼다. 판독 서류의 업로드 크기 계약은 그대로 두고
+    (프런트는 20MB부터 '시간이 더 걸릴 수 있다'고만 알린다), 서버 메모리가 파일 크기만큼 늘지 않게 한다.
+    """
+    with path.open("wb") as out:
+        while chunk := await file.read(_UPLOAD_CHUNK_BYTES):
+            out.write(chunk)
+
+
 def _safe_name(name: str) -> str:
     cleaned = _UNSAFE.sub("_", Path(name).name).strip()
     return cleaned or "upload"
@@ -370,7 +385,7 @@ async def upload_document(
     path = dest_dir / _safe_name(file.filename or "upload")
     committed = False
     try:
-        path.write_bytes(await file.read())
+        await _store_upload(file, path)
 
         def receipt_amount_loader() -> int | None:
             parts = req.slot_key.split("_")
@@ -520,7 +535,7 @@ async def _upload_merged(
     base = DOCUMENTS / app.application_no / "_merged" / uuid4().hex
     base.mkdir(parents=True, exist_ok=True)
     source = base / _safe_name(file.filename or "merged.pdf")
-    source.write_bytes(await file.read())
+    await _store_upload(file, source)
 
     pages = split_pdf_pages(str(source), base, source.stem)
     if not pages:
