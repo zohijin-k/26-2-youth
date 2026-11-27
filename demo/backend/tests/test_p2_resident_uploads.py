@@ -88,12 +88,23 @@ def _split_first_table_header(pages, index=0):
     return pages
 
 
+def _lose_last_page_table(pages):
+    """마지막 쪽의 표 머리글을 모두 잃고 쪽표기도 못 읽은 OCR: 그 쪽 이력(8~11번)은 추출에서 빠진다 (11-27)."""
+    page, result = pages[2]
+    result.words = [word for word in result.words
+                    if word.text not in ("번호", "주    소", "주소", "발생일 / 신고일", "세대주및관계", "변동사유")]
+    for word in result.words:
+        if word.text == "3/3":
+            word.text = "3/?"
+    return pages
+
+
 @pytest.mark.parametrize("make,reason", [
     (lambda: _split_first_table_header(sample.resident()), "NUMBER_START"),
     (lambda: sample.resident(offset=3), "NUMBER_START"),
-    (lambda: _split_first_table_header(sample.resident(), 2), "UNREAD_ROWS"),
+    (lambda: _lose_last_page_table(sample.resident()), "UNREAD_ROWS"),
     (lambda: _without_row(sample.resident(), 11), None),
-], ids=["first_page_rows_unread", "starts_at_4", "last_page_rows_unread", "last_entry_unread"])
+], ids=["first_page_rows_unread", "starts_at_4", "last_page_table_lost", "last_entry_unread"])
 def test_history_not_starting_at_one_is_never_auto_pass(client, tmp_path, monkeypatch, make, reason, scan_guard_off):
     # 11-26: 앞·뒤 이력이 빠진 초본은 남은 순번이 이어져 보여도 자동 적합이 아니다. 스캔 안전장치와 별개로
     # 이 신호만으로 확인필요가 되는지 본다 (안전장치를 끈 상태).
@@ -107,6 +118,23 @@ def test_history_not_starting_at_one_is_never_auto_pass(client, tmp_path, monkey
     else:  # 뒤따르는 건 없는 메모 순번: 엔진 순번 검증 실패 (기존 youth 신뢰도 제한 경로)
         assert "history_numbers_sequential" in stored["fields"]["판독검증실패"]
     assert stored["fields"]["성명"] == sample.NAME
+
+
+def test_split_header_on_a_continuation_page_is_read(client, tmp_path, monkeypatch, scan_guard_off):
+    # 11-27 공통 동기화: 후속 쪽 표 머리글이 두 줄로 읽혀도 공통 추출기(11-21 후속 표 복구)가 그 쪽 이력을 읽는다.
+    # 11-26 youth 어댑터는 이 이력을 빠뜨리고 UNREAD_ROWS로 확인필요를 냈다. 이제 빠짐없이 읽고 정상과 같은 값이 된다.
+    def make():
+        return _split_first_table_header(sample.resident(), 2)
+
+    use_own_words(monkeypatch, make())
+    path = image_pdf(tmp_path / "FAKE-resident-split-continuation.pdf", make())
+    response, stored = upload(client, new_app(client, name=sample.NAME, birth=sample.BIRTH), path, "resident_abstract")
+    use_own_words(monkeypatch, sample.resident())
+    complete = image_pdf(tmp_path / "FAKE-resident-complete-ref.pdf", sample.resident())
+    _, reference = upload(client, new_app(client, name=sample.NAME, birth=sample.BIRTH), complete, "resident_abstract")
+    assert response["status"] == "PASS" and "주소이력상태" not in stored["fields"]
+    for label in ("주소이력건수", "전입일", "현주소시도", "판독검증"):
+        assert stored["fields"][label] == reference["fields"][label]
 
 
 @pytest.mark.parametrize("band", [(37.0, 77.0), (43.8, 77.0)], ids=["bottom_cut", "end_marker_missing"])

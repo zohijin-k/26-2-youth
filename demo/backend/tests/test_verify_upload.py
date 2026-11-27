@@ -399,16 +399,19 @@ def test_work_history_in_nhis_slot_uses_actual_work_blocker(tmp_path, monkeypatc
 
 
 def test_image_portal_title_interleaving_retains_existing_uncertainty(tmp_path, monkeypatch, capfd, no_db):
-    # Existing classification cannot recognize this exact interleaved title.
-    # Record the limitation without changing the production classifier.
+    # 11-27 공통 OCR 동기화: the common classifier's 11-18 O2 fallback (both 4대사회보험 and
+    # 가입자가입내역확인서 present) now recognizes this interleaved title as INSURANCE_4, as in
+    # savings-officer. The decision stays youth's own: the low-resolution original is still FAIL
+    # (youth image-quality policy, unchanged) and the document is never passed.
     pages = cases.mixed_portal()
     path = authored_image_pdf(tmp_path / "FAKE-image-portal.pdf", pages)
     authored_recognition(monkeypatch, pages)
     assert tool.main(["--slot", "work_proof", "--work-category", "직장가입자",
                       "--self-identity", str(path)]) == 0
     output = capfd.readouterr().out
+    assert "detected_type: 4대보험가입내역확인서\n" in output
     assert "document_status: FAIL\n" in output
-    assert "reason: UNKNOWN_DOCUMENT_TYPE NEEDS_REVIEW\n" in output
+    assert "reason: UNKNOWN_DOCUMENT_TYPE" not in output
     assert "reason: LOW_IMAGE_QUALITY FAIL\n" in output
     assert "blockers: O\n" in output
     assert_safe(output)

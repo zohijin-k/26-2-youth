@@ -41,6 +41,14 @@ CODE_SCREEN_CAPTURE = "SCREEN_CAPTURE_SUSPECTED"
 CODE_MISSING_ADDRESS_HISTORY = "MISSING_ADDRESS_HISTORY"
 CODE_PAST_ADDRESS_OMISSION_SUSPECTED = "PAST_ADDRESS_OMISSION_SUSPECTED"
 CODE_ADDRESS_HISTORY_INCOMPLETE = "ADDRESS_HISTORY_INCOMPLETE"
+#: 주소이력불확실사유 코드 설명 (ocr/localocr._from_resident, 두 사업 공통 판독 신호). 담당자 세부 사유 문구용.
+RESIDENT_HISTORY_REASON_LEGEND = (
+    "NUMBER_GAP 번호 누락, NUMBER_UNREADABLE 번호 판독 실패, EMPTY_PAGE 표 머리글만 읽힌 쪽, "
+    "NUMBER_START 순번이 1로 시작하지 않음, UNREAD_ROWS 표를 못 찾은 쪽의 이력 번호, "
+    "TABLE_NOT_FOUND 후속 표 미확인, ROWS_UNREADABLE 후속 이력 판독 불완전, "
+    "END_UNCONFIRMED 마지막 이력 아래 끝 표시(이하 여백·다음 구역) 미확인, "
+    "SCAN_UNVERIFIED 스캔 초본 완결성 자동 확인 제한"
+)
 CODE_RESIDENT_APPLICANT_UNREADABLE = "RESIDENT_APPLICANT_UNREADABLE"
 CODE_UNKNOWN_DOCUMENT_TYPE = "UNKNOWN_DOCUMENT_TYPE"
 CODE_MISSING_REQUIRED_FIELD = "MISSING_REQUIRED_FIELD"
@@ -57,6 +65,8 @@ CODE_NHIS_SUBSCRIBER_IDENTITY_REVIEW = "NHIS_SUBSCRIBER_IDENTITY_REVIEW"
 CODE_PAGES_INCOMPLETE = "PAGES_INCOMPLETE"
 CODE_PAGES_UNREADABLE = "PAGES_UNREADABLE"
 CODE_PAGES_DUPLICATED = "PAGES_DUPLICATED"
+#: 11-19 D10: the repeated page markers come from pages that read one shared embedded image (xref).
+CODE_PAGE_IMAGE_SHARED = "PAGE_IMAGE_SHARED"
 CODE_IMAGE_RESOLUTION_TOO_LOW = "IMAGE_RESOLUTION_TOO_LOW"
 CODE_MISSING_ADDRESS_DATES = "MISSING_ADDRESS_DATES"
 CODE_DAILY_RECORDS_PARTIALLY_SELECTED = "DAILY_RECORDS_PARTIALLY_SELECTED"
@@ -101,6 +111,7 @@ HOW_TO_FIX: dict[str, str] = {
     CODE_PAGES_UNREADABLE: "서류 전체가 선명하게 보이게 다시 촬영해 주세요. " + RETAKE_GUIDANCE,
     CODE_PAGES_INCOMPLETE: "빠진 쪽까지 모두 올려 주세요.",
     CODE_PAGES_DUPLICATED: "중복된 쪽을 확인하고 서로 다른 모든 쪽을 올려 주세요.",
+    CODE_PAGE_IMAGE_SHARED: "그대로 두셔도 담당자가 원본의 모든 쪽을 확인합니다.",
     "NHIS_HISTORY_PERIOD_UNREADABLE": "최근 변동내역의 범위는 담당자가 원본에서 확인합니다. " + RETAKE_GUIDANCE,
     "NHIS_HISTORY_PERIOD_MISSING": "조회기간에 최근 {years}년 전체가 포함되도록 다시 발급받아 올려 주세요.",
 }
@@ -148,6 +159,8 @@ REVIEW_ONLY_CODES = {
     "NHIS_HISTORY_PERIOD_UNREADABLE",
     CODE_RESIDENT_APPLICANT_UNREADABLE,
     CODE_PAGES_UNREADABLE,
+    # 같은 그림을 두 쪽에서 읽어 쪽표기가 되풀이된 경우 — 화면의 쪽은 다를 수 있어 반려하지 않는다.
+    CODE_PAGE_IMAGE_SHARED,
     # 입력 발급일 불일치이나 판독이 불확실 — 오독일 수 있어 자동 반려하지 않는다.
     "DECLARED_DATE_UNCERTAIN",
     # 본인 정보 불일치이나 판독이 불확실 — 남의 서류로 단정하지 않는다.
@@ -323,6 +336,31 @@ def _nhis_history_coverage(data, issue: date, years: int, structure_complete: bo
     return (covered if covered or not has_basis else None), False
 
 
+def _repeats_from_shared_image(data, markers, sheets) -> bool:
+    """11-19 D10: every repeated marker was read from pages that share one embedded main image but
+    render differently (the OCR input repeats; the pages shown do not).
+
+    ``image_groups`` (localocr, per counted page) is None or [image group, render number] for pages
+    whose main image xref is read as another page too. A repeat is shared only when all its pages
+    carry the same image group and pairwise different render numbers. Anything else (missing or
+    malformed data, different images, the same page shown twice) stays PAGES_DUPLICATED.
+    """
+    groups = data.get("image_groups")
+    units = sheets if sheets is not None else [[marker] for marker in markers]
+    if (not isinstance(groups, list) or len(groups) != len(units) or any(
+            group is not None and (not isinstance(group, list) or len(group) != 2
+                                   or any(type(v) is not int for v in group)) for group in groups)):
+        return False
+    pages_of: dict[tuple[int, int], list] = {}
+    for unit, group in zip(units, groups):
+        for marker in unit:
+            pages_of.setdefault(tuple(marker), []).append(group)
+    repeated = [found for found in pages_of.values() if len(found) > 1]
+    return bool(repeated) and all(
+        None not in found and len({g[0] for g in found}) == 1 and len({g[1] for g in found}) == len(found)
+        for found in repeated)
+
+
 def _check_resident_pages(ocr: OcrResult, req: DocRequirement) -> list[CheckFinding]:
     # 쪽 완전성 검사를 수행한 추출기의 구조화된 결과만 소비한다.
     # 기존 fixture/일반 글자층 판독값에는 이 검사의 결과 자체가 없다.
@@ -346,7 +384,21 @@ def _check_resident_pages(ocr: OcrResult, req: DocRequirement) -> list[CheckFind
                                for name in failed))
         if history_limited:
             confidence = min(float(data["confidence"]), ocr.classification_confidence)
-        if (not markers or len(markers) != ocr.page_count
+        # 내용 없는 쪽(빈 쪽·머리 상자만 되풀이된 쪽)은 추출기가 쪽표기 목록에서 빼고 수만 남긴다.
+        blank_pages = data.get("blank_pages", 0)
+        if type(blank_pages) is not int or blank_pages < 0:
+            return [unreadable]
+        sheets = data.get("sheets")
+        if sheets is not None:
+            # S1 (held): every header marker of a 2-up sheet counts as a page; sheets, not
+            # markers, are compared with the uploaded page count.
+            if (not isinstance(sheets, list) or not sheets or len(sheets) + blank_pages != ocr.page_count
+                    or any(not isinstance(sheet, list) or not sheet for sheet in sheets)):
+                return [unreadable]
+            markers = [marker for sheet in sheets for marker in sheet]
+            if not confidence >= engine_config.OCR_CONFIDENCE_THRESHOLD:
+                return [unreadable]
+        elif (not markers or len(markers) + blank_pages != ocr.page_count
                 or not confidence >= engine_config.OCR_CONFIDENCE_THRESHOLD):
             return [unreadable]
         if any(not isinstance(m, list) or len(m) != 2
@@ -363,6 +415,12 @@ def _check_resident_pages(ocr: OcrResult, req: DocRequirement) -> list[CheckFind
                 f"주민등록초본 {total}쪽 중 {len(seen)}쪽만 올라왔습니다. 빠진 쪽까지 모두 올려 주세요.", req,
             )]
         if len(markers) != len(seen):
+            if _repeats_from_shared_image(data, markers, sheets):
+                return [_finding(
+                    CODE_PAGE_IMAGE_SHARED,
+                    "주민등록초본의 여러 쪽이 같은 그림을 담고 있어 쪽을 확실히 확인하지 못했습니다. "
+                    "담당자가 원본을 확인합니다.", req,
+                )]
             return [_finding(CODE_PAGES_DUPLICATED, "주민등록초본에 중복된 쪽이 올라왔습니다.", req)]
     except (ValueError, TypeError, KeyError, AttributeError):
         return [unreadable]
@@ -901,8 +959,7 @@ def _check_document(
             how_to_fix="그대로 두셔도 담당자가 원본을 확인합니다. 주소 이력이 모든 쪽에 선명하게 보이는 초본 전체를 다시 올리면 더 빨리 확인됩니다.",
             severity="NEEDS_REVIEW",
             detail=f"세부 사유: {ocr.fields.get('주소이력불확실사유') or '미상'} "
-                   "(NUMBER_START 순번이 1로 시작하지 않음, UNREAD_ROWS 표를 못 찾은 쪽의 이력 번호, "
-                   "END_UNCONFIRMED 마지막 이력 아래 끝 표시 미확인, SCAN_UNVERIFIED 스캔 초본 완결성 자동 확인 제한).",
+                   f"({RESIDENT_HISTORY_REASON_LEGEND}).",
         ))
 
     if nhis_review_needed:
