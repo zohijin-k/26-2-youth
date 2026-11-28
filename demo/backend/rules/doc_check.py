@@ -983,7 +983,8 @@ def _image_quality_basis(ocr: OcrResult) -> str:
 
     이 사유는 자동 판독 결과가 아니라 원본 그림의 해상도 점수(ocr.file_evidence.objective_image_quality: PDF는 쪽을 덮는
     그림의 쪽 크기 대비 DPI, 그림 파일은 짧은 변 화소)에서만 나온다 — 판독 실패·작업량 한도와 구분해 적는다.
-    점수를 정한 쪽을 따로 저장하지 않으므로, 원본 그림 가운데 가장 작은 것을 참고로 보여 준다.
+    점수를 정한 쪽은 따로 저장하지 않는다. 원본 그림 가운데 가장 작은 것을 참고로만 보여 주고, 점수를 정한 쪽이 아닐 수
+    있다고 적는다(점수는 화소 수가 아니라 쪽 크기 대비 해상도로 정하고, 건강보험 추가첨부 쪽은 점수에서 빠진다).
     """
     from engine_v2.pipeline.limits import not_read_by_limit
 
@@ -997,7 +998,8 @@ def _image_quality_basis(ocr: OcrResult) -> str:
              "그림 파일은 짧은 변 1,000px에 못 미치면 미달).")
     if sizes:
         page, width, height = min(sizes, key=lambda size: (min(size[1:]), size[0]))
-        basis += f" 원본 그림 {len(sizes)}장 중 가장 작은 것: {page}쪽 {width}×{height}px."
+        basis += (f" 참고: 원본 그림 {len(sizes)}장 중 가장 작은 것은 {page}쪽 {width}×{height}px"
+                  "(점수는 쪽 크기 대비 해상도로 정하므로 점수를 정한 쪽은 다를 수 있음).")
     basis += " 자동 판독 성공 여부로 정한 값이 아닙니다."
     if not_read_by_limit(ocr.fallback_reason):
         basis += " 이 문서는 작업량 한도로 자동 판독하지 않았습니다(화질 사유는 판독 시도 결과가 아닙니다)."
