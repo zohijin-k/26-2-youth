@@ -15,14 +15,19 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from functools import partial
+
+from starlette.concurrency import run_in_threadpool
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 from sqlmodel import select
 
 from ..models import transactional_write, async_session_transaction, stage_file_deletion
-from ..upload_assessment import assess_nhis_identity, assess_upload
+from ..upload_assessment import assess_nhis_identity, assess_upload, reads_document
 from ..models import UNASSIGNED_SLOT, Application, Document, SubsidyItem, get_session, session_transaction
 from ..application_writes import guarded_write
+from .. import ocr_gate
+from ..models import _session_bind
 from .. import generic_programs as generic
 from ..ocr import read_document, split_pdf_pages
 from ..rules.identity import identity_of
@@ -380,6 +385,39 @@ async def upload_document(
         return await _upload_bankbook(app, file)
 
     declared = _parse_date(declared_issue_date)
+    if not reads_document(req):
+        # 11-28: 영수증 원본·담당자 정의 서류는 자동 판독을 하지 않는다. 다른 신청자의 판독 차례를 기다리지 않고
+        # (대기열 503도 받지 않고) 요청 스레드풀에서 파일 확인만 한다.
+        return await _assess_and_save(application_id, app, checklist, req, file, declared, None)
+    # 11-28: 판독 자리를 먼저 잡는다. 판독 대기열이 가득하면 저장소에 쓰기 전에 503으로 거절한다.
+    with ocr_gate.reserve() as reading:
+        return await _assess_and_save(application_id, app, checklist, req, file, declared, reading)
+
+
+def _no_reader(file_path: str, expected: DocType | None = None) -> OcrResult:
+    """판독 차례를 거치지 않는 업로드에 넘기는 판독기. 불리면 판독 없는 칸이라는 전제가 깨진 것이다."""
+    raise RuntimeError("this upload was routed around the OCR gate and must not be read")
+
+
+def _discard_upload(path: Path, dest_dir: Path) -> None:
+    """저장하지 못한 업로드의 파일과 그 판(版) 폴더를 지운다."""
+    path.unlink(missing_ok=True)
+    dest_dir.rmdir()
+
+
+async def _assess_and_save(
+    application_id: int,
+    app: Application,
+    checklist: list[DocRequirement],
+    req: DocRequirement,
+    file: UploadFile,
+    declared: date | None,
+    reading: ocr_gate.OcrTicket | None,
+) -> dict[str, Any]:
+    """본문을 저장소에 두고, 판독·판정(작업 스레드)한 뒤 초안 상태를 다시 확인해 한 번에 저장한다.
+
+    ``reading``이 None이면 자동 판독이 없는 칸이다(`reads_document`): 판독 차례 없이 요청 스레드풀에서 파일 확인만 한다.
+    """
     dest_dir = DOCUMENTS / app.application_no / req.slot_key / uuid4().hex
     dest_dir.mkdir(parents=True, exist_ok=True)
     path = dest_dir / _safe_name(file.filename or "upload")
@@ -405,7 +443,14 @@ async def upload_document(
             prepared_items = [item.model_dump() for item in session.exec(
                 select(SubsidyItem).where(SubsidyItem.application_id == application_id)
                 .order_by(SubsidyItem.id)).all()]
-        ocr, result = assess_upload(
+        # 11-28: 판독·판정은 이벤트 루프가 아니라 판독 작업 스레드에서 돈다(ocr_gate: 프로세스당 한 건씩, 대기 상한).
+        # 기다리는 동안 다른 요청이 처리되므로, 아래에서 초안 상태와 입력값을 지금까지처럼 다시 확인한 뒤 저장한다.
+        # 쓰기 예약을 쥔 채 읽는 것은 ocr_gate.inline_reads()를 켠 단일 스레드 명령줄 도구뿐이다. 판독 없는 칸(reading 없음)은
+        # 요청 스레드풀로 가므로 그 예외도 없다: 예약 연결이 다른 스레드로 넘어가면 안 된다.
+        if _session_bind.get() is not None and not (reading is not None and ocr_gate.reads_inline()):
+            raise RuntimeError("document reads must be dispatched outside the SQLite writer reservation")
+        assessment = partial(
+            assess_upload,
             path, req,
             identity=identity_of(app.identity_json),
             declared=declared,
@@ -413,8 +458,9 @@ async def upload_document(
             uploaded_loader=lambda: _list_documents(application_id),
             paper_admin_consent=bool(((app.doc_context_json or {}).get("paper_forms") or {}).get("서식5")),
             receipt_amount_loader=receipt_amount_loader,
-            reader=read_document,
+            reader=read_document if reading is not None else _no_reader,
         )
+        ocr, result = await (reading.run(assessment) if reading is not None else run_in_threadpool(assessment))
 
         async with async_session_transaction():
             current = _require_draft(application_id)
@@ -445,9 +491,11 @@ async def upload_document(
         return _document_dict(row)
     finally:
         if not committed:
-            path.unlink(missing_ok=True)
-            dest_dir.rmdir()
-
+            # 취소된 요청의 판독이 아직 작업 스레드에서 돌고 있으면 그 판독이 끝난 뒤에 지운다(읽는 중인 파일을 지우지 않는다).
+            if reading is not None:
+                reading.after_read(lambda: _discard_upload(path, dest_dir))
+            else:
+                _discard_upload(path, dest_dir)
 
 
 @guarded_write
