@@ -81,3 +81,21 @@ def test_a_reading_slot_can_never_take_the_bypass(client, monkeypatch):
     with pytest.raises(RuntimeError, match="routed around the OCR gate"):
         _post(client, aid, _pdf("SYNTHETIC"))
     assert reader.calls == [] and _rows(aid) == []
+
+
+def test_no_read_upload_is_never_run_inside_a_writer_reservation_even_for_inline_tools(client):
+    """판독 없는 칸은 요청 스레드풀에서 확인한다: 쓰기 예약 연결을 다른 스레드로 넘기지 않도록 예약 안에서는 거절한다."""
+    import asyncio
+    import io
+
+    from starlette.datastructures import UploadFile
+
+    from demo.backend import models
+
+    receipts = new_job(client, job.S10_SELECTION)
+    with models.session_transaction():
+        with ocr_gate.inline_reads():
+            upload = UploadFile(io.BytesIO(pdf()), filename="SYNTHETIC-receipt.pdf")
+            with pytest.raises(RuntimeError, match="writer reservation"):
+                asyncio.run(documents.upload_document(receipts, upload, "suit_1_receipt", None))
+    assert _rows(receipts) == []
