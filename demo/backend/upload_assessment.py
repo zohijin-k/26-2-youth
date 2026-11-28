@@ -40,6 +40,15 @@ def suggested_other_slot_label(
     return None
 
 
+def reads_document(req: DocRequirement) -> bool:
+    """이 칸의 업로드를 자동 판독(OCR·글자층 판독)하는가.
+
+    False: 결제영수증 원본(수동 검토, receipt_review)과 담당자가 정의한 서류(DocType.UNKNOWN). 이 둘은 판독기를 부르지
+    않으므로 업로드 처리(api/documents.py)가 판독 차례(ocr_gate)를 기다리지 않는다. `assess_upload`와 같은 조건이다.
+    """
+    return not is_receipt(req) and req.doc_type != DocType.UNKNOWN
+
+
 def assess_upload(
     path: Path,
     req: DocRequirement,

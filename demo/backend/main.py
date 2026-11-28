@@ -30,6 +30,7 @@ from .api import (
     review,
     subsidy,
 )
+from . import ocr_gate
 from .engine_adapter import apply_runtime_overrides
 from .models import init_db
 from .generic_access import GenericApplicantAccess
@@ -47,7 +48,11 @@ async def lifespan(app: FastAPI):
     init_db()
     # own OCR 모델을 미리 불러 첫 업로드의 모델 로드 지연을 없앤다. 실패하면 첫 호출 때 불러온다.
     preload_own()
-    yield
+    try:
+        yield
+    finally:
+        # 11-28: 차례를 기다리던 판독은 버린다. 요청 처리가 끝난 뒤라 정상 종료에서는 남은 판독이 없다.
+        ocr_gate.shutdown()
 
 
 app = FastAPI(

@@ -978,6 +978,32 @@ def _check_document(
     return CheckResult(status=status, findings=findings)
 
 
+def _image_quality_basis(ocr: OcrResult) -> str:
+    """11-28: LOW_IMAGE_QUALITY의 담당자용 근거(신청자 응답에는 없다).
+
+    이 사유는 자동 판독 결과가 아니라 원본 그림의 해상도 점수(ocr.file_evidence.objective_image_quality: PDF는 쪽을 덮는
+    그림의 쪽 크기 대비 DPI, 그림 파일은 짧은 변 화소)에서만 나온다 — 판독 실패·작업량 한도와 구분해 적는다.
+    점수를 정한 쪽을 따로 저장하지 않으므로, 원본 그림 가운데 가장 작은 것을 참고로 보여 준다.
+    """
+    from engine_v2.pipeline.limits import not_read_by_limit
+
+    try:
+        sizes = [(int(s["page"]) + 1, int(s["width"]), int(s["height"]))
+                 for s in json.loads(ocr.fields.get("원본이미지크기", "[]"))]
+    except (ValueError, TypeError, KeyError):
+        sizes = []
+    basis = (f"화질 사유 근거: 원본 그림 해상도 점수 {ocr.image_quality:.2f}"
+             f"(기준 {engine_config.IMAGE_QUALITY_THRESHOLD:.1f} 미만. PDF는 쪽 크기 대비 150dpi, "
+             "그림 파일은 짧은 변 1,000px에 못 미치면 미달).")
+    if sizes:
+        page, width, height = min(sizes, key=lambda size: (min(size[1:]), size[0]))
+        basis += f" 원본 그림 {len(sizes)}장 중 가장 작은 것: {page}쪽 {width}×{height}px."
+    basis += " 자동 판독 성공 여부로 정한 값이 아닙니다."
+    if not_read_by_limit(ocr.fallback_reason):
+        basis += " 이 문서는 작업량 한도로 자동 판독하지 않았습니다(화질 사유는 판독 시도 결과가 아닙니다)."
+    return basis
+
+
 def check_document(
     req: DocRequirement,
     ocr: OcrResult,
@@ -996,8 +1022,9 @@ def check_document(
         result.findings[:] = [f for f in result.findings if f.code != "LOW_IMAGE_QUALITY"]
         specific_resolution = any(f.code == CODE_IMAGE_RESOLUTION_TOO_LOW for f in result.findings)
         if ocr.image_quality < engine_config.IMAGE_QUALITY_THRESHOLD and not specific_resolution:
-            result.findings.append(_finding("LOW_IMAGE_QUALITY",
-                "이미지가 흐리거나 작아 읽을 수 없습니다.", req))
+            finding = _finding("LOW_IMAGE_QUALITY", "이미지가 흐리거나 작아 읽을 수 없습니다.", req)
+            finding.detail = _image_quality_basis(ocr)
+            result.findings.append(finding)
         result.status = ("FAIL" if any(f.severity == "FAIL" for f in result.findings) else
                          "NEEDS_REVIEW" if any(f.severity == "NEEDS_REVIEW" for f in result.findings) else "PASS")
     if file_format.lower() == "pdf":
